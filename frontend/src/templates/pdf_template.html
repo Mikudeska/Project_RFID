@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ts">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Persons Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1cm;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f8f9fa;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>รายงานผู้เข้าร่วมงาน</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>ลำดับ</th>
+        <th>ชื่อ</th>
+        <th>รหัสนิสิต</th>
+        <th>คณะ</th>
+        <th>ที่นั่ง</th>
+        <th>สถานะ</th>
+        <th>วันที่ลงทะเบียน</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for person in persons %}
+      <tr>
+        <td>{{ person.display_id }}</td>
+        <td>{{ person.name }}</td>
+        <td>{{ person.nisit }}</td>
+        <td>{{ person.degree }}</td>
+        <td>{{ person.seat }}</td>
+        <td>
+          {% if person.verified == 0 %}ลงทะเบียนแล้ว
+          {% elif person.verified == 1 %}อยู่ในห้องลงทะเบียน
+          {% elif person.verified == 2 %}อยู่ในห้องพิธี
+          {% endif %}
+        </td>
+        <td>{{ person.date|date:"d/m/Y H:i" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+
+</html>
