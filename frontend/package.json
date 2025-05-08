@@ -6,7 +6,8 @@
         "build": "vite build",
         "preview": "vite preview",
         "lint": "eslint --fix . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore",
-        "start": "concurrently \"npm run frontend\" \"npm run backend\"",
+        "start": "npm run all",
+        "all": "concurrently \"npm run frontend\" \"npm run backend\"",
         "frontend": "vite",
         "backend": "cd ../backend && python manage.py runserver"
     },
