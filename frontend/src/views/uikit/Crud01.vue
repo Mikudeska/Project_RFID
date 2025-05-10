@@ -121,8 +121,6 @@ const file = ref(null);
 const progress = ref(0);
 const processing = ref(false);
 const processingInterval = ref(null);
-const visible = ref(false);
-const interval = ref(null);
 const uploadInProgress = ref(false);
 
 const handleFileSelect = (event) => {
@@ -394,6 +392,7 @@ const items = ref([
                 currentPageReportTemplate="จาก   {first} ถึง {last} ของทั้งหมด {totalRecords} คน"
                 :sortField="'formatted_id'"
                 :sortOrder="1"
+                :loading="loading"
             >
                 <template #header>
                     <div class="flex flex-wrap items-center justify-between gap-2">
