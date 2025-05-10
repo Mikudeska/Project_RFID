@@ -119,6 +119,8 @@ const exportData = async (format) => {
 // อัพโหลด
 const file = ref(null);
 const progress = ref(0);
+const processing = ref(false);
+const processingInterval = ref(null);
 const visible = ref(false);
 const interval = ref(null);
 const uploadInProgress = ref(false);
@@ -134,8 +136,8 @@ const handleFileUpload = async () => {
     }
 
     uploadInProgress.value = true;
-    visible.value = true;
     progress.value = 0;
+    processing.value = false;
 
     const formData = new FormData();
     formData.append('file', file.value);
@@ -144,9 +146,25 @@ const handleFileUpload = async () => {
         await axios.post('http://localhost:8000/api/import/', formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
-                progress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                progress.value = Math.min(percent * 0.8, 80); // จำกัดไม่ให้เกิน 80%
             }
         });
+
+        // เริ่มการจำลองการประมวลผลที่ server
+        processing.value = true;
+        processingInterval.value = setInterval(() => {
+            if (progress.value < 99) {
+                progress.value += 1;
+            } else {
+                clearInterval(processingInterval.value);
+            }
+        }, 50);
+
+        await fetchPersons(); // รอให้ server ทำงานเสร็จ
+
+        clearInterval(processingInterval.value);
+        progress.value = 100;
 
         toast.add({
             severity: 'success',
@@ -154,9 +172,8 @@ const handleFileUpload = async () => {
             detail: 'นำเข้าข้อมูลเรียบร้อย',
             life: 5000
         });
-
-        await fetchPersons();
     } catch (error) {
+        clearInterval(processingInterval.value);
         toast.add({
             severity: 'error',
             summary: 'อัปโหลดล้มเหลว',
@@ -165,17 +182,17 @@ const handleFileUpload = async () => {
         });
     } finally {
         uploadInProgress.value = false;
-        file.value = null;
-        UploadDialog.value = false;
+        processing.value = false;
     }
 };
 
-const cancelUpload = () => {
-    if (interval.value) clearInterval(interval.value);
-    visible.value = false;
-    progress.value = 0;
+// ฟังก์ชันนี้จะถูกเรียกเมื่อกดปุ่ม "ปิด"
+const closeDialog = () => {
     file.value = null;
+    progress.value = 0;
     uploadInProgress.value = false;
+    processing.value = false;
+    UploadDialog.value = false;
 };
 
 // กรองคนรายงานตัว
@@ -359,7 +376,7 @@ const items = ref([
                 </template>
 
                 <template #end>
-                    <Button severity="secondary" class="mr-2" @click="confirmUpload" rounded raised> <Icon icon="lets-icons:import" />อัปโหลดไฟล์</Button>
+                    <Button :disabled="uploadInProgress" severity="secondary" class="mr-2" @click="confirmUpload" rounded raised> <Icon icon="lets-icons:import" />อัปโหลดไฟล์</Button>
                     <Button severity="secondary" class="mr-2" @click="choseExport" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์ </Button>
                 </template>
             </Toolbar>
@@ -520,30 +537,49 @@ const items = ref([
             </template>
         </Dialog>
 
-        <Dialog v-model:visible="UploadDialog" header="อัปโหลดไฟล์" :modal="true" :closable="!uploadInProgress">
+        <Dialog v-model:visible="UploadDialog" header="อัปโหลดไฟล์" :modal="true" :closable="false">
             <div class="flex flex-col items-center gap-4">
-                <!-- แสดงชื่อไฟล์ -->
-                <div class="py-2 border-l-4 border-primary-700 bg-primary-400 card">
-                    <div v-if="file" class="flex items-center text-black">
-                        <Icon icon="clarity:file-line" class="text-4xl" />
-                        <p class="font-bold break-all">{{ file.name }}</p>
+                <div v-if="file" class="py-2">
+                    <div class="flex items-center gap-3">
+                        <Icon icon="clarity:file-line" class="text-primary-700" style="width: 36px; height: 36px" />
+                        <Tag severity="success" class="px-4 py-2 rounded-xl max-w-[400px] overflow-hidden text-ellipsis whitespace-nowrap">
+                            <span class="text-3xl font-bold break-all">{{ file.name }}</span>
+                        </Tag>
                     </div>
                 </div>
 
                 <!-- ปุ่มเลือกไฟล์ -->
-                <input type="file" accept=".xlsx,.csv" @change="handleFileSelect" ref="fileInput" hidden />
-                <Button @click="$refs.fileInput.click()" :disabled="uploadInProgress">
-                    <Icon icon="lets-icons:import" />
-                    {{ file ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์' }}
-                </Button>
+                <div v-if="!uploadInProgress && !processing && !progress">
+                    <input type="file" accept=".xlsx,.csv" @change="handleFileSelect" ref="fileInput" hidden />
+                    <Button @click="$refs.fileInput.click()">
+                        <Icon icon="lets-icons:import" />
+                        {{ file ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์' }}
+                    </Button>
+                </div>
+
+                <!-- ข้อความเมื่อเสร็จ -->
+                <p v-if="progress >= 100" class="text-sm text-center text-green-600">✔️ อัปโหลดและประมวลผลเสร็จสมบูรณ์</p>
 
                 <!-- Progress Bar -->
-                <ProgressBar v-if="uploadInProgress" :value="progress" :showValue="false" class="w-full" style="height: 4px" />
+                <template v-if="uploadInProgress">
+                    <ProgressBar v-if="uploadInProgress" :value="progress" :showValue="false" class="w-full" style="height: 4px" />
+                    <p v-if="uploadInProgress" class="mt-2 text-sm text-center text-black">
+                        {{ progress < 80 ? 'กำลังอัปโหลดไฟล์...' : 'กำลังประมวลผลข้อมูล...' }}
+                    </p>
+                </template>
             </div>
 
             <template #footer>
-                <Button label="ยกเลิก" icon="pi pi-times" @click="cancelUpload, (UploadDialog = false)" severity="danger" :disabled="uploadInProgress" />
-                <Button label="ยืนยัน" icon="pi pi-check" @click="handleFileUpload" :loading="uploadInProgress" :disabled="!file || uploadInProgress" />
+                <!-- ปุ่มก่อนอัปโหลดเสร็จ -->
+                <template v-if="progress < 100">
+                    <Button label="ยกเลิก" icon="pi pi-times" @click="closeDialog" severity="danger" />
+                    <Button label="ยืนยัน" icon="pi pi-check" @click="handleFileUpload" :loading="uploadInProgress" :disabled="!file || uploadInProgress" />
+                </template>
+
+                <!-- ปุ่มหลังอัปโหลดเสร็จ -->
+                <template v-else>
+                    <Button label="ปิด" @click="closeDialog" severity="success" />
+                </template>
             </template>
         </Dialog>
 
