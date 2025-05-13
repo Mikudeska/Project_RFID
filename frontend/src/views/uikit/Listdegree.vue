@@ -47,7 +47,7 @@ const summaryByDegree = computed(() => {
 
     Object.values(summary).forEach((entry) => {
         entry.absent = entry.total - entry.reported;
-        entry.percentage = entry.total > 0 ? +(entry.reported / entry.total * 100).toFixed(2) : 0;
+        entry.percentage = entry.total > 0 ? +((entry.reported / entry.total) * 100).toFixed(2) : 0;
     });
 
     // ลำดับประเภทปริญญา
@@ -78,63 +78,79 @@ onMounted(() => {
 });
 </script>
 
-
 <template>
     <div class="p-6 space-y-6">
-        <h1 class="text-2xl font-bold">📋 รายงานสถานะบัณฑิตตามชื่อปริญญา</h1>
+        <div class="card rounded-3xl">
+            <h1 class="text-2xl font-bold text-center">รายงานสถานะบัณฑิตตามชื่อปริญญา</h1>
+        </div>
 
         <!-- Summary Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div class="bg-blue-400 p-4 rounded-lg text-center shadow">
-                <div class="text-gray-600 text-xl">บัณฑิตทั้งหมด</div>
-                <div class="text-2xl font-bold">{{ totalSummary.total }}</div>
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <div class="flex items-center justify-between px-4 py-2 border-b-8 border-blue-500 rounded-3xl card">
+                <div>
+                    <div class="text-lg font-semibold">บัณฑิตทั้งหมด</div>
+                    <div class="text-5xl font-bold">{{ totalSummary.total }}</div>
+                </div>
+                <Icon icon="nimbus:user-group" class="text-blue-500" style="width: 48px; height: 48px" />
             </div>
-            <div class="bg-green-400 p-4 rounded-lg text-center shadow">
-                <div class="text-gray-600 text-xl">รายงานตัวแล้ว</div>
-                <div class="text-2xl font-bold">{{ totalSummary.reported }}</div>
+
+            <div class="flex items-center justify-between border-b-8 border-green-500 shadow pe-4 rounded-3xl card">
+                <div>
+                    <div class="text-lg font-semibold">รายงานตัวแล้ว</div>
+                    <div class="text-5xl font-bold">{{ totalSummary.reported }}</div>
+                </div>
+                <Icon icon="rivet-icons:check-circle" class="text-green-500" style="width: 36px; height: 36px" />
             </div>
-            <div class="bg-red-400 p-4 rounded-lg text-center shadow">
-                <div class="text-gray-600 text-xl">ขาด</div>
-                <div class="text-2xl font-bold">{{ totalSummary.absent }}</div>
+
+            <div class="flex items-center justify-between p-4 border-b-8 border-red-500 shadow rounded-3xl card">
+                <div>
+                    <div class="text-lg font-semibold">ขาด</div>
+                    <div class="text-5xl font-bold">{{ totalSummary.absent }}</div>
+                </div>
+                <Icon icon="rivet-icons:close-circle" class="text-red-500" style="width: 36px; height: 36px" />
             </div>
-            <div class="bg-yellow-400 p-4 rounded-lg text-center shadow">
-                <div class="text-gray-600 text-xl">เปอร์เซ็นต์</div>
-                <div class="text-2xl font-bold">{{ totalSummary.percentage }}%</div>
+
+            <div class="flex items-center justify-between p-4 border-b-8 border-yellow-500 shadow rounded-3xl card">
+                <div>
+                    <div class="text-lg font-semibold">เปอร์เซ็นต์</div>
+                    <div class="text-5xl font-bold">{{ totalSummary.percentage }}%</div>
+                </div>
+                <Icon icon="mage:chart-fill" class="text-yellow-500" style="width: 36px; height: 36px" />
             </div>
         </div>
 
         <!-- Data Table -->
-        <div class="card">
-            <DataTable :value="summaryByDegree" scrollable scrollHeight="400px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">
+        <div class="card rounded-3xl">
+            <DataTable :value="summaryByDegree" scrollable scrollHeight="500px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">
                 <Column field="degree" header="ชื่อปริญญา" style="min-width: 150px" class="text-lg"></Column>
                 <Column field="total" header="จำนวนทั้งหมด" style="min-width: 100px" class="text-lg">
                     <template #body="{ data }">
-                        <Tag :value="data.total" severity="info" class="text-5xl font-bold px-3 py-1">
+                        <Tag :value="data.total" severity="info" class="px-3 py-1 text-5xl font-bold">
                             <span class="text-lg font-bold">{{ data.total }}</span>
                         </Tag>
                     </template>
                 </Column>
-                <Column field="reported" header="รายงานตัวแล้ว" style="min-width: 100px" class="text-green-700 text-lg" :body="reportedTemplate">
+                <Column field="reported" header="รายงานตัวแล้ว" style="min-width: 100px" class="text-lg text-green-700" :body="reportedTemplate">
                     <template #body="{ data }">
-                        <Tag :value="data.reported" severity="success" class="text-5xl font-bold px-3 py-1">
+                        <Tag :value="data.reported" severity="success" class="px-3 py-1 text-5xl font-bold">
                             <span class="text-lg font-bold">{{ data.reported }}</span>
                         </Tag>
                     </template>
                 </Column>
-                <Column field="absent" header="ขาด" style="min-width: 100px" class="text-red-500 text-lg" :body="absentTemplate">
+                <Column field="absent" header="ขาด" style="min-width: 100px" class="text-lg text-red-500" :body="absentTemplate">
                     <template #body="{ data }">
-                        <Tag :value="data.absent" severity="danger" class="text-5xl font-bold px-3 py-1">
+                        <Tag :value="data.absent" severity="danger" class="px-3 py-1 text-5xl font-bold">
                             <span class="text-lg font-bold">{{ data.absent }}</span>
                         </Tag>
                     </template>
                 </Column>
                 <Column field="percentage" header="เปอร์เซ็นต์" :showFilterMatchModes="false" :filterField="'percentage'" style="min-width: 200px" class="text-lg">
                     <template #body="{ data }">
-                        <div class="w-full relative">
-                            <div class="bg-gray-200 rounded-full h-6">
-                                <div class="bg-green-500 h-6 rounded-full" :style="{ width: data.percentage + '%' }"></div>
+                        <div class="relative w-full">
+                            <div class="h-6 bg-gray-200 rounded-full">
+                                <div class="h-6 bg-green-500 rounded-full" :style="{ width: data.percentage + '%' }"></div>
                             </div>
-                            <div class="absolute top-1 left-0 w-full h-4 flex items-center justify-center text-lg text-black font-semibold">{{ data.percentage }}%</div>
+                            <div class="absolute left-0 flex items-center justify-center w-full h-4 text-lg font-semibold text-black top-1">{{ data.percentage }}%</div>
                         </div>
                     </template>
 
