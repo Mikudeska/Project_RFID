@@ -1,0 +1,621 @@
+โครงสร้างของฉัน
+backend/  ใช้ Django
+├── api/
+│   ├── migrations/
+│   ├── models.py
+│   ├── serializers.py
+│   ├── urls.py
+│   ├── resources.py
+│   └── views.py
+└── myproject/
+    ├── settings.py
+    ├── urls.py
+    └── wsgi.py
+
+
+-- หน้า model.py --
+from django.db import models, transaction
+from django.utils import timezone
+import random
+
+class Person(models.Model):
+    name = models.CharField(max_length=100)
+    nisit = models.CharField(max_length=11, unique=True, blank=True)
+    degree = models.CharField(max_length=100)
+    seat = models.IntegerField(unique=True, blank=True)
+    verified = models.IntegerField(default=0, blank=True)
+    date = models.DateTimeField(auto_now_add=True)
+    rfid = models.CharField(max_length=15, unique=True, blank=True)
+
+    @staticmethod
+    def generate_unique_value(length, model, field):
+        while True:
+            value = ''.join([str(random.randint(0, 9)) for _ in range(length)])
+            if not model.objects.filter(**{field: value}).exists():
+                return value
+
+    def save(self, *args, **kwargs):
+        if not self.nisit:
+            self.nisit = self.generate_unique_value(11, Person, 'nisit')
+        
+        if not self.rfid:
+            self.rfid = self.generate_unique_value(15, Person, 'rfid')
+
+        if not self.seat:
+            with transaction.atomic():
+                # Lock the table to prevent concurrent updates
+                last_person = Person.objects.select_for_update().order_by('-seat').first()
+                self.seat = last_person.seat + 1 if last_person else 1
+        
+        super().save(*args, **kwargs)
+
+    def display_id(self):   
+        return str(self.id).zfill(4)
+
+    def __str__(self):
+        local_date = timezone.localtime(self.date)
+        return (
+            f"ลำดับ {self.display_id()} "
+            f"รหัสนิสิต {self.nisit} "
+            f"ชื่อ {self.name} "
+            f"อยู่คณะ {self.degree} "
+            f"นั่งที่ {self.seat} "
+            f"เมื่อ {local_date.strftime('%d/%m/%Y %H:%M:%S')}"
+        )
+
+class Log(models.Model):
+    ACTION_CHOICES = [
+        ('add', 'Add'),
+        ('edit', 'Edit'),
+        ('delete', 'Delete'),
+        ('import', 'Import'),
+        ('export', 'Export'),
+        ('reset', 'Reset'),
+        ('rfid_scan', 'RFID Scan'),
+    ]
+    
+    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    model = models.CharField(max_length=50)
+    details = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    record_id = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.timestamp} - {self.action} - {self.model}"
+
+-- หน้า serializers.py --
+from rest_framework import serializers
+from .models import Person, Log
+
+class PersonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Person
+        fields = '__all__'
+
+    def validate_nisit(self, value):
+        if Person.objects.filter(nisit=value).exclude(id=self.instance.id if self.instance else None).exists():
+            raise serializers.ValidationError("รหัสนิสิตนี้มีอยู่แล้ว")
+        return value
+    
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # แปลงข้อมูลให้เป็นรูปแบบที่ JSON serializable
+        data['_original'] = {
+            'id': instance.id,
+            'name': instance.name,
+            'nisit': instance.nisit,
+            'degree': instance.degree,
+            'seat': instance.seat,
+            'verified': instance.verified,
+            'rfid': instance.rfid
+        }
+        return data
+
+class LogSerializer(serializers.ModelSerializer):
+    timestamp = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")  # กำหนด format ชัดเจน
+    
+    class Meta:
+        model = Log
+        fields = '__all__'
+
+-- หน้า urls.py --
+from django.urls import path
+from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ResetDatabase, RFIDSimulator, LogList, ResetLog
+
+urlpatterns = [
+    path('person/', PersonList.as_view(), name='person-list'),
+    path('person/<int:pk>/', PersonDetail.as_view(), name='person-detail'),
+    path('stats/', StatsView.as_view(), name='stats'),
+    path('person/delete/', PersonList.as_view(), name='person-delete'),
+    path('export/<str:format_type>/', ExportData.as_view()),
+    path('import/', ImportData.as_view()),
+    path('export-pdf/', ExportPDF.as_view()),
+    path('reset/', ResetDatabase.as_view(), name='reset-database'),
+    path('resetlog/', ResetLog.as_view(), name='reset-log'),
+    path('simulate-rfid/', RFIDSimulator.as_view(), name='simulate-rfid'),
+    path('logs/', LogList.as_view(), name='log-list'),
+]
+
+-- หน้า resources.py --
+# backend/api/resources.py
+from import_export import resources, fields
+from .models import Person
+
+class PersonResource(resources.ModelResource):
+    formatted_id = fields.Field(attribute='id', column_name='ลำดับ')
+    name = fields.Field(attribute='name', column_name='ชื่อ-นามสกุล')
+    nisit = fields.Field(attribute='nisit', column_name='รหัสนิสิต')
+    degree = fields.Field(attribute='degree', column_name='ชื่อปริญญา')
+    seat = fields.Field(attribute='seat', column_name='ที่นั่ง')
+    verified = fields.Field(attribute='verified', column_name='สถานะรายงานตัว')
+    rfid = fields.Field(attribute='rfid', column_name='รหัส RFID')
+
+    class Meta:
+        model = Person
+        export_order = [
+            'formatted_id', 
+            'nisit', 
+            'name', 
+            'degree', 
+            'seat', 
+            'verified', 
+            'rfid'
+        ]
+        import_id_fields = ['nisit']
+
+-- หน้า views.py --
+from django.http import HttpResponse
+from .resources import PersonResource
+from tablib import Dataset
+from rest_framework.views import APIView
+from rest_framework.parsers import JSONParser
+from rest_framework.response import Response
+from rest_framework import status, generics
+from .models import Person, Log
+from .serializers import PersonSerializer, LogSerializer
+from django.db import transaction, connection
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+import urllib.parse
+import os, io, json
+
+class ResetDatabase(APIView):
+    def post(self, request):
+        try:
+            with transaction.atomic():
+                # 1. บันทึกจำนวนข้อมูลก่อนลบ (Option)
+                total_records = Person.objects.count()
+                
+                # 2. ลบข้อมูลทั้งหมด
+                Person.objects.all().delete()
+                
+                # 3. รีเซ็ต AUTO_INCREMENT (MySQL/MariaDB)
+                reset_auto_increment = False
+                if 'mysql' in connection.settings_dict['ENGINE']:
+                    cursor = connection.cursor()
+                    table_name = Person._meta.db_table
+                    cursor.execute(f"ALTER TABLE {table_name} AUTO_INCREMENT = 1;")
+                    reset_auto_increment = True
+                
+                # 4. บันทึก Log
+                log_details = (
+                    f"รีเซ็ตฐานข้อมูล | ลบข้อมูลทั้งหมด {total_records} รายการ"
+                )
+                
+                Log.objects.create(
+                    action='Reset',
+                    model='Database',
+                    details=log_details,
+                    record_id=None
+                )
+                
+                return Response(
+                    {'success': 'รีเซ็ตฐานข้อมูลสำเร็จ'}, 
+                    status=status.HTTP_200_OK
+                )
+        except Exception as e:
+            # บันทึก Log กรณี error
+            Log.objects.create(
+                action='Reset',
+                model='Database',
+                details=f"รีเซ็ตล้มเหลว: {str(e)}",
+                record_id=None,
+            )
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+class ResetLog(APIView):
+    def post(self, request):
+        try:
+            with transaction.atomic():
+                # 1. บันทึกจำนวนข้อมูลก่อนลบ (Option)
+                total_records = Log.objects.count()
+                
+                # 2. ลบข้อมูลทั้งหมด
+                Log.objects.all().delete()
+                
+                # 3. รีเซ็ต AUTO_INCREMENT (MySQL/MariaDB)
+                reset_auto_increment = False
+                if 'mysql' in connection.settings_dict['ENGINE']:
+                    cursor = connection.cursor()
+                    table_name = Log._meta.db_table
+                    cursor.execute(f"ALTER TABLE {table_name} AUTO_INCREMENT = 1;")
+                    reset_auto_increment = True
+                
+                # 4. บันทึก Log
+                log_details = (
+                    f"รีเซ็ตประวัติ | ลบข้อมูลทั้งหมด {total_records} รายการ"
+                )
+                
+                Log.objects.create(
+                    action='Reset',
+                    model='Database',
+                    details=log_details,
+                    record_id=None
+                )   
+                
+                return Response(
+                    {'success': 'รีเซ็ตประวัติสำเร็จ'}, 
+                    status=status.HTTP_200_OK
+                )
+        except Exception as e:
+            # บันทึก Log กรณี error
+            Log.objects.create(
+                action='Reset',
+                model='Database',
+                details=f"รีเซ็ตล้มเหลว: {str(e)}",
+                record_id=None,
+            )
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class ExportPDF(APIView):
+    def get(self, request):
+        try:
+            # ตั้งค่า Font ไทย
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
+            pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
+
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=A4)
+            p.setFont('THSarabun', 14)
+
+            # เขียนหัวตาราง
+            p.drawString(50, 800, "ลำดับ")
+            p.drawString(150, 800, "ชื่อ-นามสกุล")
+            p.drawString(300, 800, "รหัสนิสิต")
+            p.drawString(400, 800, "สถานะรายงานตัว")
+
+            # ดึงข้อมูล
+            persons = Person.objects.all().order_by('seat')
+            y_position = 780  # ตำแหน่งเริ่มต้น
+
+            for i, person in enumerate(persons, start=1):
+                p.drawString(50, y_position, f"{i:04d}")
+                p.drawString(150, y_position, person.name)
+                p.drawString(300, y_position, person.nisit)
+                p.drawString(400, y_position, str(person.verified))
+                y_position -= 20  # เลื่อนบรรทัด
+
+                # ขึ้นหน้าใหม่หากข้อมูลเต็มหน้า
+                if y_position < 50:
+                    p.showPage()
+                    y_position = 800
+                    p.setFont('THSarabun', 14)
+
+            p.save()
+            buffer.seek(0)
+
+            # สร้าง HTTP Response
+            response = HttpResponse(
+                buffer.getvalue(),
+                content_type='application/pdf'
+            )
+            response['Content-Disposition'] = 'attachment; filename="graduates.pdf"'
+            return response
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+class ExportData(APIView):
+    def get(self, request, format_type):
+        resource = PersonResource()
+        dataset = resource.export()
+        response = None  # กำหนดค่าเริ่มต้น
+
+        try:
+            format_type = format_type.lower()  # แปลงเป็นตัวเล็กทั้งหมด
+
+            if format_type == 'xlsx':
+                response = HttpResponse(
+                    dataset.xlsx,
+                    content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                filename = urllib.parse.quote('รายชื่อบัณฑิต.xlsx')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+            elif format_type == 'csv':
+                response = HttpResponse(dataset.csv, content_type='text/csv; charset=utf-8-sig')
+                filename = urllib.parse.quote('รายชื่อบัณฑิต.csv')
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+            else:
+                return Response(
+                    {'error': 'รูปแบบไฟล์ไม่ถูกต้อง'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details=f"โหลดไฟล์เป็น {format_type}"
+            )
+            return response
+
+        except Exception as e:
+            return Response(
+                {'error': 'Internal Server Error'}, 
+                status=500
+            )
+
+class ImportData(APIView):
+    def post(self, request):
+        file = request.FILES['file']
+        dataset = Dataset()
+        resource = PersonResource()
+
+        try:
+            # อ่านไฟล์
+            if file.name.endswith('.xlsx'):
+                dataset.load(file.read(), format='xlsx')
+            elif file.name.endswith('.csv'):
+                dataset.load(file.read().decode('utf-8-sig'), format='csv')
+
+            # ตรวจสอบข้อมูล
+            if len(dataset) == 0:
+                raise ValueError("ไฟล์ที่อัปโหลดว่างเปล่า")
+
+            # นำเข้าข้อมูล
+            result = resource.import_data(dataset, dry_run=False, raise_errors=True)
+            
+            # แก้ไขการนับจำนวนรายการ
+            imported_count = (
+                result.totals.get('new', 0)    # ข้อมูลใหม่
+                + result.totals.get('update', 0)  # ข้อมูลที่อัปเดต
+            )
+
+            # บันทึก Log
+            Log.objects.create(
+                action='Import',
+                model='Person',
+                details=f"นำเข้าฐานข้อมูล {imported_count} รายการ ( ใหม่ {result.totals.get('new', 0)} อัปเดต {result.totals.get('update', 0)} )",
+                record_id=None
+            )
+
+            return Response(
+                {'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ'}, 
+                status=status.HTTP_201_CREATED
+            )
+            
+        except Exception as e:
+            Log.objects.create(
+                action='Import',
+                model='Person',
+                details=f"นำเข้าข้อมูลล้มเหลว: {str(e)}",
+                record_id=None
+            )
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class StatsView(APIView):
+    def get(self, request):
+        total = Person.objects.count()  # นับจำนวนทั้งหมด
+        checked_in = Person.objects.filter(verified=0).count()  # verified = 0
+        in_checkin_room = Person.objects.filter(verified=1).count()  # verified = 1
+        in_graduation_room = Person.objects.filter(verified=2).count()  # verified = 2
+
+        stats = {
+            'total': total,
+            'checked_in': checked_in,
+            'in_checkin_room': in_checkin_room,
+            'in_graduation_room': in_graduation_room
+        }
+        return Response(stats, status=status.HTTP_200_OK)
+
+class PersonList(APIView):
+    def get(self, request):
+        persons = Person.objects.all()
+        serializer = PersonSerializer(persons, many=True)
+        # ตรวจสอบข้อมูลก่อนส่ง response
+        safe_data = []
+        for item in serializer.data:
+            safe_item = {
+                k: v for k, v in item.items() 
+                if isinstance(v, (str, int, float, bool, type(None)))
+            }
+            safe_data.append(safe_item)
+        return Response(safe_data, status=status.HTTP_200_OK)
+    
+    def post(self, request):
+        serializer = PersonSerializer(data=request.data)
+        if serializer.is_valid():
+            instance = serializer.save()  # เก็บ instance ที่สร้าง
+            Log.objects.create(
+                action='Add',
+                model='Person',
+                details=f"เพิ่มข้อมูล: {instance.name}",
+                record_id=instance.id
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def put(self, request, pk):
+        try:
+            person = Person.objects.get(pk=pk)
+        except Person.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PersonSerializer(person, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        ids = request.data.get('ids', [])
+        if not ids:
+            return Response({'error': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                # ดึงข้อมูลก่อนลบเพื่อบันทึก Log
+                persons = Person.objects.filter(id__in=ids)
+                for person in persons:
+                    Log.objects.create(
+                        action='Delete',
+                        model='Person',
+                        details=f"ลบข้อมูลแบบกลุ่ม: {person.name} (ID: {person.id})",
+                        record_id=person.id
+                    )
+                persons.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class PersonDetail(APIView):
+    def get(self, request, pk):
+        try:
+            person = Person.objects.get(pk=pk)
+        except Person.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        serializer = PersonSerializer(person)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk):
+        try:
+            person = Person.objects.get(pk=pk)
+            # บันทึก Log ก่อนลบ
+            Log.objects.create(
+                action='Delete',
+                model='Person',
+                details=f"ลบข้อมูลของ {person.name}",
+                record_id=person.id
+            )
+            person.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Person.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    def put(self, request, pk):
+        try:
+            person = Person.objects.get(pk=pk)
+            original_data = {
+                'name': person.name,
+                'nisit': person.nisit,
+                'degree': person.degree,
+                'seat': person.seat,
+                'verified': person.verified,
+                'rfid': person.rfid
+            }
+        
+            serializer = PersonSerializer(person, data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                person.refresh_from_db()
+                changes = []
+                for field in ['name', 'degree', 'seat', 'verified', 'rfid']:
+                    old_val = original_data[field]
+                    new_val = getattr(person, field)
+                    if old_val != new_val:
+                        changes.append(f"{field}::{old_val}::{new_val}")
+                if changes:
+                    log_message = " | ".join(changes)
+                    Log.objects.create(
+                        action='Edit',
+                        model='Person',
+                        details=log_message, 
+                        record_id=person.id
+                    )
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Person.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+    
+class RFIDSimulator(APIView):
+    parser_classes = [JSONParser]
+    
+    def post(self, request):
+        try:
+            simulated_tags = request.data.get('tags', [])
+            
+            if not simulated_tags:
+                return Response(
+                    {'error': 'No tags provided'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            results = []
+            for tag in simulated_tags:
+                epc = tag.get('epc')
+                if not epc:
+                    continue
+
+                try:
+                    person = Person.objects.get(rfid=epc)
+                    
+                    # ตรวจสอบสถานะก่อนอัปเดต
+                    if person.verified == 1:
+                        results.append({
+                            'epc': epc,
+                            'name': person.name,
+                            'message': 'แท็กนี้ถูกสแกนแล้ว',
+                        })
+                    else:
+                        # อัปเดตสถานะเป็น 2 ถ้ายังไม่เคยสแกน
+                        person.verified = 1
+                        person.save()
+                        results.append({
+                            'epc': epc,
+                            'name': person.name,
+                            'message': 'อัปเดตสถานะสำเร็จ',
+                        })
+                        
+                except Person.DoesNotExist:
+                    results.append({
+                        'epc': epc,
+                        'message': 'ไม่พบข้อมูลแท็กนี้ในระบบ',
+                        'name': None
+                    })
+            Log.objects.create(
+                action='rfid_scan',
+                model='Person',
+                details=f"RFID: {epc} Status: {person.verified}"
+            )
+            return Response({'results': results}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class LogList(generics.ListAPIView):
+    serializer_class = LogSerializer
+    
+    def get_queryset(self):
+        # กรองข้อมูลที่อาจมี timestamp เป็น null
+        return Log.objects.exclude(timestamp__isnull=True).order_by('-timestamp')
+
