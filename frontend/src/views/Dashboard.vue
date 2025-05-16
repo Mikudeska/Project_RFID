@@ -4,6 +4,8 @@ import { computed, ref, nextTick, onMounted } from 'vue';
 import { Icon } from '@iconify/vue';
 import axios from 'axios';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const displayTime = ref(new Date());
 setInterval(() => {
     displayTime.value = new Date();
@@ -28,7 +30,7 @@ const features = ref([
 
 const fetchStats = async () => {
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/stats/');
+        const response = await axios.get(`${API_BASE}/stats/`);
         features.value = [
             { title: 'จำนวนบัญฑิตทั้งหมด', description: response.data.total },
             { title: 'ยังไม่รายงานตัว', description: response.data.checked_in }, // verified=0
@@ -118,7 +120,7 @@ const scrollToBottom = () => {
             </div>
             <!-- ส่วนแสดงคอมเมนต์ -->
             <div class="col-span-12 md:col-span-4">
-                <div class="card h-[calc(100vh-100px)] max-h-[calc(100vh-230px)] xl:max-h-[calc(100vh-300px)] overflow-auto" ref="commentsContainer">
+                <div class="card h-[calc(100vh-100px)] max-h-[calc(100vh-230px)] xl:max-h-[calc(100vh-310px)] overflow-auto" ref="commentsContainer">
                     <div class="pb-2 text-4xl">Comments</div>
                     <div v-for="(comment, index) in comments" :key="index" class="pt-2 mb-4 border-t-2 border-indigo-600">
                         <p class="w-full mb-2 text-lg text-center">

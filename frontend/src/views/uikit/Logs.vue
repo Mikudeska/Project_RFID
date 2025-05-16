@@ -5,6 +5,8 @@ import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const toast = useToast();
 const logs = ref([]);
 let refreshInterval = null;
@@ -35,7 +37,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post('http://localhost:8000/api/resetlog/');
+        await axios.post(`${API_BASE}/resetlog/`);
         await fetchLogs();
         toast.add({
             severity: 'success',
@@ -99,7 +101,8 @@ const getVerifiedIcon = (value) => {
         1: 'rivet-icons:check-circle-solid',
         2: 'rivet-icons:exclamation-mark-circle-solid'
     };
-    return icons[value] || 'mdi:alert-circle-outline';
+    const status = Number(value);
+    return icons[status] || 'rivet-icons:check-circle-solid';
 };
 
 // ฟังก์ชันจัดการสี verified
@@ -115,7 +118,7 @@ const getVerifiedColor = (value) => {
 const fetchLogs = async () => {
     try {
         let allLogs = [];
-        let nextUrl = 'http://127.0.0.1:8000/api/logs/';
+        let nextUrl = `${API_BASE}/logs/`;
 
         while (nextUrl) {
             const response = await axios.get(nextUrl);
@@ -127,8 +130,8 @@ const fetchLogs = async () => {
             // กรอง null และเพิ่มข้อมูล
             allLogs.push(...pageLogs.filter((log) => log !== null));
 
-            // อัพเดท URL ถัดไป (รองรับทั้ง relative และ absolute URL)
-            nextUrl = data.next?.replace('http://localhost:8000', '') || data.next;
+            // อัปเดต URL ถัดไป (ใช้ API_BASE เสมอ)
+            nextUrl = data.next ? data.next.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000\/api/, API_BASE) : null;
         }
 
         logs.value = allLogs;
@@ -142,6 +145,7 @@ const fetchLogs = async () => {
         });
     }
 };
+
 
 onMounted(() => {
     fetchLogs();

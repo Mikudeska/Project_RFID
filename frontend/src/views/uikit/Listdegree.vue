@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { FilterMatchMode } from '@primevue/core/api';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const filters = ref({
     percentage: { value: [0, 100], matchMode: FilterMatchMode.BETWEEN }
 });
@@ -14,7 +16,7 @@ const loading = ref(false);
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/person/');
+        const response = await axios.get(`${API_BASE}/person/`);
         persons.value = response.data;
     } catch (error) {
         console.error('Error:', error);

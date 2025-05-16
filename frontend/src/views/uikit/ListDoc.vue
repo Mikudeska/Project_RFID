@@ -4,7 +4,8 @@ import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
 import Paginator from 'primevue/paginator';
-import io from 'socket.io-client';
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 // สร้างตัวแปรต่างๆ
 const persons = ref([]);
@@ -16,14 +17,11 @@ const selectedPerson = ref({});
 const currentPage = ref(0);
 const rowsPerPage = ref(180);
 
-// เชื่อมต่อกับ WebSocket Server
-const socket = io('http://127.0.0.1:8000'); // URL ของ WebSocket Server
-
 // ดึงข้อมูลจาก API
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/person/');
+        const response = await axios.get(`${API_BASE}/person/`);
         persons.value = response.data
             .filter((p) => p.verified === 1) // กรองเฉพาะ verified === 1
             .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -37,12 +35,7 @@ async function fetchPersons() {
         loading.value = false;
     }
 }
-
-// ฟังก์ชันเมื่อรับข้อมูลจาก WebSocket
-socket.on('new-person', (newPerson) => {
-    // ตรวจสอบว่ามีข้อมูลใหม่เข้ามาหรือไม่ ถ้ามีก็จะดึงข้อมูลใหม่
-    fetchPersons();
-});
+onMounted(fetchPersons);
 
 // ฟิลเตอร์จาก search
 const filteredPersons = computed(() => {
@@ -78,33 +71,22 @@ function highlightMatch(text) {
     const regex = new RegExp(`(${query})`, 'gi');
     return text.replace(regex, '<mark>$1</mark>');
 }
-
-onMounted(() => {
-    fetchPersons(); // ดึงข้อมูลแรก
-
-    // อัปเดตข้อมูลใหม่จาก WebSocket ทุกครั้งที่มีการส่งข้อมูลใหม่
-    socket.on('new-person', fetchPersons);
-});
-
-onBeforeUnmount(() => {
-    socket.disconnect(); // ปิดการเชื่อมต่อ WebSocket เมื่อ component ถูกลบ
-});
 </script>
 
 <template>
     <div>
-        <div class="text-lg font-bold mb-2">เลขบัณฑิตที่แตะ TAG แล้ว</div>
+        <div class="mb-2 text-lg font-bold">เลขบัณฑิตที่แตะ TAG แล้ว</div>
 
         <div class="mb-4">
-            <input v-model="searchQuery" type="text" placeholder="ค้นหาชื่อ, รหัสนิสิต, หรือเลขที่นั่ง" class="p-2 border rounded w-full max-w-md" />
+            <input v-model="searchQuery" type="text" placeholder="ค้นหาชื่อ, รหัสนิสิต, หรือเลขที่นั่ง" class="w-full max-w-md p-2 border rounded" />
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="text-center my-4">กำลังโหลดข้อมูล...</div>
+        <div v-if="loading" class="my-4 text-center">กำลังโหลดข้อมูล...</div>
 
         <!-- Grid -->
-        <div v-else class="card flex flex-wrap gap-2">
-            <div v-for="(person, index) in paginatedPersons" :key="index" class="w-24 h-24 flex flex-col items-center justify-center text-center">
+        <div v-else class="flex flex-wrap gap-2 card">
+            <div v-for="(person, index) in paginatedPersons" :key="index" class="flex flex-col items-center justify-center w-24 h-24 text-center">
                 <Icon
                     icon="material-symbols:person"
                     class="text-4xl cursor-pointer"
@@ -113,7 +95,7 @@ onBeforeUnmount(() => {
                     }"
                     @click="() => showPersonDetail(person)"
                 />
-                <div class="text-xs mt-2" v-html="highlightMatch(person.nisit.toString())"></div>
+                <div class="mt-2 text-xs" v-html="highlightMatch(person.nisit.toString())"></div>
             </div>
         </div>
 

@@ -5,10 +5,11 @@ import { onMounted, ref, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const toast = useToast();
 const dt = ref();
 const persons = ref();
-const searchQuery = ref(''); // ตัวแปรสำหรับการค้นหา
 
 // Dialog
 const productDialog = ref(false);
@@ -31,6 +32,7 @@ const confirmResetDialog1 = ref(false);
 const confirmResetDialog2 = ref(false);
 const resetKeyword = ref('');
 
+// รีเซ็ตข้อมูล
 const confirmResetdatabase = () => {
     confirmResetDialog1.value = true;
 };
@@ -52,7 +54,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post('http://localhost:8000/api/reset/');
+        await axios.post(`${API_BASE}/reset/`);
         await fetchPersons();
         toast.add({
             severity: 'success',
@@ -73,9 +75,10 @@ const handleResetStep2 = async () => {
     }
 };
 
+// โหลดข้อมูล
 const exportPDF = async () => {
     try {
-        const response = await axios.get('http://localhost:8000/api/export-pdf/', {
+        const response = await axios.get(`${API_BASE}/export-pdf/`, {
             responseType: 'blob',
             timeout: 30000
         });
@@ -101,7 +104,7 @@ const exportPDF = async () => {
 // Export ข้อมูล
 const exportData = async (format) => {
     try {
-        const response = await axios.get(`http://localhost:8000/api/export/${format}/`, { responseType: 'blob' });
+        const response = await axios.get(`${API_BASE}/export/${format}/`, { responseType: 'blob' });
 
         // สร้างลิงก์ดาวน์โหลด
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -141,7 +144,7 @@ const handleFileUpload = async () => {
     formData.append('file', file.value);
 
     try {
-        await axios.post('http://localhost:8000/api/import/', formData, {
+        await axios.post(`${API_BASE}/import/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -213,7 +216,7 @@ function formatId(id) {
 async function fetchPersons() {
     loading.value = true; // เริ่มต้น loading
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/person/');
+        const response = await axios.get(`${API_BASE}/person/`);
         persons.value = response.data.map((person) => ({
             ...person,
             formatted_id: formatId(person.id) // ใช้ฟังก์ชันจัดรูปแบบ ID
@@ -233,11 +236,11 @@ const saveProduct = async () => {
         try {
             if (product.value.id) {
                 // อัพเดตข้อมูล
-                await axios.put(`http://127.0.0.1:8000/api/person/${product.value.id}/`, product.value);
+                await axios.put(`${API_BASE}/person/${product.value.id}/`, product.value);
                 toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'อัพเดตข้อมูลเรียบร้อย', life: 3000 });
             } else {
                 // สร้างข้อมูลใหม่
-                await axios.post('http://127.0.0.1:8000/api/person/', product.value);
+                await axios.post(`${API_BASE}/person/`, product.value);
                 toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'สร้างข้อมูลเรียบร้อย', life: 3000 });
             }
             await fetchPersons(); // ดึงข้อมูลใหม่หลังบันทึก
@@ -251,7 +254,7 @@ const saveProduct = async () => {
 
 const deleteProduct = async () => {
     try {
-        await axios.delete(`http://127.0.0.1:8000/api/person/${product.value.id}/`);
+        await axios.delete(`${API_BASE}/person/${product.value.id}/`);
         persons.value = persons.value.filter((val) => val.id !== product.value.id);
         deleteProductDialog.value = false;
         toast.add({ severity: 'success', summary: 'สำเร็จ', detail: 'ลบข้อมูลเรียบร้อย', life: 3000 });
@@ -265,7 +268,7 @@ const deleteProduct = async () => {
 async function deleteSelectedpersons() {
     try {
         const ids = selectedpersons.value.map((person) => person.id);
-        await axios.delete('http://127.0.0.1:8000/api/person/delete/', {
+        await axios.delete(`${API_BASE}/person/delete/`, {
             data: { ids },
             headers: {
                 'Content-Type': 'application/json'
