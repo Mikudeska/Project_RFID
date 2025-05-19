@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from .resources import PersonResource
 from tablib import Dataset
-from rest_framework.views import APIView
+from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework import status, generics
@@ -12,8 +12,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
+from datetime import datetime
 import urllib.parse
 import os, io, json
+import traceback
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -109,7 +111,7 @@ class ResetLog(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class ExportPDF(APIView):
+class ExportPDF(View):
     def get(self, request):
         try:
             # ตั้งค่า Font ไทย
@@ -152,7 +154,16 @@ class ExportPDF(APIView):
                 buffer.getvalue(),
                 content_type='application/pdf'
             )
+            response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
             response['Content-Disposition'] = 'attachment; filename="graduates.pdf"'
+            response['Content-Transfer-Encoding'] = 'binary'
+            response['Cache-Control'] = 'no-cache'
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details="โหลดไฟล์ PDF",
+                record_id=None
+            )
             return response
 
         except Exception as e:
@@ -160,7 +171,152 @@ class ExportPDF(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
+class ExportPDFResuit(View):
+    def get(self, request):
+        try:
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
+            pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
+
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            p.setFont('THSarabun', 14)
+
+            def degree_group(name):
+                if 'ดุษฎีบัณฑิต' in name:
+                    return 'ป.เอก'
+                elif 'มหาบัณฑิต' in name:
+                    return 'ป.โท'
+                return 'ป.ตรี'
+
+            persons = Person.objects.all()
+
+            degree_summary = {
+                'ป.ตรี': {'total': 0, 'present': 0},
+                'ป.โท': {'total': 0, 'present': 0},
+                'ป.เอก': {'total': 0, 'present': 0},
+            }
+
+            branch_summary = {}
+
+            for person in persons:
+                dg = degree_group(person.degree)
+                degree_summary[dg]['total'] += 1
+                if person.verified:
+                    degree_summary[dg]['present'] += 1
+
+                branch = person.degree if person.degree else 'ไม่ระบุ'
+                if branch not in branch_summary:
+                    branch_summary[branch] = {'total': 0, 'present': 0}
+                branch_summary[branch]['total'] += 1
+                if person.verified:
+                    branch_summary[branch]['present'] += 1
+
+            # วันที่มุมขวาบน
+            date_str = datetime.now().strftime("%d/%m/%Y")
+            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+
+            # หัวข้อกลาง
+            p.setFont('THSarabun', 18)
+            p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
+
+            p.setFont('THSarabun', 14)
+            y = height - 120
+            p.drawString(50, y, "ชื่อ")
+            p.drawString(180, y, "จำนวนนศ. ทั้งหมด")
+            p.drawString(340, y, "จำนวนนศ. ที่มา")
+            p.drawString(480, y, "จำนวนนศ. ที่ขาด")
+            y -= 25
+
+            total_all = present_all = 0
+            for degree in ['ป.ตรี', 'ป.โท', 'ป.เอก']:
+                total = degree_summary[degree]['total']
+                present = degree_summary[degree]['present']
+                absent = total - present
+                p.drawString(50, y, degree)
+                p.drawRightString(320, y, f"{total} คน")
+                p.drawRightString(460, y, f"{present} คน")
+                p.drawRightString(580, y, f"{absent} คน")
+                total_all += total
+                present_all += present
+                y -= 20
+
+            absent_all = total_all - present_all
+            y -= 10
+            p.line(50, y, 580, y)
+            y -= 25
+            p.setFont('THSarabun', 14)
+            p.drawString(50, y, "ยอดรวมทั้งหมด")
+            p.drawRightString(320, y, f"{total_all} คน")
+            p.drawRightString(460, y, f"{present_all} คน")
+            p.drawRightString(580, y, f"{absent_all} คน")
+
+            # หน้าใหม่
+            p.showPage()
+
+            p.setFont('THSarabun', 14)
+            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+
+            p.setFont('THSarabun', 18)
+            p.drawCentredString(width / 2, height - 80, "ตารางแต่ละสาขา")
+
+            p.setFont('THSarabun', 14)
+            y = height - 120
+            p.drawString(50, y, "ชื่อสาขา")
+            p.drawString(180, y, "จำนวนนศ. ทั้งหมด")
+            p.drawString(320, y, "จำนวนนศ. ที่มา")
+            p.drawString(460, y, "จำนวนนศ. ที่ขาด")
+            p.drawString(540, y, "คิดเป็น %")
+
+            y -= 25
+
+            for branch, vals in sorted(branch_summary.items()):
+                total = vals['total']
+                present = vals['present']
+                absent = total - present
+                percent = (present / total * 100) if total > 0 else 0
+
+                p.drawString(50, y, branch)
+                p.drawRightString(300, y, f"{total} คน")
+                p.drawRightString(440, y, f"{present} คน")
+                p.drawRightString(520, y, f"{absent} คน")
+                p.drawRightString(600, y, f"{percent:.2f} %")
+
+                y -= 20
+                if y < 50:
+                    p.showPage()
+                    y = height - 80
+                    p.setFont('THSarabun', 14)
+                    p.drawString(50, y, "ชื่อสาขา")
+                    p.drawString(180, y, "จำนวนนศ. ทั้งหมด")
+                    p.drawString(320, y, "จำนวนนศ. ที่มา")
+                    p.drawString(460, y, "จำนวนนศ. ที่ขาด")
+                    p.drawString(540, y, "คิดเป็น %")
+                    y -= 25
+
+            p.save()
+            buffer.seek(0)
+
+            response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
+            response['Content-Disposition'] = 'attachment; filename="summary.pdf"'
+            response['Content-Transfer-Encoding'] = 'binary'
+            response['Cache-Control'] = 'no-cache'
+
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details="โหลดใบสรุปผล PDF",
+                record_id=None
+            )
+
+            return response
+
+        except Exception as e:
+            print("ERROR:", str(e))
+            print(traceback.format_exc().encode('utf-8', errors='replace').decode())
+            return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
 
 class ExportData(APIView):
     def get(self, request, format_type):
@@ -252,7 +408,7 @@ class ImportData(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-
+        
 class StatsView(APIView):
     def get(self, request):
         total = Person.objects.count()  # นับจำนวนทั้งหมด

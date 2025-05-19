@@ -25,6 +25,32 @@ async function fetchPersons() {
     }
 }
 
+const ExportPDFResuit = async () => {
+    try {
+        const response = await axios.get(`${API_BASE}/export-pdf-resuit/`, {
+            responseType: 'blob',
+            timeout: 30000
+        });
+
+        // ตรวจสอบขนาดไฟล์
+        if (response.data.size < 1024) {
+            throw new Error('ไฟล์ PDF ว่างเปล่า');
+        }
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'รายชื่อสรุปบัณฑิต.pdf');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    } catch (error) {
+        console.error('PDF Export Error:', error);
+        alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+    }
+};
+
+
 // ฟังก์ชันช่วยจัดกลุ่มประเภทปริญญา
 function getDegreeType(degreeName) {
     if (degreeName.includes('ดุษฎีบัณฑิต')) return 'ดุษฎีบัณฑิต';
@@ -123,6 +149,15 @@ onMounted(() => {
 
         <!-- Data Table -->
         <div class="card rounded-3xl">
+            <Toolbar class="mb-6">
+                <template #start>
+                </template>
+
+                <template #end>
+                    <Button severity="secondary" class="mr-2" @click="ExportPDFResuit" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
+                </template>
+            </Toolbar>
+
             <DataTable :value="summaryByDegree" scrollable scrollHeight="500px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">
                 <Column field="degree" header="ชื่อปริญญา" style="min-width: 150px" class="text-lg"></Column>
                 <Column field="total" header="จำนวนทั้งหมด" style="min-width: 100px" class="text-lg">
