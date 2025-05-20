@@ -156,6 +156,7 @@ class ExportPDF(View):
             )
             response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
             response['Content-Disposition'] = 'attachment; filename="graduates.pdf"'
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
             response['Content-Transfer-Encoding'] = 'binary'
             response['Cache-Control'] = 'no-cache'
             Log.objects.create(
@@ -172,7 +173,7 @@ class ExportPDF(View):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-class ExportPDFResuit(View):
+class ExportPDFResult(View):
     def get(self, request):
         try:
             BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -182,7 +183,7 @@ class ExportPDFResuit(View):
             buffer = io.BytesIO()
             p = canvas.Canvas(buffer, pagesize=A4)
             width, height = A4
-            p.setFont('THSarabun', 14)
+            p.setFont('THSarabun', 25)
 
             def degree_group(name):
                 if 'ดุษฎีบัณฑิต' in name:
@@ -204,14 +205,16 @@ class ExportPDFResuit(View):
             for person in persons:
                 dg = degree_group(person.degree)
                 degree_summary[dg]['total'] += 1
-                if person.verified:
+
+                if person.verified == 1:
                     degree_summary[dg]['present'] += 1
 
                 branch = person.degree if person.degree else 'ไม่ระบุ'
                 if branch not in branch_summary:
                     branch_summary[branch] = {'total': 0, 'present': 0}
                 branch_summary[branch]['total'] += 1
-                if person.verified:
+
+                if person.verified == 1:
                     branch_summary[branch]['present'] += 1
 
             # วันที่มุมขวาบน
@@ -219,56 +222,53 @@ class ExportPDFResuit(View):
             p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
 
             # หัวข้อกลาง
-            p.setFont('THSarabun', 18)
+            p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
 
-            p.setFont('THSarabun', 14)
-            y = height - 120
-            p.drawString(50, y, "ชื่อ")
-            p.drawString(180, y, "จำนวนนศ. ทั้งหมด")
-            p.drawString(340, y, "จำนวนนศ. ที่มา")
-            p.drawString(480, y, "จำนวนนศ. ที่ขาด")
-            y -= 25
+            p.setFont('THSarabun', 18)
+            y = height - 140
+            p.drawString(40, y, "ชื่อ")
+            p.drawString(160, y, "จำนวนนศ. ทั้งหมด")
+            p.drawString(320, y, "จำนวนนศ. ที่มา")
+            p.drawString(460, y, "จำนวนนศ. ที่ขาด")
+            y -= 50
 
             total_all = present_all = 0
             for degree in ['ป.ตรี', 'ป.โท', 'ป.เอก']:
                 total = degree_summary[degree]['total']
                 present = degree_summary[degree]['present']
                 absent = total - present
-                p.drawString(50, y, degree)
-                p.drawRightString(320, y, f"{total} คน")
-                p.drawRightString(460, y, f"{present} คน")
-                p.drawRightString(580, y, f"{absent} คน")
+                p.drawString(40, y, degree)
+                p.drawRightString(230, y, f"{total}     คน")
+                p.drawRightString(380, y, f"{present}   คน")
+                p.drawRightString(530, y, f"{absent}    คน")
                 total_all += total
                 present_all += present
-                y -= 20
+                y -= 40
 
             absent_all = total_all - present_all
-            y -= 10
-            p.line(50, y, 580, y)
-            y -= 25
-            p.setFont('THSarabun', 14)
-            p.drawString(50, y, "ยอดรวมทั้งหมด")
-            p.drawRightString(320, y, f"{total_all} คน")
-            p.drawRightString(460, y, f"{present_all} คน")
-            p.drawRightString(580, y, f"{absent_all} คน")
+            p.setFont('THSarabun', 18)
+            p.drawString(40, y, "ยอดรวมทั้งหมด")
+            p.drawRightString(230, y, f"{total_all}     คน")
+            p.drawRightString(380, y, f"{present_all}   คน")
+            p.drawRightString(530, y, f"{absent_all}    คน")
 
             # หน้าใหม่
             p.showPage()
 
-            p.setFont('THSarabun', 14)
+            p.setFont('THSarabun', 25)
             p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
 
-            p.setFont('THSarabun', 18)
+            p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "ตารางแต่ละสาขา")
 
             p.setFont('THSarabun', 14)
             y = height - 120
-            p.drawString(50, y, "ชื่อสาขา")
-            p.drawString(180, y, "จำนวนนศ. ทั้งหมด")
+            p.drawString(40, y, "ชื่อสาขา")
+            p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
             p.drawString(320, y, "จำนวนนศ. ที่มา")
-            p.drawString(460, y, "จำนวนนศ. ที่ขาด")
-            p.drawString(540, y, "คิดเป็น %")
+            p.drawString(420, y, "จำนวนนศ. ที่ขาด")
+            p.drawString(530, y, "คิดเป็น %")
 
             y -= 25
 
@@ -278,36 +278,37 @@ class ExportPDFResuit(View):
                 absent = total - present
                 percent = (present / total * 100) if total > 0 else 0
 
-                p.drawString(50, y, branch)
-                p.drawRightString(300, y, f"{total} คน")
-                p.drawRightString(440, y, f"{present} คน")
-                p.drawRightString(520, y, f"{absent} คน")
-                p.drawRightString(600, y, f"{percent:.2f} %")
+                p.drawString(40, y, branch)
+                p.drawRightString(260, y, f"{total} คน")
+                p.drawRightString(360, y, f"{present} คน")
+                p.drawRightString(470, y, f"{absent} คน")
+                p.drawRightString(560, y, f"{percent:.2f} %")
 
                 y -= 20
                 if y < 50:
                     p.showPage()
                     y = height - 80
                     p.setFont('THSarabun', 14)
-                    p.drawString(50, y, "ชื่อสาขา")
-                    p.drawString(180, y, "จำนวนนศ. ทั้งหมด")
+                    p.drawString(40, y, "ชื่อสาขา")
+                    p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
                     p.drawString(320, y, "จำนวนนศ. ที่มา")
-                    p.drawString(460, y, "จำนวนนศ. ที่ขาด")
-                    p.drawString(540, y, "คิดเป็น %")
+                    p.drawString(420, y, "จำนวนนศ. ที่ขาด")
+                    p.drawString(530, y, "คิดเป็น %")
                     y -= 25
 
             p.save()
             buffer.seek(0)
 
             response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="summary.pdf"'
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+            response['Content-Disposition'] = 'attachment; filename="result.pdf"'
             response['Content-Transfer-Encoding'] = 'binary'
             response['Cache-Control'] = 'no-cache'
 
             Log.objects.create(
                 action='Export',
                 model='Person',
-                details="โหลดใบสรุปผล PDF",
+                details="โหลดไฟล์สรุป PDF",
                 record_id=None
             )
 

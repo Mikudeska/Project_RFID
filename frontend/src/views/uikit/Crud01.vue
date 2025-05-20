@@ -435,13 +435,13 @@ const items = ref([
                     </template>
                 </Column> -->
                 <Column field="name" header="ชื่อ-นามสกุล" sortable style="min-width: 12rem"></Column>
-                <Column field="degree" header="ชื่อปริญญา" sortable style="min-width: 12rem"></Column>
+                <Column field="degree" header="ชื่อปริญญา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column field="rating" header="Reviews" sortable style="min-width: 12rem">
                     <template #body="slotProps">
                         <Rating :modelValue="slotProps.data.rating" :readonly="true" />
                     </template>
                 </Column> -->
-                <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 6rem"></Column>
+                <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 8rem"></Column>
                 <Column field="verified" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
                     <template #body="{ data }">
                         <Icon

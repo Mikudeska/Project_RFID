@@ -8,8 +8,6 @@ import Skeleton from 'primevue/skeleton';
 import Badge from 'primevue/badge';
 import { useToast } from 'primevue/usetoast';
 
-const API_BASE = import.meta.env.VITE_API_BASE;
-
 const TOTAL_SEATS = 7000;
 const COLS = 60;
 const ROWS_COUNT = Math.ceil(TOTAL_SEATS / COLS);
@@ -26,7 +24,7 @@ const toast = useToast();
 async function fetchPersons() {
     loading.value = true;
     try {
-        const { data } = await axios.get(`${API_BASE}/person/`);
+        const { data } = await axios.get('http://127.0.0.1:8000/api/person/');
         persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) })).filter((p) => p.seat >= 1 && p.seat <= TOTAL_SEATS);
     } catch (e) {
         console.error(e);
@@ -127,7 +125,7 @@ onMounted(fetchPersons);
 
         <!-- Seat Grid -->
         <div v-if="loading" class="grid grid-cols-5 gap-4 p-4"><Skeleton v-for="n in 10" :key="n" width="100%" height="4rem" /></div>
-        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner card">
+        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner bg-gradient-to-br from-blue-900 to-blue-800">
             <div v-for="(row, rowIndex) in seatsGrid" :key="rowIndex" class="relative h-16 mb-2">
                 <!-- Label -->
                 <div class="absolute left-0 flex items-center justify-between w-16 px-3 py-2 text-xs font-bold text-white -translate-y-1/2 bg-purple-600 shadow rounded-xl top-1/2">

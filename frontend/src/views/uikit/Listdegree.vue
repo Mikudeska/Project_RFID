@@ -2,8 +2,11 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { FilterMatchMode } from '@primevue/core/api';
+import { useToast } from 'primevue/usetoast';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
+
+const toast = useToast();
 
 const filters = ref({
     percentage: { value: [0, 100], matchMode: FilterMatchMode.BETWEEN }
@@ -25,9 +28,9 @@ async function fetchPersons() {
     }
 }
 
-const ExportPDFResuit = async () => {
+const ExportPDFResult = async () => {
     try {
-        const response = await axios.get(`${API_BASE}/export-pdf-resuit/`, {
+        const response = await axios.get(`${API_BASE}/export-pdf-result/`, {
             responseType: 'blob',
             timeout: 30000
         });
@@ -46,10 +49,9 @@ const ExportPDFResuit = async () => {
         link.remove();
     } catch (error) {
         console.error('PDF Export Error:', error);
-        alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
+        toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: 'โหลดไฟล์สรุป pdf ไม่สำเร็จ', life: 3000 });
     }
 };
-
 
 // ฟังก์ชันช่วยจัดกลุ่มประเภทปริญญา
 function getDegreeType(degreeName) {
@@ -150,11 +152,10 @@ onMounted(() => {
         <!-- Data Table -->
         <div class="card rounded-3xl">
             <Toolbar class="mb-6">
-                <template #start>
-                </template>
+                <template #start> </template>
 
                 <template #end>
-                    <Button severity="secondary" class="mr-2" @click="ExportPDFResuit" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
+                    <Button severity="secondary" class="mr-2" @click="ExportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
                 </template>
             </Toolbar>
 
