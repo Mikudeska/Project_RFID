@@ -8,6 +8,8 @@ import Skeleton from 'primevue/skeleton';
 import Badge from 'primevue/badge';
 import { useToast } from 'primevue/usetoast';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const TOTAL_SEATS = 7000;
 const COLS = 60;
 const ROWS_COUNT = Math.ceil(TOTAL_SEATS / COLS);
@@ -24,7 +26,7 @@ const toast = useToast();
 async function fetchPersons() {
     loading.value = true;
     try {
-        const { data } = await axios.get('http://127.0.0.1:8000/api/person/');
+        const { data } = await axios.get(`${API_BASE}/api/person/`);
         persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) })).filter((p) => p.seat >= 1 && p.seat <= TOTAL_SEATS);
     } catch (e) {
         console.error(e);

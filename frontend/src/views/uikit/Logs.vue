@@ -37,7 +37,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post(`${API_BASE}/resetlog/`);
+        await axios.post(`${API_BASE}/api/resetlog/`);
         await fetchLogs();
         toast.add({
             severity: 'success',
@@ -118,7 +118,7 @@ const getVerifiedColor = (value) => {
 const fetchLogs = async () => {
     try {
         let allLogs = [];
-        let nextUrl = `${API_BASE}/logs/`;
+        let nextUrl = `${API_BASE}/api/logs/`;
 
         while (nextUrl) {
             const response = await axios.get(nextUrl);
@@ -145,7 +145,6 @@ const fetchLogs = async () => {
         });
     }
 };
-
 
 onMounted(() => {
     fetchLogs();

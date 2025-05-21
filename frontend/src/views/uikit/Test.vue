@@ -3,6 +3,31 @@ import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
 import { ref, onUnmounted, computed } from 'vue';
 import { useOnline } from '@vueuse/core';
+import { io } from 'socket.io-client';
+
+const testMessage = ref(null);
+
+const API_BASE = import.meta.env.VITE_API_BASE; // เช่น http://localhost:8000
+const WS_BASE = API_BASE.replace(/^http/, 'ws');
+const socket = io(`${WS_BASE}/ws/person/`);
+
+socket.on('connect', () => {
+    console.log('✅ WebSocket เชื่อมต่อแล้ว');
+});
+
+socket.on('disconnect', () => {
+    console.log('❌ WebSocket หลุดการเชื่อมต่อ');
+});
+
+socket.on('message', (event) => {
+    console.log('📡 ได้รับข้อความ:', event);
+    testMessage.value = JSON.stringify(event, null, 2); // แสดงผลใน UI
+});
+
+// ปุ่มทดสอบการส่งข้อความไปยัง socket server
+function sendTestMessage() {
+    socket.emit('message', { text: 'hello from frontend!' });
+}
 
 const online = useOnline();
 const clazz = computed(() => (online.value ? 'text-primary' : 'text-red'));
@@ -71,7 +96,18 @@ const upload = () => {
                 Status: <b :class="clazz">{{ text }}</b>
             </div>
         </div>
-        <div class="card row-1 row-2 col-3 col-4">3</div>
+        <div class="card row-1 row-2 col-3 col-4">
+            <div class="p-4 space-y-4 card">
+                <h2 class="text-xl font-bold text-green-600">🔌 ทดสอบการเชื่อมต่อ WebSocket</h2>
+
+                <Button @click="sendTestMessage" class="px-4 py-2 text-white bg-blue-500 shadow rounded-xl" rounded> 📤 ส่งข้อความทดสอบ </Button>
+
+                <div v-if="testMessage" class="p-3 mt-4 text-sm text-black whitespace-pre-wrap bg-gray-100 rounded">
+                    <strong>📥 ข้อมูลที่ได้รับ:</strong>
+                    <pre>{{ testMessage }}</pre>
+                </div>
+            </div>
+        </div>
         <div class="card row-2 row-3 col-1 col-2">4</div>
         <div class="card row-2 row-3 col-2 col-3">5</div>
         <div class="card row-2 row-3 col-3 col-4">6</div>

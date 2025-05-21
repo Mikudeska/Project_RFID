@@ -21,7 +21,7 @@ const rowsPerPage = ref(180);
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get(`${API_BASE}/person/`);
+        const response = await axios.get(`${API_BASE}/api/person/`);
         persons.value = response.data
             .filter((p) => p.verified === 1) // กรองเฉพาะ verified === 1
             .sort((a, b) => new Date(b.date) - new Date(a.date))

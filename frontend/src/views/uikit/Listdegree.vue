@@ -19,7 +19,7 @@ const loading = ref(false);
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get(`${API_BASE}/person/`);
+        const response = await axios.get(`${API_BASE}/api/person/`);
         persons.value = response.data;
     } catch (error) {
         console.error('Error:', error);
@@ -30,7 +30,7 @@ async function fetchPersons() {
 
 const ExportPDFResult = async () => {
     try {
-        const response = await axios.get(`${API_BASE}/export-pdf-result/`, {
+        const response = await axios.get(`${API_BASE}/api/export-pdf-result/`, {
             responseType: 'blob',
             timeout: 30000
         });
