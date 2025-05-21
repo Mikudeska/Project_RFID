@@ -30,7 +30,7 @@ const features = ref([
 
 const fetchStats = async () => {
     try {
-        const response = await axios.get(`${API_BASE}/stats/`);
+        const response = await axios.get(`${API_BASE}/api/stats/`);
         features.value = [
             { title: 'จำนวนบัญฑิตทั้งหมด', description: response.data.total },
             { title: 'ยังไม่รายงานตัว', description: response.data.checked_in }, // verified=0

@@ -1,4 +1,6 @@
 frontend/ ใช้ vue 3 Composition
+└── dist/
+└── .env/
 └── src/
     ├── assets/
     ├── components/
@@ -22,10 +24,11 @@ import { onMounted, ref, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const toast = useToast();
 const dt = ref();
 const persons = ref();
-const searchQuery = ref(''); // ตัวแปรสำหรับการค้นหา
 
 // Dialog
 const productDialog = ref(false);
@@ -48,6 +51,7 @@ const confirmResetDialog1 = ref(false);
 const confirmResetDialog2 = ref(false);
 const resetKeyword = ref('');
 
+// รีเซ็ตข้อมูล
 const confirmResetdatabase = () => {
     confirmResetDialog1.value = true;
 };
@@ -69,7 +73,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post('http://localhost:8000/api/reset/');
+        await axios.post(`${API_BASE}/api/reset/`);
         await fetchPersons();
         toast.add({
             severity: 'success',
@@ -90,9 +94,10 @@ const handleResetStep2 = async () => {
     }
 };
 
+// โหลดข้อมูล
 const exportPDF = async () => {
     try {
-        const response = await axios.get('http://localhost:8000/api/export-pdf/', {
+        const response = await axios.get(`${API_BASE}/api/export-pdf/`, {
             responseType: 'blob',
             timeout: 30000
         });
@@ -118,7 +123,7 @@ const exportPDF = async () => {
 // Export ข้อมูล
 const exportData = async (format) => {
     try {
-        const response = await axios.get(`http://localhost:8000/api/export/${format}/`, { responseType: 'blob' });
+        const response = await axios.get(`${API_BASE}/api/export/${format}/`, { responseType: 'blob' });
 
         // สร้างลิงก์ดาวน์โหลด
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -158,7 +163,7 @@ const handleFileUpload = async () => {
     formData.append('file', file.value);
 
     try {
-        await axios.post('http://localhost:8000/api/import/', formData, {
+        await axios.post(`${API_BASE}/api/import/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -230,7 +235,7 @@ function formatId(id) {
 async function fetchPersons() {
     loading.value = true; // เริ่มต้น loading
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/person/');
+        const response = await axios.get(`${API_BASE}/api/person/`);
         persons.value = response.data.map((person) => ({
             ...person,
             formatted_id: formatId(person.id) // ใช้ฟังก์ชันจัดรูปแบบ ID
@@ -250,11 +255,11 @@ const saveProduct = async () => {
         try {
             if (product.value.id) {
                 // อัพเดตข้อมูล
-                await axios.put(`http://127.0.0.1:8000/api/person/${product.value.id}/`, product.value);
+                await axios.put(`${API_BASE}/api/person/${product.value.id}/`, product.value);
                 toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'อัพเดตข้อมูลเรียบร้อย', life: 3000 });
             } else {
                 // สร้างข้อมูลใหม่
-                await axios.post('http://127.0.0.1:8000/api/person/', product.value);
+                await axios.post(`${API_BASE}/api/person/`, product.value);
                 toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'สร้างข้อมูลเรียบร้อย', life: 3000 });
             }
             await fetchPersons(); // ดึงข้อมูลใหม่หลังบันทึก
@@ -268,7 +273,7 @@ const saveProduct = async () => {
 
 const deleteProduct = async () => {
     try {
-        await axios.delete(`http://127.0.0.1:8000/api/person/${product.value.id}/`);
+        await axios.delete(`${API_BASE}/api/person/${product.value.id}/`);
         persons.value = persons.value.filter((val) => val.id !== product.value.id);
         deleteProductDialog.value = false;
         toast.add({ severity: 'success', summary: 'สำเร็จ', detail: 'ลบข้อมูลเรียบร้อย', life: 3000 });
@@ -282,7 +287,7 @@ const deleteProduct = async () => {
 async function deleteSelectedpersons() {
     try {
         const ids = selectedpersons.value.map((person) => person.id);
-        await axios.delete('http://127.0.0.1:8000/api/person/delete/', {
+        await axios.delete(`${API_BASE}/api/person/delete/`, {
             data: { ids },
             headers: {
                 'Content-Type': 'application/json'
@@ -449,13 +454,13 @@ const items = ref([
                     </template>
                 </Column> -->
                 <Column field="name" header="ชื่อ-นามสกุล" sortable style="min-width: 12rem"></Column>
-                <Column field="degree" header="ชื่อปริญญา" sortable style="min-width: 12rem"></Column>
+                <Column field="degree" header="ชื่อปริญญา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column field="rating" header="Reviews" sortable style="min-width: 12rem">
                     <template #body="slotProps">
                         <Rating :modelValue="slotProps.data.rating" :readonly="true" />
                     </template>
                 </Column> -->
-                <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 6rem"></Column>
+                <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 8rem"></Column>
                 <Column field="verified" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
                     <template #body="{ data }">
                         <Icon
@@ -699,6 +704,11 @@ const items = ref([
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { FilterMatchMode } from '@primevue/core/api';
+import { useToast } from 'primevue/usetoast';
+
+const API_BASE = import.meta.env.VITE_API_BASE;
+
+const toast = useToast();
 
 const filters = ref({
     percentage: { value: [0, 100], matchMode: FilterMatchMode.BETWEEN }
@@ -711,7 +721,7 @@ const loading = ref(false);
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/person/');
+        const response = await axios.get(`${API_BASE}/api/person/`);
         persons.value = response.data;
     } catch (error) {
         console.error('Error:', error);
@@ -719,6 +729,31 @@ async function fetchPersons() {
         loading.value = false;
     }
 }
+
+const ExportPDFResult = async () => {
+    try {
+        const response = await axios.get(`${API_BASE}/api/export-pdf-result/`, {
+            responseType: 'blob',
+            timeout: 30000
+        });
+
+        // ตรวจสอบขนาดไฟล์
+        if (response.data.size < 1024) {
+            throw new Error('ไฟล์ PDF ว่างเปล่า');
+        }
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'รายชื่อสรุปบัณฑิต.pdf');
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+    } catch (error) {
+        console.error('PDF Export Error:', error);
+        toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: 'โหลดไฟล์สรุป pdf ไม่สำเร็จ', life: 3000 });
+    }
+};
 
 // ฟังก์ชันช่วยจัดกลุ่มประเภทปริญญา
 function getDegreeType(degreeName) {
@@ -818,6 +853,14 @@ onMounted(() => {
 
         <!-- Data Table -->
         <div class="card rounded-3xl">
+            <Toolbar class="mb-6">
+                <template #start> </template>
+
+                <template #end>
+                    <Button severity="secondary" class="mr-2" @click="ExportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
+                </template>
+            </Toolbar>
+
             <DataTable :value="summaryByDegree" scrollable scrollHeight="500px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">
                 <Column field="degree" header="ชื่อปริญญา" style="min-width: 150px" class="text-lg"></Column>
                 <Column field="total" header="จำนวนทั้งหมด" style="min-width: 100px" class="text-lg">
@@ -881,7 +924,8 @@ import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
 import Paginator from 'primevue/paginator';
-import io from 'socket.io-client';
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 // สร้างตัวแปรต่างๆ
 const persons = ref([]);
@@ -893,14 +937,11 @@ const selectedPerson = ref({});
 const currentPage = ref(0);
 const rowsPerPage = ref(180);
 
-// เชื่อมต่อกับ WebSocket Server
-const socket = io('http://127.0.0.1:8000'); // URL ของ WebSocket Server
-
 // ดึงข้อมูลจาก API
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get('http://127.0.0.1:8000/api/person/');
+        const response = await axios.get(`${API_BASE}/api/person/`);
         persons.value = response.data
             .filter((p) => p.verified === 1) // กรองเฉพาะ verified === 1
             .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -914,12 +955,7 @@ async function fetchPersons() {
         loading.value = false;
     }
 }
-
-// ฟังก์ชันเมื่อรับข้อมูลจาก WebSocket
-socket.on('new-person', (newPerson) => {
-    // ตรวจสอบว่ามีข้อมูลใหม่เข้ามาหรือไม่ ถ้ามีก็จะดึงข้อมูลใหม่
-    fetchPersons();
-});
+onMounted(fetchPersons);
 
 // ฟิลเตอร์จาก search
 const filteredPersons = computed(() => {
@@ -955,17 +991,6 @@ function highlightMatch(text) {
     const regex = new RegExp(`(${query})`, 'gi');
     return text.replace(regex, '<mark>$1</mark>');
 }
-
-onMounted(() => {
-    fetchPersons(); // ดึงข้อมูลแรก
-
-    // อัปเดตข้อมูลใหม่จาก WebSocket ทุกครั้งที่มีการส่งข้อมูลใหม่
-    socket.on('new-person', fetchPersons);
-});
-
-onBeforeUnmount(() => {
-    socket.disconnect(); // ปิดการเชื่อมต่อ WebSocket เมื่อ component ถูกลบ
-});
 </script>
 
 <template>
@@ -1049,6 +1074,8 @@ import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const toast = useToast();
 const logs = ref([]);
 let refreshInterval = null;
@@ -1079,7 +1106,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post('http://localhost:8000/api/resetlog/');
+        await axios.post(`${API_BASE}/api/resetlog/`);
         await fetchLogs();
         toast.add({
             severity: 'success',
@@ -1143,7 +1170,8 @@ const getVerifiedIcon = (value) => {
         1: 'rivet-icons:check-circle-solid',
         2: 'rivet-icons:exclamation-mark-circle-solid'
     };
-    return icons[value] || 'mdi:alert-circle-outline';
+    const status = Number(value);
+    return icons[status] || 'rivet-icons:check-circle-solid';
 };
 
 // ฟังก์ชันจัดการสี verified
@@ -1159,7 +1187,7 @@ const getVerifiedColor = (value) => {
 const fetchLogs = async () => {
     try {
         let allLogs = [];
-        let nextUrl = 'http://127.0.0.1:8000/api/logs/';
+        let nextUrl = `${API_BASE}/api/logs/`;
 
         while (nextUrl) {
             const response = await axios.get(nextUrl);
@@ -1171,8 +1199,8 @@ const fetchLogs = async () => {
             // กรอง null และเพิ่มข้อมูล
             allLogs.push(...pageLogs.filter((log) => log !== null));
 
-            // อัพเดท URL ถัดไป (รองรับทั้ง relative และ absolute URL)
-            nextUrl = data.next?.replace('http://localhost:8000', '') || data.next;
+            // อัปเดต URL ถัดไป (ใช้ API_BASE เสมอ)
+            nextUrl = data.next ? data.next.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000\/api/, API_BASE) : null;
         }
 
         logs.value = allLogs;
@@ -1189,11 +1217,6 @@ const fetchLogs = async () => {
 
 onMounted(() => {
     fetchLogs();
-    refreshInterval = setInterval(fetchLogs, 5000);
-});
-
-onUnmounted(() => {
-    clearInterval(refreshInterval);
 });
 </script>
 
@@ -1376,6 +1399,8 @@ import Skeleton from 'primevue/skeleton';
 import Badge from 'primevue/badge';
 import { useToast } from 'primevue/usetoast';
 
+const API_BASE = import.meta.env.VITE_API_BASE;
+
 const TOTAL_SEATS = 7000;
 const COLS = 60;
 const ROWS_COUNT = Math.ceil(TOTAL_SEATS / COLS);
@@ -1392,7 +1417,7 @@ const toast = useToast();
 async function fetchPersons() {
     loading.value = true;
     try {
-        const { data } = await axios.get('http://127.0.0.1:8000/api/person/');
+        const { data } = await axios.get(`${API_BASE}/api/person/`);
         persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) })).filter((p) => p.seat >= 1 && p.seat <= TOTAL_SEATS);
     } catch (e) {
         console.error(e);
@@ -1493,7 +1518,7 @@ onMounted(fetchPersons);
 
         <!-- Seat Grid -->
         <div v-if="loading" class="grid grid-cols-5 gap-4 p-4"><Skeleton v-for="n in 10" :key="n" width="100%" height="4rem" /></div>
-        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner card">
+        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner bg-gradient-to-br from-blue-900 to-blue-800">
             <div v-for="(row, rowIndex) in seatsGrid" :key="rowIndex" class="relative h-16 mb-2">
                 <!-- Label -->
                 <div class="absolute left-0 flex items-center justify-between w-16 px-3 py-2 text-xs font-bold text-white -translate-y-1/2 bg-purple-600 shadow rounded-xl top-1/2">

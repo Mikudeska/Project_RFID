@@ -11,6 +11,10 @@ backend/  ใช้ Django
     ├── settings.py
     ├── urls.py
     └── wsgi.py
+└── fonts/
+└── staticfiles/
+└── venv/
+└── .env/
 
 
 -- หน้า model.py --

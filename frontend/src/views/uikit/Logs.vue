@@ -148,11 +148,6 @@ const fetchLogs = async () => {
 
 onMounted(() => {
     fetchLogs();
-    refreshInterval = setInterval(fetchLogs, 5000);
-});
-
-onUnmounted(() => {
-    clearInterval(refreshInterval);
 });
 </script>
 
