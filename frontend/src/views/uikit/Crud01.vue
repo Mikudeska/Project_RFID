@@ -291,6 +291,34 @@ async function deleteSelectedpersons() {
     }
 }
 
+async function updateSelectedVerified(status) {
+    try {
+        const ids = selectedpersons.value.map((p) => p.id);
+        await axios.put(`${API_BASE}/api/person/`, {
+            ids,
+            verified: status
+        });
+
+        persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, verified: status } : p));
+
+        selectedpersons.value = null;
+
+        toast.add({
+            severity: 'success',
+            summary: 'สำเร็จ',
+            detail: `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`,
+            life: 3000
+        });
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'เกิดข้อผิดพลาด',
+            detail: error.response?.data?.error || 'ไม่สามารถเปลี่ยนสถานะได้',
+            life: 5000
+        });
+    }
+}
+
 function confirmDeleteSelected() {
     deletepersonsDialog.value = true;
 }
@@ -358,6 +386,29 @@ const items = ref([
         }
     }
 ]);
+
+const menu = ref();
+
+const verifiedMenuItems = [
+    {
+        label: 'ยังไม่รายงานตัว',
+        icon: 'rivet-icons:close-circle-solid',
+        color: 'text-red-500',
+        command: () => updateSelectedVerified(0)
+    },
+    {
+        label: 'รายงานตัวแล้ว',
+        icon: 'rivet-icons:check-circle-solid',
+        color: 'text-green-500',
+        command: () => updateSelectedVerified(1)
+    },
+    {
+        label: 'อยู่ในห้องพิธี',
+        icon: 'rivet-icons:exclamation-mark-circle-solid',
+        color: 'text-yellow-300',
+        command: () => updateSelectedVerified(2)
+    }
+];
 </script>
 
 <template>
@@ -374,6 +425,17 @@ const items = ref([
                     <Button v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
                         <Icon icon="lucide:database-backup" />
                     </Button>
+                    <Button type="button" label="เปลี่ยนสถานะ" severity="secondary" @click="menu.toggle($event)" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
+                        <Icon icon="ion:filter" />
+                    </Button>
+                    <Menu ref="menu" :model="verifiedMenuItems" :popup="true">
+                        <template #item="{ item }">
+                            <div class="flex items-center gap-2 px-2 py-1">
+                                <Icon :icon="item.icon" :class="item.color" />
+                                <span>{{ item.label }}</span>
+                            </div>
+                        </template>
+                    </Menu>
                 </template>
 
                 <template #end>

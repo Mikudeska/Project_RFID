@@ -54,15 +54,10 @@ const router = createRouter({
                     component: () => import('@/views/uikit/ListDoc.vue')
                 },
                 {
-                    path: '/uikit/charts',
-                    name: 'charts',
-                    component: () => import('@/views/uikit/ChartDoc.vue')
-                },
-                {
                     path: '/pages/empty',
                     name: 'empty',
                     component: () => import('@/views/pages/Empty.vue')
-                },
+                }
             ]
         },
         {

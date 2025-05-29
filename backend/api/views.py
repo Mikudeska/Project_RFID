@@ -162,7 +162,7 @@ class ExportPDF(View):
             Log.objects.create(
                 action='Export',
                 model='Person',
-                details="โหลดไฟล์ PDF",
+                details="โหลดไฟล์เป็น PDF",
                 record_id=None
             )
             return response
@@ -452,38 +452,59 @@ class PersonList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, pk):
-        try:
-            person = Person.objects.get(pk=pk)
-        except Person.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
+    def put(self, request):
+        ids = request.data.get('ids', [])
+        verified = request.data.get('verified', None)
 
-        serializer = PersonSerializer(person, data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if not ids or verified is None:
+            return Response({'error': 'Missing ids or verified'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            with transaction.atomic():
+                persons = Person.objects.filter(id__in=ids)
+                persons.update(verified=verified)
+
+                names = [f"{p.name}" for p in persons]
+                ids_str = ','.join(str(p.id) for p in persons)
+
+                Log.objects.create(
+                    action='Update',
+                    model='Person',
+                    details=f"[ID: {ids_str}] อัปเดตสถานะเป็น {verified}",
+                    record_id=None  # หรือใส่ ids[0] ถ้าจำเป็นต้องมีค่า
+                )
+
+            return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def delete(self, request):
         ids = request.data.get('ids', [])
+
         if not ids:
             return Response({'error': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
-                # ดึงข้อมูลก่อนลบเพื่อบันทึก Log
                 persons = Person.objects.filter(id__in=ids)
-                for person in persons:
-                    Log.objects.create(
-                        action='Delete',
-                        model='Person',
-                        details=f"ลบข้อมูลแบบกลุ่ม: {person.name} (ID: {person.id})",
-                        record_id=person.id
-                    )
+
+                # สร้าง log ก่อนลบ
+                ids_str = ','.join(str(p.id) for p in persons)
+
+                Log.objects.create(
+                    action='Delete',
+                    model='Person',
+                    details=f"[ID: {ids_str}] ลบข้อมูลแบบกลุ่ม",
+                    record_id=None
+                )
+
                 persons.delete()
+
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class PersonDetail(APIView):
     def get(self, request, pk):
@@ -609,3 +630,4 @@ class LogList(generics.ListAPIView):
     def get_queryset(self):
         # กรองข้อมูลที่อาจมี timestamp เป็น null
         return Log.objects.exclude(timestamp__isnull=True).order_by('-timestamp')
+

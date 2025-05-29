@@ -69,9 +69,12 @@ const parsedDetails = (details) => {
     };
 
     return details.split('|').map((part) => {
-        const [field, old, newVal] = part.split('::');
+        const [fieldRaw, oldRaw, newRaw] = part.split('::');
 
-        // แปลงค่า verified เป็นตัวเลข
+        const field = fieldRaw?.trim();
+        const old = oldRaw?.trim();
+        const newVal = newRaw?.trim();
+
         const processValue = (value, field) => {
             if (field === 'verified') {
                 const statusMap = {
@@ -84,14 +87,22 @@ const parsedDetails = (details) => {
             return value;
         };
 
-        return {
+        const item = {
             field,
             label: labels[field] || field,
             old: processValue(old, field),
             new: processValue(newVal, field)
         };
+
+        console.log('📦 parsed item:', item); // log ตรวจสอบ
+        return item;
     });
 };
+
+function extractStatus(text) {
+    const match = text.match(/เป็น (\d)/); // หาเลข 0,1 หรือ 2 หลังคำว่า "เป็น "
+    return match ? Number(match[1]) : null;
+}
 
 // ฟังก์ชันจัดการไอคอน verified
 const getVerifiedIcon = (value) => {
@@ -110,7 +121,7 @@ const getVerifiedColor = (value) => {
     const status = Number(value);
     if (status === 1) return 'text-green-500';
     if (status === 0) return 'text-red-500';
-    if (status === 2) return 'text-yellow-500'; // เปลี่ยนจาก yellow-300 เป็น yellow-500
+    if (status === 2) return 'text-yellow-500';
     return 'text-gray-400';
 };
 
@@ -148,6 +159,49 @@ const fetchLogs = async () => {
 onMounted(() => {
     fetchLogs();
 });
+
+function extractTotal(text) {
+    const match = text.match(/ลบข้อมูลทั้งหมด (\d+) รายการ/);
+    return match ? match[1] : '';
+}
+
+const extractImportSummary = (text) => {
+    const match = text.match(/นำเข้าฐานข้อมูล (\d+) รายการ \( ใหม่ (\d+) อัปเดต (\d+) \)/);
+    if (!match) return '';
+
+    const total = match[1];
+    const added = match[2];
+    const updated = match[3];
+
+    return `ข้อมูลใหม่ ${added} + อัปเดตข้อมูล ${updated} = ${total} รายการ`;
+};
+
+const showDialog = ref(false);
+const allIDs = ref([]);
+const maxDisplay = 30;
+
+function openIDDialog(details) {
+    const match = details.match(/\[ID:([^\]]+)\]/);
+    if (!match) return;
+
+    const ids = match[1].split(',').map((id) => id.trim());
+    allIDs.value = ids;
+    showDialog.value = true;
+}
+
+const extractShortenedIDs = (details) => {
+    const match = details.match(/\[ID:([^\]]+)\]/);
+    if (!match) return '';
+
+    const ids = match[1].split(',').map((id) => id.trim());
+    if (ids.length > maxDisplay) {
+        const shortened = ids.slice(0, maxDisplay).join(', ');
+        const remaining = ids.length - maxDisplay;
+        return `[ID: ${shortened} ... + ${remaining} รายการ]`;
+    }
+
+    return `[ID: ${ids.join(', ')}]`;
+};
 </script>
 
 <template>
@@ -245,33 +299,93 @@ onMounted(() => {
             <Column field="details" header="รายละเอียด" style="min-width: 500px">
                 <template #body="{ data }">
                     <div v-if="data?.details" class="flex flex-wrap items-center gap-2">
-                        <!-- แสดง ID -->
+                        <!-- แสดง [ID: xxx] แค่ครั้งเดียว -->
                         <span v-if="data.record_id" class="font-semibold text-blue-600">[ID: {{ data.record_id }}]</span>
 
-                        <!-- แสดงการเปลี่ยนแปลงทั้งหมดในบรรทัดเดียว -->
-                        <template v-for="(item, index) in parsedDetails(data.details)" :key="index">
-                            <div class="flex items-center gap-1">
-                                <!-- กรณีแก้ไข verified -->
-                                <template v-if="item.field === 'verified'">
-                                    <span class="shrink-0">{{ item.label }}:</span>
-                                    <span :class="getVerifiedColor(item.old)">
-                                        <Icon :icon="getVerifiedIcon(item.old)" />
-                                    </span>
-                                    <Icon v-if="item.new !== null && item.new !== undefined" icon="mdi:arrow-right" class="mx-1 text-gray-500" />
-                                    <span v-if="item.new !== null && item.new !== undefined" :class="getVerifiedColor(item.new)">
-                                        <Icon :icon="getVerifiedIcon(item.new)" />
-                                    </span>
+                        <!-- กรณี log แบบกลุ่ม (string ธรรมดา) -->
+                        <template v-if="typeof data.details === 'string' && data.details.startsWith('[ID:')">
+                            <span class="font-semibold text-blue-600 cursor-pointer" @click="openIDDialog(data.details)">
+                                {{ extractShortenedIDs(data.details) }}
+                            </span>
+
+                            <span v-if="data.details.includes('อัปเดตสถานะ')" class="flex items-center gap-1 break-words">
+                                อัปเดตสถานะเป็น
+                                <Icon icon="mdi:arrow-right" class="inline-block mx-1 text-gray-500" />
+                                <span :class="['inline-flex items-center', getVerifiedColor(extractStatus(data.details))]">
+                                    <Icon :icon="getVerifiedIcon(extractStatus(data.details))" />
+                                </span>
+                            </span>
+
+                            <span v-else-if="data.details.includes('ลบข้อมูลแบบกลุ่ม')">
+                                <span>ไอดีข้อมูลที่ลบไป</span>
+                            </span>
+                        </template>
+
+                        <!-- กรณี log แบบ object (ของเดิม) -->
+                        <template v-else>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <template v-if="data.details.includes('รีเซ็ตประวัติ')">
+                                    <span class="font-semibold text-red-600">[รีเซ็ตประวัติ]</span>
+                                    <span>ลบข้อมูลทั้งหมด {{ extractTotal(data.details) }} รายการ</span>
                                 </template>
-                                <!-- กรณีแก้ไขฟิลด์อื่น -->
+
+                                <template v-else-if="data.details.includes('รีเซ็ตฐานข้อมูล')">
+                                    <span class="font-semibold text-red-600">[รีเซ็ตฐานข้อมูล]</span>
+                                    <span>ลบข้อมูลทั้งหมด {{ extractTotal(data.details) }} รายการ</span>
+                                </template>
+
+                                <template v-else-if="data.details.includes('นำเข้าฐานข้อมูล')">
+                                    <span class="font-semibold text-green-600">[นำเข้าฐานข้อมูล]</span>
+                                    <span>{{ extractImportSummary(data.details) }}</span>
+                                </template>
+
+                                <template v-else-if="data.details.includes('โหลดไฟล์เป็น PDF')">
+                                    <span class="font-semibold">โหลดไฟล์เป็น</span>
+                                    <Icon icon="mdi:arrow-right" class="mx-1 text-gray-500" />
+                                    <Icon icon="vscode-icons:file-type-pdf2" />
+                                    <span class="font-semibold text-red-600">PDF</span>
+                                </template>
+
+                                <template v-else-if="data.details.includes('โหลดไฟล์เป็น xlsx')">
+                                    <span class="font-semibold">โหลดไฟล์เป็น</span>
+                                    <Icon icon="mdi:arrow-right" class="mx-1 text-gray-500" />
+                                    <Icon icon="vscode-icons:file-type-excel" />
+                                    <span class="font-semibold text-green-600">Excel</span>
+                                </template>
+
+                                <template v-else-if="data.details.includes('โหลดไฟล์เป็น csv')">
+                                    <span class="font-semibold">โหลดไฟล์เป็น</span>
+                                    <Icon icon="mdi:arrow-right" class="mx-1 text-gray-500" />
+                                    <Icon icon="catppuccin:csv" />
+                                    <span class="font-semibold text-green-600">CSV</span>
+                                </template>
+
+                                <!-- ✅ แสดงข้อมูลแบบ object ตามปกติ -->
                                 <template v-else>
-                                    <span class="font-medium">{{ item.label }}:</span>
-                                    <span class="text-red-500 line-through">{{ item.old }}</span>
-                                    <Icon v-if="item.new !== undefined" icon="mdi:arrow-right" class="mx-1 text-gray-500" />
-                                    <span v-if="item.new !== undefined" class="text-green-500">{{ item.new }}</span>
+                                    <template v-for="(item, index) in parsedDetails(data.details)" :key="index">
+                                        <span class="flex items-center gap-1">
+                                            <template v-if="item.field === 'verified'">
+                                                <span class="shrink-0">{{ item.label }}</span>
+                                                <span :class="getVerifiedColor(item.old)">
+                                                    <Icon :icon="getVerifiedIcon(item.old)" />
+                                                </span>
+                                                <Icon v-if="item.new !== null && item.new !== undefined" icon="mdi:arrow-right" class="mx-1 text-gray-500" />
+                                                <span v-if="item.new !== null && item.new !== undefined" :class="getVerifiedColor(item.new)">
+                                                    <Icon :icon="getVerifiedIcon(item.new)" />
+                                                </span>
+                                            </template>
+                                            <template v-else>
+                                                <span class="font-medium">{{ item.label }}</span>
+                                                <span class="text-red-500 line-through">{{ item.old }}</span>
+                                                <Icon v-if="item.new !== undefined" icon="mdi:arrow-right" class="mx-1 text-gray-500" />
+                                                <span v-if="item.new !== undefined" class="text-green-500">{{ item.new }}</span>
+                                            </template>
+                                        </span>
+                                        <!-- separator -->
+                                        <span v-if="index < parsedDetails(data.details).length - 1 && item.new !== undefined">|</span>
+                                    </template>
                                 </template>
                             </div>
-                            <!-- เพิ่มเส้นคั่น -->
-                            <span v-if="index < parsedDetails(data.details).length - 1 && item.new !== undefined">|</span>
                         </template>
                     </div>
                 </template>
@@ -311,6 +425,12 @@ onMounted(() => {
                 <Button label="ยกเลิก" icon="pi pi-times" @click="confirmResetDialog2 = false" severity="secondary" text />
                 <Button label="ยืนยันรีเซ็ต" icon="pi pi-check" @click="handleResetStep2" :disabled="resetKeyword.toUpperCase() !== 'RESET'" severity="danger" />
             </template>
+        </Dialog>
+
+        <Dialog v-model:visible="showDialog" header="รายการ ID ทั้งหมด" modal>
+            <div class="whitespace-pre-line break-words text-sm max-h-[70vh] overflow-auto">
+                {{ allIDs.join(', ') }}
+            </div>
         </Dialog>
     </div>
 </template>
