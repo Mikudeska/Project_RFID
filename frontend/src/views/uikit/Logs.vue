@@ -1,6 +1,6 @@
 <!-- Logs.vue -->
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
@@ -9,7 +9,6 @@ const API_BASE = import.meta.env.VITE_API_BASE;
 
 const toast = useToast();
 const logs = ref([]);
-let refreshInterval = null;
 
 // รีเซ็ตข้อมูล
 const confirmResetDialog1 = ref(false);
@@ -131,7 +130,7 @@ const fetchLogs = async () => {
             allLogs.push(...pageLogs.filter((log) => log !== null));
 
             // อัปเดต URL ถัดไป (ใช้ API_BASE เสมอ)
-            nextUrl = data.next ? data.next.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000\/api/, API_BASE) : null;
+            nextUrl = data.next ? data.next.replace(/^http:\/\/(localhost|127\.0\.0\.1):8000/, API_BASE) : null;
         }
 
         logs.value = allLogs;
@@ -289,7 +288,7 @@ onMounted(() => {
                 <Icon icon="bi:exclamation-triangle-fill" class="text-yellow-300" />
                 <div>
                     <h3 class="mb-2 text-lg font-bold">คุณแน่ใจที่จะรีเซ็ตประวัติทั้งหมด?</h3>
-                    <p class="text-black">การกระทำนี้จะลบข้อมูลทุกรายการและไม่สามารถกู้คืนได้</p>
+                    <p>การกระทำนี้จะลบข้อมูลทุกรายการและไม่สามารถกู้คืนได้</p>
                 </div>
             </div>
             <template #footer>
@@ -316,5 +315,4 @@ onMounted(() => {
     </div>
 </template>
 
-<style scoped>  
-</style>
+<style scoped></style>

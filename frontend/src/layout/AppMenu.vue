@@ -17,8 +17,8 @@ const model = ref([
             { label: 'ตารางสรุป', icon: 'material-symbols:person-check-outline-rounded', to: '/uikit/Listdegree' },
             { label: 'Logs', icon: 'material-symbols:file-present-outline-sharp', to: '/uikit/logs' },
             { label: 'Chart', icon: 'material-symbols:grouped-bar-chart-rounded', to: '/uikit/charts' },
-            { label: 'Theme', icon: 'svg-spinners:ring-resize', to: '/uikit/theme' },
-            { label: 'Test', icon: 'svg-spinners:ring-resize', to: '/uikit/test' }
+            // { label: 'Theme', icon: 'svg-spinners:ring-resize', to: '/uikit/theme' },
+            // { label: 'Test', icon: 'svg-spinners:ring-resize', to: '/uikit/test' }
         ]
     }
     // {

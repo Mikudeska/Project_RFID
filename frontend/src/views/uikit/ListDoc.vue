@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
@@ -117,7 +117,7 @@ function highlightMatch(text) {
 
 <style scoped>
 .p-dialog {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:opacity 0.3s ease, transform 0.3s ease;
 }
 .p-dialog-enter-active,
 .p-dialog-leave-active {

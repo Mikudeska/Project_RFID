@@ -127,7 +127,7 @@ onMounted(fetchPersons);
 
         <!-- Seat Grid -->
         <div v-if="loading" class="grid grid-cols-5 gap-4 p-4"><Skeleton v-for="n in 10" :key="n" width="100%" height="4rem" /></div>
-        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner bg-gradient-to-br from-blue-900 to-blue-800">
+        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner card">
             <div v-for="(row, rowIndex) in seatsGrid" :key="rowIndex" class="relative h-16 mb-2">
                 <!-- Label -->
                 <div class="absolute left-0 flex items-center justify-between w-16 px-3 py-2 text-xs font-bold text-white -translate-y-1/2 bg-purple-600 shadow rounded-xl top-1/2">

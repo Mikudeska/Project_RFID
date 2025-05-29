@@ -621,7 +621,7 @@ const items = ref([
                 <Icon icon="bi:exclamation-triangle-fill" class="text-yellow-300" />
                 <div>
                     <h3 class="mb-2 text-lg font-bold">คุณแน่ใจที่จะรีเซ็ตฐานข้อมูลทั้งหมด?</h3>
-                    <p class="text-black">การกระทำนี้จะลบข้อมูลทุกรายการและไม่สามารถกู้คืนได้</p>
+                    <p>การกระทำนี้จะลบข้อมูลทุกรายการและไม่สามารถกู้คืนได้</p>
                 </div>
             </div>
             <template #footer>
