@@ -345,6 +345,12 @@ const extractShortenedIDs = (details) => {
                                     <Icon icon="vscode-icons:file-type-pdf2" />
                                     <span class="font-semibold text-red-600">PDF</span>
                                 </template>
+                                <template v-else-if="data.details.includes('โหลดไฟล์สรุป PDF')">
+                                    <span class="font-semibold">โหลดไฟล์สรุปเป็น</span>
+                                    <Icon icon="mdi:arrow-right" class="mx-1 text-gray-500" />
+                                    <Icon icon="vscode-icons:file-type-pdf2" />
+                                    <span class="font-semibold text-red-600">PDF</span>
+                                </template>
 
                                 <template v-else-if="data.details.includes('โหลดไฟล์เป็น xlsx')">
                                     <span class="font-semibold">โหลดไฟล์เป็น</span>
@@ -428,7 +434,7 @@ const extractShortenedIDs = (details) => {
         </Dialog>
 
         <Dialog v-model:visible="showDialog" header="รายการ ID ทั้งหมด" modal>
-            <div class="whitespace-pre-line break-words text-sm max-h-[70vh] overflow-auto">
+            <div class="whitespace-pre-line break-words text-sm max-h-[70vh] max-w-[120vh] overflow-auto">
                 {{ allIDs.join(', ') }}
             </div>
         </Dialog>
