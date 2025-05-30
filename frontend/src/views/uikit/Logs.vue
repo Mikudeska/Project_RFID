@@ -1,6 +1,6 @@
 <!-- Logs.vue -->
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
@@ -179,6 +179,9 @@ const extractImportSummary = (text) => {
 const showDialog = ref(false);
 const allIDs = ref([]);
 const maxDisplay = 30;
+const searchText = ref('');
+
+const filteredIDs = computed(() => allIDs.value.filter((id) => id.toLowerCase().includes(searchText.value.toLowerCase())));
 
 function openIDDialog(details) {
     const match = details.match(/\[ID:([^\]]+)\]/);
@@ -433,9 +436,18 @@ const extractShortenedIDs = (details) => {
             </template>
         </Dialog>
 
-        <Dialog v-model:visible="showDialog" header="รายการ ID ทั้งหมด" modal>
-            <div class="whitespace-pre-line break-words text-sm max-h-[70vh] max-w-[120vh] overflow-auto">
-                {{ allIDs.join(', ') }}
+        <Dialog v-model:visible="showDialog" modal>
+            <template #header>
+                <div class="flex items-center justify-between w-full gap-2">
+                    <span class="font-semibold">รายการ ID ทั้งหมด</span>
+                    <input v-model="searchText" type="text" placeholder="ค้นหา ID..." class="w-48 px-2 py-1 text-sm border border-gray-300 rounded" />
+                </div>
+            </template>
+
+            <div class="flex flex-wrap gap-2 text-sm max-h-[70vh] max-w-[120vh] overflow-auto">
+                <span v-for="id in filteredIDs" :key="id" class="px-2 py-1 border border-black">
+                    {{ id }}
+                </span>
             </div>
         </Dialog>
     </div>
