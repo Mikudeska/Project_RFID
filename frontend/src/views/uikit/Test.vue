@@ -13,6 +13,22 @@ const progress = ref(0);
 const interval = ref();
 
 const socket = new WebSocket('ws://localhost:8000/ws/test/');
+const messageToSend = ref('');
+
+socket.onmessage = (event) => {
+    console.log('Received:', event.data);
+};
+
+socket.onopen = () => {
+    console.log('WebSocket connected');
+};
+
+const sendMessage = () => {
+    if (socket.readyState === WebSocket.OPEN && messageToSend.value.trim() !== '') {
+        socket.send(messageToSend.value);
+        messageToSend.value = '';
+    }
+};
 
 socket.onmessage = function (event) {
     console.log('Received:', event.data);
@@ -81,7 +97,10 @@ const upload = () => {
                 Status: <b :class="clazz">{{ text }}</b>
             </div>
         </div>
-        <div class="card row-1 row-2 col-3 col-4">3</div>
+        <div class="card row-1 row-2 col-3 col-4">
+            <input v-model="messageToSend" placeholder="พิมพ์ข้อความที่นี่" />
+            <button @click="sendMessage">ส่งข้อความ</button>
+        </div>
         <div class="card row-2 row-3 col-1 col-2">4</div>
         <div class="card row-2 row-3 col-2 col-3">5</div>
         <div class="card row-2 row-3 col-3 col-4">6</div>
