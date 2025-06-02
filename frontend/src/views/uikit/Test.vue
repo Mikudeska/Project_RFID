@@ -12,6 +12,16 @@ const visible = ref(false);
 const progress = ref(0);
 const interval = ref();
 
+const socket = new WebSocket('ws://localhost:8000/ws/test/');
+
+socket.onmessage = function (event) {
+    console.log('Received:', event.data);
+};
+
+socket.onopen = function () {
+    socket.send('Hello from Vue!');
+};
+
 onUnmounted(() => {
     if (interval.value) {
         clearInterval(interval.value);
