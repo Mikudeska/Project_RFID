@@ -13,3 +13,16 @@ class TestConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, close_code):
         pass
+
+class CrudConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        await self.channel_layer.group_add("crud01_group", self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, close_code):
+        await self.channel_layer.group_discard("crud01_group", self.channel_name)
+
+    async def send_update(self, event):
+        await self.send(text_data=json.dumps({
+            'message': event['message']
+        }))

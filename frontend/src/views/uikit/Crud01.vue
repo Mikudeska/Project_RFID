@@ -1,11 +1,39 @@
 <script setup>
 import { FilterMatchMode } from '@primevue/core/api';
 import { useToast } from 'primevue/usetoast';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
+
+const wsMessage = ref('');
+let socket = null;
+
+onMounted(() => {
+    socket = new WebSocket('ws://localhost:8000/ws/crud01/');
+
+    socket.onopen = () => {
+        console.log('WebSocket connected');
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        wsMessage.value = data.message; // สมมุติว่าข้อมูลมาจาก field 'message'
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket closed');
+    };
+});
+
+onBeforeUnmount(() => {
+    if (socket) socket.close();
+});
 
 const toast = useToast();
 const dt = ref();

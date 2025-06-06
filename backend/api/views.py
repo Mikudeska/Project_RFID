@@ -13,9 +13,21 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from datetime import datetime
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 import urllib.parse
 import os, io, json
 import traceback
+
+def broadcast_to_crud01(message):
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        "crud01_group",
+        {
+            "type": "send_update",
+            "message": message
+        }
+    )
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -449,6 +461,7 @@ class PersonList(APIView):
                 details=f"เพิ่มข้อมูล: {instance.name}",
                 record_id=instance.id
             )
+            broadcast_to_crud01(f"เพิ่ม: {instance.name}")
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -473,7 +486,7 @@ class PersonList(APIView):
                     details=f"[ID: {ids_str}] อัปเดตสถานะเป็น {verified}",
                     record_id=None  # หรือใส่ ids[0] ถ้าจำเป็นต้องมีค่า
                 )
-
+                broadcast_to_crud01(f"อัปเดตสถานะ: {ids_str} → {verified}")
             return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -498,9 +511,8 @@ class PersonList(APIView):
                     details=f"[ID: {ids_str}] ลบข้อมูลแบบกลุ่ม",
                     record_id=None
                 )
-
+                broadcast_to_crud01(f"ลบ: {ids_str}")
                 persons.delete()
-
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -526,6 +538,7 @@ class PersonDetail(APIView):
                 details=f"ลบข้อมูลของ {person.name}",
                 record_id=person.id
             )
+            broadcast_to_crud01(f"ลบ: {person.name} [ID {person.id}]")
             person.delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Person.DoesNotExist:
@@ -561,6 +574,7 @@ class PersonDetail(APIView):
                         details=log_message, 
                         record_id=person.id
                     )
+                    broadcast_to_crud01(f"แก้ไข: {person.name} [ID {person.id}]")
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Person.DoesNotExist:
