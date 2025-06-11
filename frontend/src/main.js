@@ -11,6 +11,7 @@ import ToastService from 'primevue/toastservice';
 import Tooltip from 'primevue/tooltip';
 import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
+import { createPinia } from 'pinia';
 
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
@@ -69,6 +70,9 @@ const MyPreset = definePreset(Aura, {
     }
 });
 
+const pinia = createPinia();
+
+app.use(pinia);
 app.use(router);
 app.use(PrimeVue, {
     theme: {

@@ -23,6 +23,23 @@ const dialogVisible = ref(false);
 const selectedPerson = ref({});
 const toast = useToast();
 
+onMounted(() => {
+    fetchPersons();
+
+    const socket = new WebSocket('ws://localhost:8000/ws/crud01/');
+    socket.onmessage = (event) => {
+        const { message } = JSON.parse(event.data);
+
+        if (message.action === 'update') {
+            const index = persons.value.findIndex((p) => p.id === message.id);
+            if (index !== -1) {
+                // update ค่าใน persons
+                persons.value[index] = { ...persons.value[index], ...message.fields };
+            }
+        }
+    };
+});
+
 async function fetchPersons() {
     loading.value = true;
     try {

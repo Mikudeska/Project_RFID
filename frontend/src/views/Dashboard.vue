@@ -1,6 +1,6 @@
 <script setup>
 import { useLocalStorage } from '@vueuse/core';
-import { computed, ref, nextTick, onMounted } from 'vue';
+import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import axios from 'axios';
 
@@ -28,21 +28,52 @@ const features = ref([
     { title: '?', description: '0' }
 ]);
 
-const fetchStats = async () => {
+let socket = null;
+
+onMounted(async () => {
     try {
-        const response = await axios.get(`${API_BASE}/api/stats/`);
+        // ดึงข้อมูล stats จาก API
+        const res = await axios.get(`${API_BASE}/api/stats/`);
+        const d = res.data;
         features.value = [
-            { title: 'จำนวนบัญฑิตทั้งหมด', description: response.data.total },
-            { title: 'ยังไม่รายงานตัว', description: response.data.checked_in }, // verified=0
-            { title: 'รายงานตัวแล้ว', description: response.data.in_checkin_room }, // verified=1
-            { title: 'อยู่ในห้องพิธี', description: response.data.in_graduation_room } // verified=2
+            { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
+            { title: 'ยังไม่รายงานตัว', description: d.checked_in },
+            { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
+            { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
         ];
     } catch (error) {
-        console.error('Error fetching stats:', error);
+        console.error('Failed to load stats:', error);
     }
-};
 
-onMounted(fetchStats);
+    // แล้วค่อยเชื่อม WS ต่อเหมือนเดิม
+    socket = new WebSocket('ws://localhost:8000/ws/crud01/');
+    socket.onopen = () => {
+        console.log('WebSocket connected');
+    };
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const msg = data.message;
+        if (msg.action === 'stats') {
+            const d = msg.data;
+            features.value = [
+                { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
+                { title: 'ยังไม่รายงานตัว', description: d.checked_in },
+                { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
+                { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
+            ];
+        }
+    };
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+    socket.onclose = () => {
+        console.log('WebSocket closed');
+    };
+});
+
+onBeforeUnmount(() => {
+    if (socket) socket.close();
+});
 
 // ตัวแปรคอมเมนต์
 const newComment = ref('');
@@ -105,10 +136,10 @@ const scrollToBottom = () => {
                             index % 4 === 0
                                 ? 'hover:border-b-8 hover:border-blue-500 rounded-lg'
                                 : index % 4 === 1
-                                  ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
-                                  : index % 4 === 2
-                                    ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
-                                    : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
+                                ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
+                                : index % 4 === 2
+                                ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
+                                : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
                         ]"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">

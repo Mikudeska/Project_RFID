@@ -7,7 +7,31 @@ import { Icon } from '@iconify/vue';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
-const wsMessage = ref('');
+function formatId(id) {
+    return id.toString().padStart(4, '0');
+}
+
+// ฟังก์ชันเพิ่ม formatted_id ให้กับข้อมูล
+function addFormattedId(person) {
+    return {
+        ...person,
+        formatted_id: formatId(person.id)
+    };
+}
+
+async function fetchPersons() {
+    loading.value = true;
+    try {
+        const response = await axios.get(`${API_BASE}/api/person/`);
+        persons.value = response.data.map(addFormattedId); // ใช้ฟังก์ชันจัดรูปแบบ
+    } catch (error) {
+        console.error('Error fetching persons:', error);
+    } finally {
+        loading.value = false;
+    }
+}
+onMounted(fetchPersons);
+
 let socket = null;
 
 onMounted(() => {
@@ -19,7 +43,35 @@ onMounted(() => {
 
     socket.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        wsMessage.value = data.message; // สมมุติว่าข้อมูลมาจาก field 'message'
+        const msg = data.message;
+
+        if (msg.action === 'update') {
+            const index = persons.value.findIndex((p) => p.id === msg.id);
+            if (index !== -1) {
+                // อัปเดตข้อมูล + formatted_id
+                const updatedPerson = addFormattedId({
+                    ...persons.value[index],
+                    ...msg.fields
+                });
+                persons.value.splice(index, 1, updatedPerson);
+            }
+        }
+        // รับการเพิ่มข้อมูล
+        else if (msg.action === 'add') {
+            // เพิ่ม formatted_id ให้ข้อมูลใหม่
+            const newPerson = addFormattedId({
+                id: msg.id,
+                ...msg.fields
+            });
+            persons.value.push(newPerson);
+        }
+        // รับการลบข้อมูล
+        else if (msg.action === 'delete') {
+            const index = persons.value.findIndex((p) => p.id === msg.id);
+            if (index !== -1) {
+                persons.value.splice(index, 1);
+            }
+        }
     };
 
     socket.onerror = (error) => {
@@ -235,27 +287,6 @@ const filteredPersons = computed(() => {
     }
     return persons.value.filter((person) => person.verified === filteredVerified.value);
 });
-
-// เพิ่ม 0 ให้เลขครบ 4 หลัก
-function formatId(id) {
-    return id.toString().padStart(4, '0');
-}
-
-async function fetchPersons() {
-    loading.value = true; // เริ่มต้น loading
-    try {
-        const response = await axios.get(`${API_BASE}/api/person/`);
-        persons.value = response.data.map((person) => ({
-            ...person,
-            formatted_id: formatId(person.id) // ใช้ฟังก์ชันจัดรูปแบบ ID
-        }));
-    } catch (error) {
-        console.error('Error fetching persons:', error);
-    } finally {
-        loading.value = false; // หยุด loading ไม่ว่าจะสำเร็จหรือล้มเหลว
-    }
-}
-onMounted(fetchPersons);
 
 // เพิ่ม Axios สำหรับ CRUD Operations
 const saveProduct = async () => {

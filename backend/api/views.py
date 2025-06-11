@@ -13,21 +13,10 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from datetime import datetime
-from channels.layers import get_channel_layer
-from asgiref.sync import async_to_sync
+from .consumers import broadcast_to_crud01, broadcast_stats_update
 import urllib.parse
 import os, io, json
 import traceback
-
-def broadcast_to_crud01(message):
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        "crud01_group",
-        {
-            "type": "send_update",
-            "message": message
-        }
-    )
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -461,32 +450,55 @@ class PersonList(APIView):
                 details=f"เพิ่มข้อมูล: {instance.name}",
                 record_id=instance.id
             )
-            broadcast_to_crud01(f"เพิ่ม: {instance.name}")
+            broadcast_to_crud01({
+                'action': 'add',
+                'id': instance.id,
+                'fields': {
+                    'name': instance.name,
+                    'nisit': instance.nisit,
+                    'degree': instance.degree,
+                    'seat': instance.seat,
+                    'verified': instance.verified,
+                    'rfid': instance.rfid,
+                }
+            })
+            broadcast_stats_update()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def put(self, request):
         ids = request.data.get('ids', [])
         verified = request.data.get('verified', None)
-
+        
         if not ids or verified is None:
             return Response({'error': 'Missing ids or verified'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
                 persons = Person.objects.filter(id__in=ids)
+                # เก็บ ID ก่อนอัปเดต
+                updated_ids = list(persons.values_list('id', flat=True))
                 persons.update(verified=verified)
-
-                names = [f"{p.name}" for p in persons]
-                ids_str = ','.join(str(p.id) for p in persons)
-
-                Log.objects.create(
-                    action='Update',
-                    model='Person',
-                    details=f"[ID: {ids_str}] อัปเดตสถานะเป็น {verified}",
-                    record_id=None  # หรือใส่ ids[0] ถ้าจำเป็นต้องมีค่า
-                )
-                broadcast_to_crud01(f"อัปเดตสถานะ: {ids_str} → {verified}")
+                
+                # ดึงข้อมูลใหม่
+                updated_persons = Person.objects.filter(id__in=updated_ids)
+                
+                # ส่ง WebSocket สำหรับแต่ละรายการ
+                for person in updated_persons:
+                    broadcast_to_crud01({
+                        'action': 'update',
+                        'id': person.id,
+                        'fields': {
+                            'name': person.name,
+                            'nisit': person.nisit,
+                            'degree': person.degree,
+                            'seat': person.seat,
+                            'verified': person.verified,
+                            'rfid': person.rfid,
+                        }
+                    })
+                
+                broadcast_stats_update()
             return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -494,25 +506,26 @@ class PersonList(APIView):
 
     def delete(self, request):
         ids = request.data.get('ids', [])
-
+        
         if not ids:
             return Response({'error': 'No IDs provided'}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             with transaction.atomic():
                 persons = Person.objects.filter(id__in=ids)
-
-                # สร้าง log ก่อนลบ
-                ids_str = ','.join(str(p.id) for p in persons)
-
-                Log.objects.create(
-                    action='Delete',
-                    model='Person',
-                    details=f"[ID: {ids_str}] ลบข้อมูลแบบกลุ่ม",
-                    record_id=None
-                )
-                broadcast_to_crud01(f"ลบ: {ids_str}")
+                # เก็บ ID ก่อนลบ
+                deleted_ids = list(persons.values_list('id', flat=True))
+                
                 persons.delete()
+                
+                # ส่ง WebSocket สำหรับแต่ละ ID
+                for id in deleted_ids:
+                    broadcast_to_crud01({
+                        'action': 'delete',
+                        'id': id,
+                    })
+                
+                broadcast_stats_update()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -531,15 +544,24 @@ class PersonDetail(APIView):
     def delete(self, request, pk):
         try:
             person = Person.objects.get(pk=pk)
-            # บันทึก Log ก่อนลบ
+            person_id = person.id  # เก็บ ID ก่อนลบ
+            
             Log.objects.create(
                 action='Delete',
                 model='Person',
                 details=f"ลบข้อมูลของ {person.name}",
                 record_id=person.id
             )
-            broadcast_to_crud01(f"ลบ: {person.name} [ID {person.id}]")
+            
             person.delete()
+            
+            # ส่ง WebSocket action delete
+            broadcast_to_crud01({
+                'action': 'delete',
+                'id': person_id,
+            })
+            
+            broadcast_stats_update()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Person.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -555,7 +577,6 @@ class PersonDetail(APIView):
                 'verified': person.verified,
                 'rfid': person.rfid
             }
-        
             serializer = PersonSerializer(person, data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -574,7 +595,19 @@ class PersonDetail(APIView):
                         details=log_message, 
                         record_id=person.id
                     )
-                    broadcast_to_crud01(f"แก้ไข: {person.name} [ID {person.id}]")
+                broadcast_to_crud01({
+                    'action': 'update',
+                    'id': person.id,
+                    'fields': {
+                        'name': person.name,
+                        'nisit': person.nisit,
+                        'degree': person.degree,
+                        'seat': person.seat,
+                        'verified': person.verified,
+                        'rfid': person.rfid,
+                    }
+                })
+                broadcast_stats_update()
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Person.DoesNotExist:

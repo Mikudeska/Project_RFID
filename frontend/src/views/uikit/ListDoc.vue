@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
@@ -36,6 +36,59 @@ async function fetchPersons() {
     }
 }
 onMounted(fetchPersons);
+
+let socket = null;
+
+onMounted(() => {
+    socket = new WebSocket('ws://localhost:8000/ws/crud01/');
+
+    socket.onopen = () => {
+        console.log('WebSocket connected');
+    };
+
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const msg = data.message;
+
+        // กรณี update verified
+        if (msg.action === 'update') {
+            const updated = {
+                ...msg.fields,
+                id: msg.id
+            };
+
+            // เอาค่า verified มาตรวจ
+            const verifiedValue = Number(updated.verified);
+
+            // ลบออกก่อนเสมอ
+            persons.value = persons.value.filter((p) => p.id !== updated.id);
+
+            if (verifiedValue === 1) {
+                // ถ้า verified == 1 ค่อยเพิ่มกลับเข้าไป
+                persons.value.unshift({
+                    ...updated,
+                    formatted_id: updated.id.toString().padStart(4, '0')
+                });
+                persons.value.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+
+            // reset หน้าแรกเสมอ
+            currentPage.value = 0;
+        }
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
+
+    socket.onclose = () => {
+        console.log('WebSocket closed');
+    };
+});
+
+onBeforeUnmount(() => {
+    if (socket) socket.close();
+});
 
 // ฟิลเตอร์จาก search
 const filteredPersons = computed(() => {
@@ -117,7 +170,7 @@ function highlightMatch(text) {
 
 <style scoped>
 .p-dialog {
-    transition:opacity 0.3s ease, transform 0.3s ease;
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 .p-dialog-enter-active,
 .p-dialog-leave-active {
