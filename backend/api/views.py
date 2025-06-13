@@ -663,8 +663,8 @@ class RFIDSimulator(APIView):
                 model='Person',
                 details=f"RFID: {epc} Status: {person.verified}"
             )
+            broadcast_stats_update()
             return Response({'results': results}, status=status.HTTP_200_OK)
-
         except Exception as e:
             return Response(
                 {'error': str(e)},

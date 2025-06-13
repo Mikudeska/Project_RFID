@@ -19,6 +19,8 @@ function addFormattedId(person) {
     };
 }
 
+const persons = ref();
+
 async function fetchPersons() {
     loading.value = true;
     try {
@@ -32,64 +34,30 @@ async function fetchPersons() {
 }
 onMounted(fetchPersons);
 
-let socket = null;
+function handleWsMessage(event) {
+    const msg = event.detail.message;
+    if (msg.action === 'update') {
+        const index = persons.value.findIndex((p) => p.id === msg.id);
+        if (index !== -1) {
+            persons.value[index] = { ...persons.value[index], ...msg.fields };
+        }
+    } else if (msg.action === 'add') {
+        persons.value.push({ id: msg.id, ...msg.fields });
+    } else if (msg.action === 'delete') {
+        persons.value = persons.value.filter((p) => p.id !== msg.id);
+    }
+}
 
 onMounted(() => {
-    socket = new WebSocket('ws://localhost:8000/ws/crud01/');
-
-    socket.onopen = () => {
-        console.log('WebSocket connected');
-    };
-
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const msg = data.message;
-
-        if (msg.action === 'update') {
-            const index = persons.value.findIndex((p) => p.id === msg.id);
-            if (index !== -1) {
-                // อัปเดตข้อมูล + formatted_id
-                const updatedPerson = addFormattedId({
-                    ...persons.value[index],
-                    ...msg.fields
-                });
-                persons.value.splice(index, 1, updatedPerson);
-            }
-        }
-        // รับการเพิ่มข้อมูล
-        else if (msg.action === 'add') {
-            // เพิ่ม formatted_id ให้ข้อมูลใหม่
-            const newPerson = addFormattedId({
-                id: msg.id,
-                ...msg.fields
-            });
-            persons.value.push(newPerson);
-        }
-        // รับการลบข้อมูล
-        else if (msg.action === 'delete') {
-            const index = persons.value.findIndex((p) => p.id === msg.id);
-            if (index !== -1) {
-                persons.value.splice(index, 1);
-            }
-        }
-    };
-
-    socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-
-    socket.onclose = () => {
-        console.log('WebSocket closed');
-    };
+    window.addEventListener('ws-message', handleWsMessage);
 });
 
 onBeforeUnmount(() => {
-    if (socket) socket.close();
+    window.removeEventListener('ws-message', handleWsMessage);
 });
 
 const toast = useToast();
 const dt = ref();
-const persons = ref();
 
 // Dialog
 const productDialog = ref(false);

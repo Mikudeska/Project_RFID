@@ -25,54 +25,36 @@ const features = ref([
     { title: 'จำนวนบัญฑิตทั้งหมด', description: '0' },
     { title: 'จำนวนบัญฑิตที่ต้องมารายงานตัวทั้งหมด', description: '0' },
     { title: 'จำนวนบัญฑิตที่มารายงานตัว', description: '0' },
-    { title: '?', description: '0' }
+    { title: 'อยู่ในห้องพิธี', description: '0' }
 ]);
 
-let socket = null;
-
-onMounted(async () => {
-    try {
-        // ดึงข้อมูล stats จาก API
-        const res = await axios.get(`${API_BASE}/api/stats/`);
-        const d = res.data;
+function handleWsMessage(event) {
+    const msg = event.detail.message;
+    if (msg.action === 'stats') {
+        const d = msg.data;
         features.value = [
             { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
             { title: 'ยังไม่รายงานตัว', description: d.checked_in },
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
         ];
-    } catch (error) {
-        console.error('Failed to load stats:', error);
     }
+}
 
-    // แล้วค่อยเชื่อม WS ต่อเหมือนเดิม
-    socket = new WebSocket('ws://localhost:8000/ws/crud01/');
-    socket.onopen = () => {
-        console.log('WebSocket connected');
-    };
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const msg = data.message;
-        if (msg.action === 'stats') {
-            const d = msg.data;
-            features.value = [
-                { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
-                { title: 'ยังไม่รายงานตัว', description: d.checked_in },
-                { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
-                { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
-            ];
-        }
-    };
-    socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-    socket.onclose = () => {
-        console.log('WebSocket closed');
-    };
+onMounted(async () => {
+    const res = await axios.get(`${API_BASE}/api/stats/`);
+    const d = res.data;
+    features.value = [
+        { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
+        { title: 'ยังไม่รายงานตัว', description: d.checked_in },
+        { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
+        { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
+    ];
+    window.addEventListener('ws-message', handleWsMessage);
 });
 
 onBeforeUnmount(() => {
-    if (socket) socket.close();
+    window.removeEventListener('ws-message', handleWsMessage);
 });
 
 // ตัวแปรคอมเมนต์

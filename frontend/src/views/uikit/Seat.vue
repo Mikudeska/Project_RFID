@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount} from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
@@ -23,21 +23,24 @@ const dialogVisible = ref(false);
 const selectedPerson = ref({});
 const toast = useToast();
 
-onMounted(() => {
-    fetchPersons();
-
-    const socket = new WebSocket('ws://localhost:8000/ws/crud01/');
-    socket.onmessage = (event) => {
-        const { message } = JSON.parse(event.data);
-
-        if (message.action === 'update') {
-            const index = persons.value.findIndex((p) => p.id === message.id);
-            if (index !== -1) {
-                // update ค่าใน persons
-                persons.value[index] = { ...persons.value[index], ...message.fields };
-            }
+function handleWsMessage(event) {
+    const msg = event.detail.message;
+    if (msg.action === 'update') {
+        const index = persons.value.findIndex((p) => p.id === msg.id);
+        if (index !== -1) {
+            persons.value[index] = { ...persons.value[index], ...msg.fields };
         }
-    };
+    }
+}
+
+onMounted(async () => {
+    const { data } = await axios.get(`${API_BASE}/api/person/`);
+    persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) })).filter((p) => p.seat >= 1 && p.seat <= TOTAL_SEATS);
+    window.addEventListener('ws-message', handleWsMessage);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('ws-message', handleWsMessage);
 });
 
 async function fetchPersons() {

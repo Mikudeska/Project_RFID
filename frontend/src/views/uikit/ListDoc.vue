@@ -37,57 +37,37 @@ async function fetchPersons() {
 }
 onMounted(fetchPersons);
 
-let socket = null;
-
-onMounted(() => {
-    socket = new WebSocket('ws://localhost:8000/ws/crud01/');
-
-    socket.onopen = () => {
-        console.log('WebSocket connected');
-    };
-
-    socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const msg = data.message;
-
-        // กรณี update verified
-        if (msg.action === 'update') {
-            const updated = {
-                ...msg.fields,
-                id: msg.id
-            };
-
-            // เอาค่า verified มาตรวจ
-            const verifiedValue = Number(updated.verified);
-
-            // ลบออกก่อนเสมอ
-            persons.value = persons.value.filter((p) => p.id !== updated.id);
-
-            if (verifiedValue === 1) {
-                // ถ้า verified == 1 ค่อยเพิ่มกลับเข้าไป
-                persons.value.unshift({
-                    ...updated,
-                    formatted_id: updated.id.toString().padStart(4, '0')
-                });
-                persons.value.sort((a, b) => new Date(b.date) - new Date(a.date));
-            }
-
-            // reset หน้าแรกเสมอ
-            currentPage.value = 0;
+function handleWsMessage(event) {
+    const msg = event.detail.message;
+    if (msg.action === 'update') {
+        const updated = { ...msg.fields, id: msg.id };
+        const verifiedValue = Number(updated.verified);
+        persons.value = persons.value.filter((p) => p.id !== updated.id);
+        if (verifiedValue === 1) {
+            persons.value.unshift({
+                ...updated,
+                formatted_id: updated.id.toString().padStart(4, '0')
+            });
+            persons.value.sort((a, b) => new Date(b.date) - new Date(a.date));
         }
-    };
+        currentPage.value = 0;
+    }
+}
 
-    socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
-
-    socket.onclose = () => {
-        console.log('WebSocket closed');
-    };
+onMounted(async () => {
+    const res = await axios.get(`${API_BASE}/api/person/`);
+    persons.value = res.data
+        .filter((p) => p.verified === 1)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .map((person) => ({
+            ...person,
+            formatted_id: person.id.toString().padStart(4, '0')
+        }));
+    window.addEventListener('ws-message', handleWsMessage);
 });
 
 onBeforeUnmount(() => {
-    if (socket) socket.close();
+    window.removeEventListener('ws-message', handleWsMessage);
 });
 
 // ฟิลเตอร์จาก search
