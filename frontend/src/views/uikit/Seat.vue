@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount} from 'vue';
+import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
@@ -30,6 +30,13 @@ function handleWsMessage(event) {
         if (index !== -1) {
             persons.value[index] = { ...persons.value[index], ...msg.fields };
         }
+    } else if (msg.action === 'add') {
+        const newPerson = { id: msg.id, ...msg.fields, seat: Number(msg.fields.seat) };
+        if (newPerson.seat >= 1 && newPerson.seat <= TOTAL_SEATS) {
+            persons.value.push(newPerson);
+        }
+    } else if (msg.action === 'delete') {
+        persons.value = persons.value.filter((p) => p.id !== msg.id);
     }
 }
 

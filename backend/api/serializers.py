@@ -26,7 +26,7 @@ class PersonSerializer(serializers.ModelSerializer):
         return data
 
 class LogSerializer(serializers.ModelSerializer):
-    timestamp = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")  # กำหนด format ชัดเจน
+    timestamp = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S", read_only=True)
     
     class Meta:
         model = Log

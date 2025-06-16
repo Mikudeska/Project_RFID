@@ -1,11 +1,19 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
+const useWebSocket = import.meta.env.VITE_USE_WEBSOCKET === 'true';
+
 export const useWebSocketStore = defineStore('websocket', () => {
     const socket = ref(null);
 
     function connect() {
+        if (!useWebSocket) {
+            console.log('🛑 WebSocket disabled by .env');
+            return;
+        }
+
         if (socket.value) return;
+
         socket.value = new WebSocket('ws://localhost:8000/ws/crud01/');
 
         socket.value.onopen = () => {

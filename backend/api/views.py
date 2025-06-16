@@ -14,6 +14,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from datetime import datetime
 from .consumers import broadcast_to_crud01, broadcast_stats_update
+from django.conf import settings
 import urllib.parse
 import os, io, json
 import traceback
@@ -450,19 +451,20 @@ class PersonList(APIView):
                 details=f"เพิ่มข้อมูล: {instance.name}",
                 record_id=instance.id
             )
-            broadcast_to_crud01({
-                'action': 'add',
-                'id': instance.id,
-                'fields': {
-                    'name': instance.name,
-                    'nisit': instance.nisit,
-                    'degree': instance.degree,
-                    'seat': instance.seat,
-                    'verified': instance.verified,
-                    'rfid': instance.rfid,
-                }
-            })
-            broadcast_stats_update()
+            if settings.USE_CHANNEL:
+                broadcast_to_crud01({
+                    'action': 'add',
+                    'id': instance.id,
+                    'fields': {
+                        'name': instance.name,
+                        'nisit': instance.nisit,
+                        'degree': instance.degree,
+                        'seat': instance.seat,
+                        'verified': instance.verified,
+                        'rfid': instance.rfid,
+                    }
+                })
+                broadcast_stats_update()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -484,21 +486,21 @@ class PersonList(APIView):
                 updated_persons = Person.objects.filter(id__in=updated_ids)
                 
                 # ส่ง WebSocket สำหรับแต่ละรายการ
-                for person in updated_persons:
-                    broadcast_to_crud01({
-                        'action': 'update',
-                        'id': person.id,
-                        'fields': {
-                            'name': person.name,
-                            'nisit': person.nisit,
-                            'degree': person.degree,
-                            'seat': person.seat,
-                            'verified': person.verified,
-                            'rfid': person.rfid,
-                        }
-                    })
-                
-                broadcast_stats_update()
+                if settings.USE_CHANNEL:
+                    for person in updated_persons:
+                        broadcast_to_crud01({
+                            'action': 'update',
+                            'id': person.id,
+                            'fields': {
+                                'name': person.name,
+                                'nisit': person.nisit,
+                                'degree': person.degree,
+                                'seat': person.seat,
+                                'verified': person.verified,
+                                'rfid': person.rfid,
+                            }
+                        })
+                        broadcast_stats_update()
             return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -519,13 +521,14 @@ class PersonList(APIView):
                 persons.delete()
                 
                 # ส่ง WebSocket สำหรับแต่ละ ID
-                for id in deleted_ids:
-                    broadcast_to_crud01({
-                        'action': 'delete',
-                        'id': id,
-                    })
-                
-                broadcast_stats_update()
+                if settings.USE_CHANNEL:
+                    for id in deleted_ids:
+                        broadcast_to_crud01({
+                            'action': 'delete',
+                            'id': id,
+                        })
+                    
+                    broadcast_stats_update()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -556,12 +559,12 @@ class PersonDetail(APIView):
             person.delete()
             
             # ส่ง WebSocket action delete
-            broadcast_to_crud01({
-                'action': 'delete',
-                'id': person_id,
-            })
-            
-            broadcast_stats_update()
+            if settings.USE_CHANNEL:
+                broadcast_to_crud01({
+                    'action': 'delete',
+                    'id': person_id,
+                })
+                broadcast_stats_update()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Person.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
@@ -595,19 +598,20 @@ class PersonDetail(APIView):
                         details=log_message, 
                         record_id=person.id
                     )
-                broadcast_to_crud01({
-                    'action': 'update',
-                    'id': person.id,
-                    'fields': {
-                        'name': person.name,
-                        'nisit': person.nisit,
-                        'degree': person.degree,
-                        'seat': person.seat,
-                        'verified': person.verified,
-                        'rfid': person.rfid,
-                    }
-                })
-                broadcast_stats_update()
+                if settings.USE_CHANNEL:
+                    broadcast_to_crud01({
+                        'action': 'update',
+                        'id': person.id,
+                        'fields': {
+                            'name': person.name,
+                            'nisit': person.nisit,
+                            'degree': person.degree,
+                            'seat': person.seat,
+                            'verified': person.verified,
+                            'rfid': person.rfid,
+                        }
+                    })
+                    broadcast_stats_update()
                 return Response(serializer.data, status=status.HTTP_200_OK)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Person.DoesNotExist:
@@ -678,3 +682,10 @@ class LogList(generics.ListAPIView):
         # กรองข้อมูลที่อาจมี timestamp เป็น null
         return Log.objects.exclude(timestamp__isnull=True).order_by('-timestamp')
 
+class LogCreateView(APIView):
+    def post(self, request):
+        serializer = LogSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

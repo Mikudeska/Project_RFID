@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ExportPDFResult, ResetDatabase, RFIDSimulator, LogList, ResetLog
+from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ExportPDFResult, ResetDatabase, RFIDSimulator, LogList, ResetLog, LogCreateView
 
 urlpatterns = [
     path('person/', PersonList.as_view(), name='person-list'),
@@ -14,4 +14,5 @@ urlpatterns = [
     path('resetlog/', ResetLog.as_view(), name='reset-log'),
     path('simulate-rfid/', RFIDSimulator.as_view(), name='simulate-rfid'),
     path('logs/', LogList.as_view(), name='log-list'),
+    path('logs/new/', LogCreateView.as_view(), name='log-create'),
 ]

@@ -1,5 +1,4 @@
 <script setup>
-import { useLocalStorage } from '@vueuse/core';
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import axios from 'axios';
@@ -60,29 +59,26 @@ onBeforeUnmount(() => {
 // ตัวแปรคอมเมนต์
 const newComment = ref('');
 const commentsContainer = ref(null);
-const comments = useLocalStorage('box', [
-    {
-        comment: 'starts',
-        time: new Date()
-    }
-]);
-const addComment = () => {
-    if (newComment.value.trim()) {
-        comments.value.push({
-            comment: newComment.value,
-            time: new Date()
-        });
-        newComment.value = '';
+const comments = ref([]);
 
-        nextTick(() => {
+const addComment = async () => {
+    if (newComment.value.trim()) {
+        try {
+            await axios.post(`${API_BASE}/api/logs/new/`, {
+                action: 'comment',
+                model: 'Comment',
+                details: newComment.value
+            });
+
+            newComment.value = '';
+            await loadComments(); // โหลดคอมเมนต์ใหม่หลังโพสต์
+
+            // ให้ scroll หลังอัปเดต DOM เสร็จ
+            await nextTick();
             scrollToBottom();
-        });
-    }
-};
-const confirmClear = () => {
-    const confirmed = window.confirm('แน่ใจไหมว่าจะลบทั้งหมด ?');
-    if (confirmed) {
-        comments.value = [];
+        } catch (err) {
+            console.error('❌ Error posting comment:', err);
+        }
     }
 };
 
@@ -94,6 +90,22 @@ const scrollToBottom = () => {
         });
     }
 };
+const loadComments = async () => {
+    const res = await axios.get(`${API_BASE}/api/logs/`);
+    const logs = res.data.results; // ดึง array จาก 'results'
+
+    comments.value = logs
+        .filter((log) => log.action === 'comment')
+        .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)) // เรียงจากเก่าไปใหม่
+        .map((log) => ({
+            comment: log.details,
+            time: log.timestamp
+        }));
+};
+
+onMounted(() => {
+    loadComments();
+});
 </script>
 
 <template>
@@ -154,9 +166,8 @@ const scrollToBottom = () => {
                     </div>
                     <div class="">
                         <div class="grid grid-cols-12 gap-2 pt-4 md:flex-row">
-                            <InputText type="text" v-model="newComment" placeholder="พิมพ์คอมเมนต์ของคุณ.... " class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-8 text-1xl" />
+                            <InputText type="text" v-model="newComment" placeholder="พิมพ์คอมเมนต์ของคุณ.... " class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-10 text-1xl" />
                             <Button label="Post" @click="addComment" class="flex flex-col col-span-12 text-xl xl:col-span-2" Rounded />
-                            <Button label="Clear" @click="confirmClear" class="flex flex-col col-span-12 text-xl xl:col-span-2" severity="danger" Rounded />
                         </div>
                     </div>
                 </div>

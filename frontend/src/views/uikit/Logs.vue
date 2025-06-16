@@ -289,7 +289,8 @@ const extractShortenedIDs = (details) => {
                                 Delete: 'danger',
                                 Import: 'warning',
                                 Export: 'help',
-                                Reset: 'danger'
+                                Reset: 'danger',
+                                Comment: 'help'
                             }[data.action]
                         "
                     />
@@ -369,6 +370,10 @@ const extractShortenedIDs = (details) => {
                                     <span class="font-semibold text-green-600">CSV</span>
                                 </template>
 
+                                <template v-else-if="data.action.includes('comment')">
+                                    <span class="">พิมข้อความ</span>
+                                    <span class="font-semibold text-blue-600">[ {{ data.details }} ]</span>
+                                </template>
                                 <!-- ✅ แสดงข้อมูลแบบ object ตามปกติ -->
                                 <template v-else>
                                     <template v-for="(item, index) in parsedDetails(data.details)" :key="index">

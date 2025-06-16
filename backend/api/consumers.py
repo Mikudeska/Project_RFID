@@ -1,17 +1,22 @@
 from channels.generic.websocket import AsyncWebsocketConsumer, AsyncJsonWebsocketConsumer
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.conf import settings
 import json
 
-def broadcast_to_crud01(message: str):
+def broadcast_to_crud01(message):
+    if not settings.USE_CHANNEL:
+        print("📡 WebSocket disabled. Skipping broadcast.")
+        return
+    
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         "crud01_group",
         {
-            "type": "send_update",
+            "type": "send_message",
             "message": message,
         }
-    )  
+    )
 
 def broadcast_stats_update():
     from django.db.models import Count

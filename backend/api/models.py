@@ -56,6 +56,7 @@ class Log(models.Model):
         ('export', 'Export'),
         ('reset', 'Reset'),
         ('rfid_scan', 'RFID Scan'),
+        ('comment', 'Comment'),
     ]
     
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
