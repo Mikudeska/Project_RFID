@@ -94,7 +94,6 @@ const parsedDetails = (details) => {
             new: processValue(newVal, field)
         };
 
-        console.log('📦 parsed item:', item); // log ตรวจสอบ
         return item;
     });
 };
@@ -166,14 +165,22 @@ function extractTotal(text) {
 }
 
 const extractImportSummary = (text) => {
+    // กรณีสำเร็จแบบมีจำนวน
     const match = text.match(/นำเข้าฐานข้อมูล (\d+) รายการ \( ใหม่ (\d+) อัปเดต (\d+) \)/);
-    if (!match) return '';
+    if (match) {
+        const total = match[1];
+        const added = match[2];
+        const updated = match[3];
+        return `ข้อมูลใหม่ ${added} + อัปเดตข้อมูล ${updated} = ${total} รายการ`;
+    }
 
-    const total = match[1];
-    const added = match[2];
-    const updated = match[3];
+    // กรณีล้มเหลว (ใช้ข้อความหลัง `:`)
+    if (text.includes('นำเข้าข้อมูลล้มเหลว')) {
+        return text.split(':').slice(1).join(':').trim(); // คืนเฉพาะข้อความ error
+    }
 
-    return `ข้อมูลใหม่ ${added} + อัปเดตข้อมูล ${updated} = ${total} รายการ`;
+    // fallback
+    return '';
 };
 
 const showDialog = ref(false);
@@ -312,7 +319,7 @@ const extractShortenedIDs = (details) => {
                                 {{ extractShortenedIDs(data.details) }}
                             </span>
 
-                            <span v-if="data.details.includes('อัปเดตสถานะ')" class="flex items-center gap-1 break-words">
+                            <span v-if="data.details.includes('อัปเดต')" class="flex items-center gap-1 break-words">
                                 อัปเดตสถานะเป็น
                                 <Icon icon="mdi:arrow-right" class="inline-block mx-1 text-gray-500" />
                                 <span :class="['inline-flex items-center', getVerifiedColor(extractStatus(data.details))]">
@@ -341,6 +348,11 @@ const extractShortenedIDs = (details) => {
                                 <template v-else-if="data.details.includes('นำเข้าฐานข้อมูล')">
                                     <span class="font-semibold text-green-600">[นำเข้าฐานข้อมูล]</span>
                                     <span>{{ extractImportSummary(data.details) }}</span>
+                                </template>
+
+                                <template v-else-if="data.details.includes('นำเข้าข้อมูลล้มเหลว')">
+                                    <span class="font-semibold text-red-800">[นำเข้าข้อมูลล้มเหลว] :</span>
+                                    <span> {{ extractImportSummary(data.details) }}</span>
                                 </template>
 
                                 <template v-else-if="data.details.includes('โหลดไฟล์เป็น PDF')">
@@ -378,15 +390,19 @@ const extractShortenedIDs = (details) => {
                                 <template v-else>
                                     <template v-for="(item, index) in parsedDetails(data.details)" :key="index">
                                         <span class="flex items-center gap-1">
-                                            <template v-if="item.field === 'verified'">
-                                                <span class="shrink-0">{{ item.label }}</span>
-                                                <span :class="getVerifiedColor(item.old)">
-                                                    <Icon :icon="getVerifiedIcon(item.old)" />
-                                                </span>
-                                                <Icon v-if="item.new !== null && item.new !== undefined" icon="mdi:arrow-right" class="mx-1 text-gray-500" />
-                                                <span v-if="item.new !== null && item.new !== undefined" :class="getVerifiedColor(item.new)">
-                                                    <Icon :icon="getVerifiedIcon(item.new)" />
-                                                </span>
+                                            <template v-if="item.field === 'verified1'">
+                                                <template v-if="item.old !== item.new">
+                                                    <span class="flex-auto">
+                                                        อัปเดตสถานะ
+                                                        <span :class="getVerifiedColor(item.old)">
+                                                            <Icon :icon="getVerifiedIcon(item.old)" class="inline-block" />
+                                                        </span>
+                                                        <Icon icon="mdi:arrow-right" class="inline-block mx-1 text-gray-500" />
+                                                        <span :class="getVerifiedColor(item.new)">
+                                                            <Icon :icon="getVerifiedIcon(item.new)" class="inline-block" />
+                                                        </span>
+                                                    </span>
+                                                </template>
                                             </template>
                                             <template v-else>
                                                 <span class="font-medium">{{ item.label }}</span>

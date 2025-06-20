@@ -130,10 +130,10 @@ onMounted(() => {
                             index % 4 === 0
                                 ? 'hover:border-b-8 hover:border-blue-500 rounded-lg'
                                 : index % 4 === 1
-                                ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
-                                : index % 4 === 2
-                                ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
-                                : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
+                                  ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
+                                  : index % 4 === 2
+                                    ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
+                                    : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
                         ]"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">

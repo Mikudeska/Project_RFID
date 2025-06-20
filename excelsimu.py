@@ -1,0 +1,72 @@
+import pandas as pd
+import random
+
+num_records = 7000
+first_names = ["สมชาย", "สมหญิง", "ณัฐวุฒิ", "กิตติ", "ปวีณา", "ธนวัฒน์", "วรินทร", "อรทัย", "จิราพร", "สุนทร"]
+last_names = ["วงศ์แก้ว", "สังขกุล", "จันทร์แจ่ม", "ทองดี", "บุญมา", "สายทอง", "คำภีร์", "แสงทอง", "ศรีสุข", "รัตนสุข"]
+
+degree_list = [
+    "การจัดการมหาบัณฑิต",
+    "การแพทย์แผนไทยประยุกต์บัณฑิต",
+    "ครุศาสตรบัณฑิต",
+    "ครุศาสตรมหาบัณฑิต",
+    "นิติศาสตรบัณฑิต",
+    "นิเทศศาสตรดุษฎีบัณฑิต",
+    "นิเทศศาสตรบัณฑิต",
+    "นิเทศศาสตรมหาบัณฑิต",
+    "บริหารธุรกิจดุษฎีบัณฑิต",
+    "บริหารธุรกิจบัณฑิต",
+    "บริหารธุรกิจมหาบัณฑิต",
+    "บัญชีบัณฑิต",
+    "ปรัชญาดุษฎีบัณฑิต",
+    "พยาบาลศาสตรบัณฑิต",
+    "รัฐประศาสนศาสตรบัณฑิต",
+    "รัฐประศาสนศาสตรมหาบัณฑิต",
+    "รัฐศาสตรดุษฎีบัณฑิต",
+    "รัฐศาสตรบัณฑิต",
+    "รัฐศาสตรมหาบัณฑิต",
+    "วิทยาศาสตรบัณฑิต",
+    "วิทยาศาสตรมหาบัณฑิต",
+    "วิศวกรรมศาสตรบัณฑิต",
+    "ศิลปกรรมศาสตรบัณฑิต",
+    "ศิลปบัณฑิต",
+    "ศิลปศาสตรบัณฑิต",
+    "ศิลปศาสตรมหาบัณฑิต",
+    "สถาปัตยกรรมศาสตรบัณฑิต",
+    "สาธารณสุขศาสตรบัณฑิต",
+    "สารสนเทศศาสตรบัณฑิต",
+    "เศรษฐศาสตรบัณฑิต"
+]
+
+def generate_nisit():
+    return ''.join(str(random.randint(0, 9)) for _ in range(11))
+
+data = []
+for _ in range(num_records):
+    name = f"{random.choice(first_names)} {random.choice(last_names)}"
+    degree = random.choice(degree_list)
+    verified1 = random.choice([0, 1, 2])
+    verified2 = 0
+    verified3 = 0
+    read_flag_in = False
+    read_flag_out = False
+    read_light_in = False
+    read_light_out = False
+    nisit = generate_nisit()
+
+    data.append({
+        "ชื่อ-นามสกุล": name,
+        "รหัสนิสิต": nisit,
+        "ชื่อปริญญา": degree,
+        "verified1": verified1,
+        "verified2": verified2,
+        "verified3": verified3,
+        "read_flag_in": read_flag_in,
+        "read_flag_out": read_flag_out,
+        "read_light_in": read_light_in,
+        "read_light_out": read_light_out,
+    })
+
+df = pd.DataFrame(data)
+df.to_excel("persons_7000.xlsx", index=False)
+print("สร้างไฟล์ persons_7000.xlsx สำหรับ import เรียบร้อยแล้ว")

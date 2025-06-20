@@ -1,23 +1,26 @@
+from collections import Counter
 from django.http import HttpResponse
-from .resources import PersonResource
+from django.utils import timezone
+from django.conf import settings
+from django.db import transaction, connection
 from tablib import Dataset
 from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework import status, generics
-from .models import Person, Log
-from .serializers import PersonSerializer, LogSerializer
-from django.db import transaction, connection
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from datetime import datetime
+from .resources import PersonResource
 from .consumers import broadcast_to_crud01, broadcast_stats_update
-from django.conf import settings
+from .models import Person, Log
+from .serializers import PersonSerializer, LogSerializer
 import urllib.parse
 import os, io, json
 import traceback
+import datetime
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -411,21 +414,36 @@ class ImportData(APIView):
                 {'error': str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
 class StatsView(APIView):
     def get(self, request):
-        total = Person.objects.count()  # นับจำนวนทั้งหมด
-        checked_in = Person.objects.filter(verified=0).count()  # verified = 0
-        in_checkin_room = Person.objects.filter(verified=1).count()  # verified = 1
-        in_graduation_room = Person.objects.filter(verified=2).count()  # verified = 2
+        from collections import Counter
+        verified_counter = Counter()
+        persons = Person.objects.all()
+        total = persons.count()
+
+        for person in persons:
+            verified_with_time = []
+            for i in range(1, 4):
+                value = getattr(person, f'verified{i}', None)
+                timestamp = getattr(person, f'verified_updated_at{i}', None)
+                if value in [0, 1, 2]:
+                    # ถ้า timestamp ไม่มี ให้ใช้วันที่เก่ามากๆ แทน เพื่อให้ไม่เลือกก่อน timestamp อื่น
+                    if not timestamp:
+                        timestamp = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+                    verified_with_time.append((timestamp, value))
+
+            if verified_with_time:
+                latest_value = sorted(verified_with_time, reverse=True)[0][1]
+                verified_counter[latest_value] += 1
 
         stats = {
             'total': total,
-            'checked_in': checked_in,
-            'in_checkin_room': in_checkin_room,
-            'in_graduation_room': in_graduation_room
+            'checked_in': verified_counter[0],
+            'in_checkin_room': verified_counter[1],
+            'in_graduation_room': verified_counter[2],
         }
-        return Response(stats, status=status.HTTP_200_OK)
+        return Response(stats, status=200)
 
 class PersonList(APIView):
     def get(self, request):
@@ -460,7 +478,14 @@ class PersonList(APIView):
                         'nisit': instance.nisit,
                         'degree': instance.degree,
                         'seat': instance.seat,
+                        'verified1': instance.verified1,
+                        'verified2': instance.verified2,
+                        'verified3': instance.verified3,
                         'verified': instance.verified,
+                        'read_flag_in': instance.read_flag_in,
+                        'read_flag_out': instance.read_flag_out,
+                        'read_light_in': instance.read_light_in,
+                        'read_light_out': instance.read_light_out,
                         'rfid': instance.rfid,
                     }
                 })
@@ -468,42 +493,103 @@ class PersonList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request):
-        ids = request.data.get('ids', [])
-        verified = request.data.get('verified', None)
-        
-        if not ids or verified is None:
-            return Response({'error': 'Missing ids or verified'}, status=status.HTTP_400_BAD_REQUEST)
-
+    def put(self, request, pk):
         try:
-            with transaction.atomic():
-                persons = Person.objects.filter(id__in=ids)
-                # เก็บ ID ก่อนอัปเดต
-                updated_ids = list(persons.values_list('id', flat=True))
-                persons.update(verified=verified)
+            person = Person.objects.get(pk=pk)
+            original_data = {
+                'name': person.name,
+                'nisit': person.nisit,
+                'degree': person.degree,
+                'seat': person.seat,
+                'verified1': person.verified1,
+                'verified2': person.verified2,
+                'verified3': person.verified3,
+                'verified_updated_at1': person.verified_updated_at1,
+                'verified_updated_at2': person.verified_updated_at2,
+                'verified_updated_at3': person.verified_updated_at3,
+                'read_flag_in': person.read_flag_in,
+                'read_flag_out': person.read_flag_out,
+                'read_light_in': person.read_light_in,
+                'read_light_out': person.read_light_out,
+                'rfid': person.rfid,
+            }
+            
+            data = request.data.copy()
+
+            now = timezone.localtime(timezone.now())  # เวลาปัจจุบันตาม TIME_ZONE ใน settings.py
+
+            for i in range(1, 4):
+                verified_key = f"verified{i}"
+                updated_key = f"verified_updated_at{i}"
+                if verified_key in data:
+                    new_verified_val = data.get(verified_key)
+                    old_verified_val = getattr(person, verified_key)
+                    if str(new_verified_val) != str(old_verified_val):
+                        # ✅ ตรงนี้ต้องใช้ localtime เพื่อให้เวลาตรงกับ Asia/Bangkok
+                        data[updated_key] = timezone.localtime(timezone.now()).isoformat()
+
+            serializer = PersonSerializer(person, data=data)
+            if serializer.is_valid():
+                serializer.save()
+                person.refresh_from_db()
                 
-                # ดึงข้อมูลใหม่
-                updated_persons = Person.objects.filter(id__in=updated_ids)
-                
-                # ส่ง WebSocket สำหรับแต่ละรายการ
+                changes = []
+                fields_to_check = [
+                    'name', 'degree', 'seat', 
+                    'verified1', 'verified2', 'verified3',
+                    'verified_updated_at1', 'verified_updated_at2', 'verified_updated_at3',
+                    'read_flag_in', 'read_flag_out', 'read_light_in', 'read_light_out', 'rfid'
+                ]
+                for field in fields_to_check:
+                    old_val = original_data[field]
+                    new_val = getattr(person, field)
+                    if isinstance(old_val, (type(None),)) and new_val is not None:
+                        changed = True
+                    elif isinstance(old_val, (type(None),)) and new_val is None:
+                        changed = False
+                    elif hasattr(old_val, 'isoformat') and hasattr(new_val, 'isoformat'):
+                        changed = old_val.isoformat() != new_val.isoformat()
+                    else:
+                        changed = old_val != new_val
+                    
+                    if changed:
+                        changes.append(f"{field}::{old_val}::{new_val}")
+
+                if changes:
+                    log_message = " | ".join(changes)
+                    Log.objects.create(
+                        action='Edit',
+                        model='Person',
+                        details=log_message, 
+                        record_id=person.id
+                    )
                 if settings.USE_CHANNEL:
-                    for person in updated_persons:
-                        broadcast_to_crud01({
-                            'action': 'update',
-                            'id': person.id,
-                            'fields': {
-                                'name': person.name,
-                                'nisit': person.nisit,
-                                'degree': person.degree,
-                                'seat': person.seat,
-                                'verified': person.verified,
-                                'rfid': person.rfid,
-                            }
-                        })
-                        broadcast_stats_update()
-            return Response({'message': 'Updated successfully'}, status=status.HTTP_200_OK)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    broadcast_to_crud01({
+                        'action': 'update',
+                        'id': person.id,
+                        'fields': {
+                            'name': person.name,
+                            'nisit': person.nisit,
+                            'degree': person.degree,
+                            'seat': person.seat,
+                            'verified1': person.verified1,
+                            'verified2': person.verified2,
+                            'verified3': person.verified3,
+                            'verified_updated_at1': person.verified_updated_at1,
+                            'verified_updated_at2': person.verified_updated_at2,
+                            'verified_updated_at3': person.verified_updated_at3,
+                            'read_flag_in': person.read_flag_in,
+                            'read_flag_out': person.read_flag_out,
+                            'read_light_in': person.read_light_in,
+                            'read_light_out': person.read_light_out,
+                            'rfid': person.rfid,
+                        }
+                    })
+                    broadcast_stats_update()
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Person.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
 
 
     def delete(self, request):
@@ -516,13 +602,18 @@ class PersonList(APIView):
             with transaction.atomic():
                 persons = Person.objects.filter(id__in=ids)
                 # เก็บ ID ก่อนลบ
-                deleted_ids = list(persons.values_list('id', flat=True))
-                
+                ids_str = ','.join(str(p.id) for p in persons)
+                Log.objects.create(
+                    action='Delete',
+                    model='Person',
+                    details=f"[ID: {ids_str}] ลบข้อมูลแบบกลุ่ม",
+                    record_id=None
+                )
                 persons.delete()
                 
                 # ส่ง WebSocket สำหรับแต่ละ ID
                 if settings.USE_CHANNEL:
-                    for id in deleted_ids:
+                    for id in ids_str:
                         broadcast_to_crud01({
                             'action': 'delete',
                             'id': id,
@@ -577,15 +668,24 @@ class PersonDetail(APIView):
                 'nisit': person.nisit,
                 'degree': person.degree,
                 'seat': person.seat,
-                'verified': person.verified,
-                'rfid': person.rfid
+                'verified1': person.verified1,
+                'verified2': person.verified2,
+                'verified3': person.verified3,
+                'verified_updated_at1': person.verified_updated_at1,
+                'verified_updated_at2': person.verified_updated_at2,
+                'verified_updated_at3': person.verified_updated_at3,
+                'read_flag_in': person.read_flag_in,
+                'read_flag_out': person.read_flag_out,
+                'read_light_in': person.read_light_in,
+                'read_light_out': person.read_light_out,
+                'rfid': person.rfid,
             }
             serializer = PersonSerializer(person, data=request.data)
             if serializer.is_valid():
                 serializer.save()
                 person.refresh_from_db()
                 changes = []
-                for field in ['name', 'degree', 'seat', 'verified', 'rfid']:
+                for field in ['name', 'degree', 'seat', 'verified1', 'verified2', 'verified3', 'read_flag_in', 'read_flag_out', 'read_light_in', 'read_light_in', 'rfid']:
                     old_val = original_data[field]
                     new_val = getattr(person, field)
                     if old_val != new_val:
@@ -607,7 +707,16 @@ class PersonDetail(APIView):
                             'nisit': person.nisit,
                             'degree': person.degree,
                             'seat': person.seat,
-                            'verified': person.verified,
+                            'verified1': person.verified1,
+                            'verified2': person.verified2,
+                            'verified3': person.verified3,
+                            'verified_updated_at1': person.verified_updated_at1,
+                            'verified_updated_at2': person.verified_updated_at2,
+                            'verified_updated_at3': person.verified_updated_at3,
+                            'read_flag_in': person.read_flag_in,
+                            'read_flag_out': person.read_flag_out,
+                            'read_light_in': person.read_light_in,
+                            'read_light_out': person.read_light_out,
                             'rfid': person.rfid,
                         }
                     })
@@ -623,14 +732,22 @@ class RFIDSimulator(APIView):
     def post(self, request):
         try:
             simulated_tags = request.data.get('tags', [])
-            
-            if not simulated_tags:
+            ip_map = {
+                '192.168.1.101': 1,
+                '192.168.1.102': 2,
+                '192.168.1.103': 3
+            }
+            client_ip = request.META.get('REMOTE_ADDR')
+            scanner_id = ip_map.get(client_ip)
+
+            if not simulated_tags or scanner_id not in [1, 2, 3]:
                 return Response(
-                    {'error': 'No tags provided'},
+                    {'error': 'Missing tags or invalid scanner_id (1-3)'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
             results = []
+
             for tag in simulated_tags:
                 epc = tag.get('epc')
                 if not epc:
@@ -638,42 +755,65 @@ class RFIDSimulator(APIView):
 
                 try:
                     person = Person.objects.get(rfid=epc)
-                    
-                    # ตรวจสอบสถานะก่อนอัปเดต
-                    if person.verified == 1:
+
+                    # Field ชื่อ dynamic เช่น verified2, verified_updated_at2
+                    verified_field = f"verified{scanner_id}"
+                    time_field = f"verified_updated_at{scanner_id}"
+                    current_status = getattr(person, verified_field, 0)
+
+                    if current_status == 1:
                         results.append({
                             'epc': epc,
                             'name': person.name,
                             'message': 'แท็กนี้ถูกสแกนแล้ว',
                         })
                     else:
-                        # อัปเดตสถานะเป็น 2 ถ้ายังไม่เคยสแกน
-                        person.verified = 1
+                        setattr(person, verified_field, 1)
+                        setattr(person, time_field, timezone.now())
                         person.save()
+
+                        # WebSocket (หากเปิดใช้งาน)
+                        if settings.USE_CHANNEL:
+                            broadcast_to_crud01({
+                                'action': 'update',
+                                'id': person.id,
+                                'fields': {
+                                    'name': person.name,
+                                    'nisit': person.nisit,
+                                    'degree': person.degree,
+                                    'seat': person.seat,
+                                    'verified1': person.verified1,
+                                    'verified2': person.verified2,
+                                    'verified3': person.verified3,
+                                    'verified_updated_at1': person.verified_updated_at1,
+                                    'verified_updated_at2': person.verified_updated_at2,
+                                    'verified_updated_at3': person.verified_updated_at3,
+                                    'rfid': person.rfid,
+                                    'read_flag_in': person.read_flag_in,
+                                    'read_flag_out': person.read_flag_out,
+                                    'read_light_in': person.read_light_in,
+                                    'read_light_out': person.read_light_out,
+                                }
+                            })
+                            broadcast_stats_update()
+
                         results.append({
                             'epc': epc,
                             'name': person.name,
                             'message': 'อัปเดตสถานะสำเร็จ',
                         })
-                        
+
                 except Person.DoesNotExist:
                     results.append({
                         'epc': epc,
-                        'message': 'ไม่พบข้อมูลแท็กนี้ในระบบ',
-                        'name': None
+                        'name': None,
+                        'message': 'ไม่พบข้อมูลแท็กนี้ในระบบ'
                     })
-            Log.objects.create(
-                action='rfid_scan',
-                model='Person',
-                details=f"RFID: {epc} Status: {person.verified}"
-            )
-            broadcast_stats_update()
+
             return Response({'results': results}, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LogList(generics.ListAPIView):
     serializer_class = LogSerializer

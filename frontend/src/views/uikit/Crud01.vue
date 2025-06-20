@@ -259,23 +259,27 @@ const filteredPersons = computed(() => {
 // เพิ่ม Axios สำหรับ CRUD Operations
 const saveProduct = async () => {
     submitted.value = true;
-    if (product?.value.name?.trim()) {
+
+    // ตรวจสอบว่ามีชื่อหรือไม่ (name.trim)
+    if (product?.value?.name?.trim()) {
         try {
             if (product.value.id) {
-                // อัพเดตข้อมูล
                 await axios.put(`${API_BASE}/api/person/${product.value.id}/`, product.value);
                 toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'อัพเดตข้อมูลเรียบร้อย', life: 3000 });
             } else {
-                // สร้างข้อมูลใหม่
                 await axios.post(`${API_BASE}/api/person/`, product.value);
                 toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'สร้างข้อมูลเรียบร้อย', life: 3000 });
             }
-            await fetchPersons(); // ดึงข้อมูลใหม่หลังบันทึก
+            // ดึงข้อมูลใหม่หลังบันทึก เพื่ออัพเดตตารางหรือรายการ
+            await fetchPersons();
+            // ปิด dialog
             productDialog.value = false;
         } catch (error) {
             console.error('Error saving data:', error);
-            toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: 'บันทึกข้อมูลไม่สำเร็จ', life: 3000 });
+            toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: error.response?.data?.error || 'บันทึกข้อมูลไม่สำเร็จ', life: 3000 });
         }
+    } else {
+        toast.add({ severity: 'warn', summary: 'ข้อมูลไม่ครบ', detail: 'กรุณากรอกชื่อ', life: 3000 });
     }
 };
 
@@ -318,34 +322,6 @@ async function deleteSelectedpersons() {
     }
 }
 
-async function updateSelectedVerified(status) {
-    try {
-        const ids = selectedpersons.value.map((p) => p.id);
-        await axios.put(`${API_BASE}/api/person/`, {
-            ids,
-            verified: status
-        });
-
-        persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, verified: status } : p));
-
-        selectedpersons.value = null;
-
-        toast.add({
-            severity: 'success',
-            summary: 'สำเร็จ',
-            detail: `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`,
-            life: 3000
-        });
-    } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'เกิดข้อผิดพลาด',
-            detail: error.response?.data?.error || 'ไม่สามารถเปลี่ยนสถานะได้',
-            life: 5000
-        });
-    }
-}
-
 function confirmDeleteSelected() {
     deletepersonsDialog.value = true;
 }
@@ -377,6 +353,39 @@ function hideDialog() {
 function editProduct(prod) {
     product.value = { ...prod };
     productDialog.value = true;
+}
+
+async function updateSelectedVerified(status, field = 'verified1') {
+    try {
+        const ids = selectedpersons.value.map((p) => p.id);
+
+        await axios.put(`${API_BASE}/api/person/`, {
+            ids,
+            verified: status,
+            verified_field: field
+        });
+
+        await fetchPersons();
+
+        // อัปเดตแสดงผลเฉพาะ field ที่ถูกเปลี่ยน
+        persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, [field]: status } : p));
+
+        selectedpersons.value = null;
+
+        toast.add({
+            severity: 'success',
+            summary: 'สำเร็จ',
+            detail: `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`,
+            life: 3000
+        });
+    } catch (error) {
+        toast.add({
+            severity: 'error',
+            summary: 'เกิดข้อผิดพลาด',
+            detail: error.response?.data?.error || 'ไม่สามารถเปลี่ยนสถานะได้',
+            life: 5000
+        });
+    }
 }
 
 const items = ref([
@@ -421,19 +430,19 @@ const verifiedMenuItems = [
         label: 'ยังไม่รายงานตัว',
         icon: 'rivet-icons:close-circle-solid',
         color: 'text-red-500',
-        command: () => updateSelectedVerified(0)
+        command: () => updateSelectedVerified(0, 'verified1')
     },
     {
         label: 'รายงานตัวแล้ว',
         icon: 'rivet-icons:check-circle-solid',
         color: 'text-green-500',
-        command: () => updateSelectedVerified(1)
+        command: () => updateSelectedVerified(1, 'verified1')
     },
     {
         label: 'อยู่ในห้องพิธี',
         icon: 'rivet-icons:exclamation-mark-circle-solid',
         color: 'text-yellow-300',
-        command: () => updateSelectedVerified(2)
+        command: () => updateSelectedVerified(2, 'verified1')
     }
 ];
 </script>
@@ -477,10 +486,10 @@ const verifiedMenuItems = [
                 :value="filteredPersons"
                 dataKey="id"
                 :paginator="true"
-                :rows="25"
+                :rows="10"
                 :filters="filters"
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
-                :rowsPerPageOptions="[25, 50]"
+                :rowsPerPageOptions="[5, 10, 25, 50]"
                 currentPageReportTemplate="จาก   {first} ถึง {last} ของทั้งหมด {totalRecords} คน"
                 :sortField="'formatted_id'"
                 :sortOrder="1"
@@ -585,19 +594,19 @@ const verifiedMenuItems = [
                     <span class="block mb-4 font-bold">สถานะรายงานตัว</span>
                     <div class="grid grid-cols-12 gap-4">
                         <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified1" v-model="product.verified" name="verified" :value="1" />
+                            <RadioButton id="verified1" v-model="product.verified1" name="verified" :value="1" />
                             <label for="verified1">
                                 <Icon icon="rivet-icons:check-circle-solid" class="text-green-500" />
                             </label>
                         </div>
                         <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified0" v-model="product.verified" name="verified" :value="0" />
+                            <RadioButton id="verified0" v-model="product.verified1" name="verified" :value="0" />
                             <label for="verified0">
                                 <Icon icon="rivet-icons:close-circle-solid" class="text-red-500" />
                             </label>
                         </div>
                         <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified2" v-model="product.verified" name="verified" :value="2" />
+                            <RadioButton id="verified2" v-model="product.verified1" name="verified" :value="2" />
                             <label for="verified2">
                                 <Icon icon="rivet-icons:exclamation-mark-circle-solid" class="text-yellow-300" />
                             </label>

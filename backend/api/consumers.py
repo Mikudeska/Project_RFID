@@ -2,6 +2,8 @@ from channels.generic.websocket import AsyncWebsocketConsumer, AsyncJsonWebsocke
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.conf import settings
+from collections import Counter
+from .models import Person
 import json
 
 def broadcast_to_crud01(message):
@@ -19,14 +21,22 @@ def broadcast_to_crud01(message):
     )
 
 def broadcast_stats_update():
-    from django.db.models import Count
-    from .models import Person
+    persons = Person.objects.all()
+    total = persons.count()
+
+    verified_counter = Counter()
+    for person in persons:
+        latest_verified = get_latest_verified(person)
+        if latest_verified in [0, 1, 2]:
+            verified_counter[latest_verified] += 1
+
     stats = {
-        'total': Person.objects.count(),
-        'checked_in': Person.objects.filter(verified=0).count(),
-        'in_checkin_room': Person.objects.filter(verified=1).count(),
-        'in_graduation_room': Person.objects.filter(verified=2).count()
+        'total': total,
+        'checked_in': verified_counter[0],
+        'in_checkin_room': verified_counter[1],
+        'in_graduation_room': verified_counter[2],
     }
+
     channel_layer = get_channel_layer()
     async_to_sync(channel_layer.group_send)(
         "crud01_group",
@@ -38,6 +48,30 @@ def broadcast_stats_update():
             }
         }
     )
+
+def get_latest_verified(person):
+    times = {
+        1: person.verified_updated_at1,
+        2: person.verified_updated_at2,
+        3: person.verified_updated_at3,
+    }
+    values = {
+        1: person.verified1,
+        2: person.verified2,
+        3: person.verified3,
+    }
+    latest_time = None
+    latest_verified = None
+
+    for key in [1, 2, 3]:
+        time = times[key]
+        value = values[key]
+        if time and value in [0, 1, 2]:
+            if not latest_time or time > latest_time:
+                latest_time = time
+                latest_verified = value
+    return latest_verified
+
 
 class TestConsumer(AsyncJsonWebsocketConsumer):
     async def connect(self):

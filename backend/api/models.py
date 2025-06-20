@@ -7,7 +7,21 @@ class Person(models.Model):
     nisit = models.CharField(max_length=11, unique=True, blank=True)
     degree = models.CharField(max_length=100)
     seat = models.IntegerField(unique=True, blank=True)
-    verified = models.IntegerField(default=0, blank=True)
+
+    verified1 = models.IntegerField(default=0, blank=True)
+    verified2 = models.IntegerField(default=0, blank=True)
+    verified3 = models.IntegerField(default=0, blank=True)
+
+    verified_updated_at1 = models.DateTimeField(null=True, blank=True)
+    verified_updated_at2 = models.DateTimeField(null=True, blank=True)
+    verified_updated_at3 = models.DateTimeField(null=True, blank=True)
+
+    read_flag_in = models.BooleanField(default=False, blank=True) 
+    read_flag_out = models.BooleanField(default=False, blank=True) 
+
+    read_light_in = models.BooleanField(default=False, blank=True) 
+    read_light_out = models.BooleanField(default=False, blank=True)
+
     date = models.DateTimeField(auto_now_add=True)
     rfid = models.CharField(max_length=15, unique=True, blank=True)
 
