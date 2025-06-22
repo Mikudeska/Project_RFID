@@ -16,14 +16,11 @@ class Person(models.Model):
     verified_updated_at2 = models.DateTimeField(null=True, blank=True)
     verified_updated_at3 = models.DateTimeField(null=True, blank=True)
 
-    read_flag_in = models.BooleanField(default=False, blank=True) 
-    read_flag_out = models.BooleanField(default=False, blank=True) 
-
-    read_light_in = models.BooleanField(default=False, blank=True) 
-    read_light_out = models.BooleanField(default=False, blank=True)
+    read_flag = models.BooleanField(default=False, blank=True) 
+    read_light = models.BooleanField(default=False, blank=True) 
 
     date = models.DateTimeField(auto_now_add=True)
-    rfid = models.CharField(max_length=15, unique=True, blank=True)
+    rfid = models.CharField(max_length=15, unique=True, blank=True, null=True)
 
     @staticmethod
     def generate_unique_value(length, model, field):
@@ -35,9 +32,6 @@ class Person(models.Model):
     def save(self, *args, **kwargs):
         if not self.nisit:
             self.nisit = self.generate_unique_value(11, Person, 'nisit')
-        
-        if not self.rfid:
-            self.rfid = self.generate_unique_value(15, Person, 'rfid')
 
         if not self.seat:
             with transaction.atomic():

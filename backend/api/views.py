@@ -3,6 +3,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.conf import settings
 from django.db import transaction, connection
+from django.http import JsonResponse
 from tablib import Dataset
 from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
@@ -17,10 +18,10 @@ from .resources import PersonResource
 from .consumers import broadcast_to_crud01, broadcast_stats_update
 from .models import Person, Log
 from .serializers import PersonSerializer, LogSerializer
+from datetime import datetime
 import urllib.parse
 import os, io, json
 import traceback
-import datetime
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -137,12 +138,14 @@ class ExportPDF(View):
             # ดึงข้อมูล
             persons = Person.objects.all().order_by('seat')
             y_position = 780  # ตำแหน่งเริ่มต้น
-
+            def get_verified_status(person):
+                return "รายงานตัวแล้ว" if person.verified1 == 1 or person.verified2 == 1 or person.verified3 == 1 else "ยังไม่รายงานตัว"
+            
             for i, person in enumerate(persons, start=1):
                 p.drawString(50, y_position, f"{i:04d}")
                 p.drawString(150, y_position, person.name)
                 p.drawString(300, y_position, person.nisit)
-                p.drawString(400, y_position, str(person.verified))
+                p.drawString(400, y_position, get_verified_status(person))
                 y_position -= 20  # เลื่อนบรรทัด
 
                 # ขึ้นหน้าใหม่หากข้อมูลเต็มหน้า
@@ -155,15 +158,12 @@ class ExportPDF(View):
             buffer.seek(0)
 
             # สร้าง HTTP Response
-            response = HttpResponse(
-                buffer.getvalue(),
-                content_type='application/pdf'
-            )
             response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-            response['Content-Disposition'] = 'attachment; filename="graduates.pdf"'
+            response['Content-Disposition'] = 'inline; filename="graduates.pdf"'
             response["Access-Control-Expose-Headers"] = "Content-Disposition"
-            response['Content-Transfer-Encoding'] = 'binary'
-            response['Cache-Control'] = 'no-cache'
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Content-Length'] = str(len(buffer.getvalue()))
             Log.objects.create(
                 action='Export',
                 model='Person',
@@ -173,10 +173,10 @@ class ExportPDF(View):
             return response
 
         except Exception as e:
-            return Response(
-                {'error': str(e)}, 
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            print('PDF Export Error:', str(e))
+            return JsonResponse({'error': str(e)}, status=500)
+
+from datetime import datetime
 
 class ExportPDFResult(View):
     def get(self, request):
@@ -197,6 +197,9 @@ class ExportPDFResult(View):
                     return 'ป.โท'
                 return 'ป.ตรี'
 
+            def is_verified(person):
+                return person.verified1 == 1 or person.verified2 == 1 or person.verified3 == 1
+
             persons = Person.objects.all()
 
             degree_summary = {
@@ -207,26 +210,29 @@ class ExportPDFResult(View):
 
             branch_summary = {}
 
+            # เก็บ id ที่ยังไม่รายงานตัว
+            missing_ids = []
+
             for person in persons:
                 dg = degree_group(person.degree)
                 degree_summary[dg]['total'] += 1
 
-                if person.verified == 1:
+                if is_verified(person):
                     degree_summary[dg]['present'] += 1
+                else:
+                    missing_ids.append(person.id)
 
                 branch = person.degree if person.degree else 'ไม่ระบุ'
                 if branch not in branch_summary:
                     branch_summary[branch] = {'total': 0, 'present': 0}
                 branch_summary[branch]['total'] += 1
 
-                if person.verified == 1:
+                if is_verified(person):
                     branch_summary[branch]['present'] += 1
 
-            # วันที่มุมขวาบน
             date_str = datetime.now().strftime("%d/%m/%Y")
             p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
 
-            # หัวข้อกลาง
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
 
@@ -257,8 +263,9 @@ class ExportPDFResult(View):
             p.drawRightString(230, y, f"{total_all}     คน")
             p.drawRightString(380, y, f"{present_all}   คน")
             p.drawRightString(530, y, f"{absent_all}    คน")
+            y -= 50
 
-            # หน้าใหม่
+            # --- หน้าใหม่ และส่วนสาขา ---
             p.showPage()
 
             p.setFont('THSarabun', 25)
@@ -301,6 +308,30 @@ class ExportPDFResult(View):
                     p.drawString(530, y, "คิดเป็น %")
                     y -= 25
 
+            # --- หน้าใหม่สำหรับ ID ที่ยังไม่รายงานตัว ---
+            p.showPage()
+            p.setFont('THSarabun', 25)
+            p.drawCentredString(width / 2, height - 80, "รายชื่อที่ยังไม่รายงานตัว")
+            p.setFont('THSarabun', 16)
+
+            # จัดเรียง id ก่อนแสดง
+            missing_persons = Person.objects.filter(
+                verified1=0,
+                verified2=0,
+                verified3=0
+            ).order_by('id')
+
+            y = height - 120
+            for person in missing_persons:
+                line = f"- [{person.id}] {person.nisit} {person.name} {person.degree}"
+                p.drawString(40, y, line)
+                y -= 20
+
+                if y < 50:
+                    p.showPage()
+                    y = height - 80
+                    p.setFont('THSarabun', 16)
+
             p.save()
             buffer.seek(0)
 
@@ -321,8 +352,10 @@ class ExportPDFResult(View):
 
         except Exception as e:
             print("ERROR:", str(e))
-            print(traceback.format_exc().encode('utf-8', errors='replace').decode())
+            import traceback
+            print(traceback.format_exc())
             return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
+
 
 class ExportData(APIView):
     def get(self, request, format_type):
@@ -482,10 +515,8 @@ class PersonList(APIView):
                         'verified2': instance.verified2,
                         'verified3': instance.verified3,
                         'verified': instance.verified,
-                        'read_flag_in': instance.read_flag_in,
-                        'read_flag_out': instance.read_flag_out,
-                        'read_light_in': instance.read_light_in,
-                        'read_light_out': instance.read_light_out,
+                        'read_flag': instance.read_flag,
+                        'read_light': instance.read_light,
                         'rfid': instance.rfid,
                     }
                 })
@@ -507,10 +538,8 @@ class PersonList(APIView):
                 'verified_updated_at1': person.verified_updated_at1,
                 'verified_updated_at2': person.verified_updated_at2,
                 'verified_updated_at3': person.verified_updated_at3,
-                'read_flag_in': person.read_flag_in,
-                'read_flag_out': person.read_flag_out,
-                'read_light_in': person.read_light_in,
-                'read_light_out': person.read_light_out,
+                'read_flag': person.read_flag,
+                'read_light': person.read_light,
                 'rfid': person.rfid,
             }
             
@@ -578,10 +607,8 @@ class PersonList(APIView):
                             'verified_updated_at1': person.verified_updated_at1,
                             'verified_updated_at2': person.verified_updated_at2,
                             'verified_updated_at3': person.verified_updated_at3,
-                            'read_flag_in': person.read_flag_in,
-                            'read_flag_out': person.read_flag_out,
-                            'read_light_in': person.read_light_in,
-                            'read_light_out': person.read_light_out,
+                            'read_flag': person.read_flag,
+                            'read_light': person.read_light,
                             'rfid': person.rfid,
                         }
                     })
@@ -674,10 +701,8 @@ class PersonDetail(APIView):
                 'verified_updated_at1': person.verified_updated_at1,
                 'verified_updated_at2': person.verified_updated_at2,
                 'verified_updated_at3': person.verified_updated_at3,
-                'read_flag_in': person.read_flag_in,
-                'read_flag_out': person.read_flag_out,
-                'read_light_in': person.read_light_in,
-                'read_light_out': person.read_light_out,
+                'read_flag': person.read_flag,
+                'read_light_out': person.read_light,
                 'rfid': person.rfid,
             }
             serializer = PersonSerializer(person, data=request.data)
@@ -713,10 +738,8 @@ class PersonDetail(APIView):
                             'verified_updated_at1': person.verified_updated_at1,
                             'verified_updated_at2': person.verified_updated_at2,
                             'verified_updated_at3': person.verified_updated_at3,
-                            'read_flag_in': person.read_flag_in,
-                            'read_flag_out': person.read_flag_out,
-                            'read_light_in': person.read_light_in,
-                            'read_light_out': person.read_light_out,
+                            'read_flag': person.read_flag,
+                            'read_light': person.read_light,
                             'rfid': person.rfid,
                         }
                     })
@@ -728,17 +751,16 @@ class PersonDetail(APIView):
     
 class RFIDSimulator(APIView):
     parser_classes = [JSONParser]
-    
+
     def post(self, request):
         try:
             simulated_tags = request.data.get('tags', [])
-            ip_map = {
-                '192.168.1.101': 1,
-                '192.168.1.102': 2,
-                '192.168.1.103': 3
-            }
-            client_ip = request.META.get('REMOTE_ADDR')
-            scanner_id = ip_map.get(client_ip)
+            scanner_id = request.data.get('scanner_id')
+
+            try:
+                scanner_id = int(scanner_id)
+            except (TypeError, ValueError):
+                scanner_id = None
 
             if not simulated_tags or scanner_id not in [1, 2, 3]:
                 return Response(
@@ -756,7 +778,6 @@ class RFIDSimulator(APIView):
                 try:
                     person = Person.objects.get(rfid=epc)
 
-                    # Field ชื่อ dynamic เช่น verified2, verified_updated_at2
                     verified_field = f"verified{scanner_id}"
                     time_field = f"verified_updated_at{scanner_id}"
                     current_status = getattr(person, verified_field, 0)
@@ -772,7 +793,6 @@ class RFIDSimulator(APIView):
                         setattr(person, time_field, timezone.now())
                         person.save()
 
-                        # WebSocket (หากเปิดใช้งาน)
                         if settings.USE_CHANNEL:
                             broadcast_to_crud01({
                                 'action': 'update',
@@ -789,10 +809,8 @@ class RFIDSimulator(APIView):
                                     'verified_updated_at2': person.verified_updated_at2,
                                     'verified_updated_at3': person.verified_updated_at3,
                                     'rfid': person.rfid,
-                                    'read_flag_in': person.read_flag_in,
-                                    'read_flag_out': person.read_flag_out,
-                                    'read_light_in': person.read_light_in,
-                                    'read_light_out': person.read_light_out,
+                                    'read_flag': person.read_flag,
+                                    'read_light': person.read_light,
                                 }
                             })
                             broadcast_stats_update()
@@ -804,11 +822,57 @@ class RFIDSimulator(APIView):
                         })
 
                 except Person.DoesNotExist:
-                    results.append({
-                        'epc': epc,
-                        'name': None,
-                        'message': 'ไม่พบข้อมูลแท็กนี้ในระบบ'
-                    })
+                    # ถ้าไม่เจอ rfid นี้ในระบบ ให้ลองหา Person ที่ rfid ว่าง (null หรือ empty string)
+                    person_with_empty_rfid = Person.objects.filter(rfid__isnull=True).first()
+                    if not person_with_empty_rfid:
+                        # ลองเช็คกรณีที่ rfid เป็น empty string ด้วย
+                        person_with_empty_rfid = Person.objects.filter(rfid='').first()
+
+                    if not person_with_empty_rfid:
+                        results.append({
+                            'epc': epc,
+                            'name': None,
+                            'message': 'ไม่พบข้อมูลแท็กนี้ในระบบ'
+                        })
+                    else:
+                        # อัปเดต rfid ของคนนี้เป็น epc ที่ส่งมา
+                        person_with_empty_rfid.rfid = epc
+
+                        verified_field = f"verified{scanner_id}"
+                        time_field = f"verified_updated_at{scanner_id}"
+
+                        setattr(person_with_empty_rfid, verified_field, 1)
+                        setattr(person_with_empty_rfid, time_field, timezone.now())
+
+                        person_with_empty_rfid.save()
+
+                        if settings.USE_CHANNEL:
+                            broadcast_to_crud01({
+                                'action': 'update',
+                                'id': person_with_empty_rfid.id,
+                                'fields': {
+                                    'name': person_with_empty_rfid.name,
+                                    'nisit': person_with_empty_rfid.nisit,
+                                    'degree': person_with_empty_rfid.degree,
+                                    'seat': person_with_empty_rfid.seat,
+                                    'verified1': person_with_empty_rfid.verified1,
+                                    'verified2': person_with_empty_rfid.verified2,
+                                    'verified3': person_with_empty_rfid.verified3,
+                                    'verified_updated_at1': person_with_empty_rfid.verified_updated_at1,
+                                    'verified_updated_at2': person_with_empty_rfid.verified_updated_at2,
+                                    'verified_updated_at3': person_with_empty_rfid.verified_updated_at3,
+                                    'rfid': person_with_empty_rfid.rfid,
+                                    'read_flag': person_with_empty_rfid.read_flag,
+                                    'read_light': person_with_empty_rfid.read_light,
+                                }
+                            })
+                            broadcast_stats_update()
+
+                        results.append({
+                            'epc': epc,
+                            'name': person_with_empty_rfid.name,
+                            'message': 'เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว',
+                        })
 
             return Response({'results': results}, status=status.HTTP_200_OK)
 
