@@ -18,7 +18,6 @@ from .resources import PersonResource
 from .consumers import broadcast_to_crud01, broadcast_stats_update
 from .models import Person, Log
 from .serializers import PersonSerializer, LogSerializer
-from datetime import datetime
 import urllib.parse
 import os, io, json
 import traceback
@@ -176,8 +175,6 @@ class ExportPDF(View):
             print('PDF Export Error:', str(e))
             return JsonResponse({'error': str(e)}, status=500)
 
-from datetime import datetime
-
 class ExportPDFResult(View):
     def get(self, request):
         try:
@@ -323,7 +320,7 @@ class ExportPDFResult(View):
 
             y = height - 120
             for person in missing_persons:
-                line = f"- [{person.id}] {person.nisit} {person.name} {person.degree}"
+                line = f"[{person.id}]  {person.nisit}  {person.name}   {person.degree}"
                 p.drawString(40, y, line)
                 y -= 20
 
@@ -355,7 +352,6 @@ class ExportPDFResult(View):
             import traceback
             print(traceback.format_exc())
             return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
-
 
 class ExportData(APIView):
     def get(self, request, format_type):
@@ -415,7 +411,7 @@ class ImportData(APIView):
                 raise ValueError("ไฟล์ที่อัปโหลดว่างเปล่า")
 
             # นำเข้าข้อมูล
-            result = resource.import_data(dataset, dry_run=False, raise_errors=True)
+            result = resource.import_data(dataset, dry_run=False)
             
             # แก้ไขการนับจำนวนรายการ
             imported_count = (
@@ -463,7 +459,7 @@ class StatsView(APIView):
                 if value in [0, 1, 2]:
                     # ถ้า timestamp ไม่มี ให้ใช้วันที่เก่ามากๆ แทน เพื่อให้ไม่เลือกก่อน timestamp อื่น
                     if not timestamp:
-                        timestamp = datetime.datetime.min.replace(tzinfo=datetime.timezone.utc)
+                        timestamp = datetime.min.replace(tzinfo=timezone.utc)
                     verified_with_time.append((timestamp, value))
 
             if verified_with_time:
@@ -551,11 +547,12 @@ class PersonList(APIView):
                 verified_key = f"verified{i}"
                 updated_key = f"verified_updated_at{i}"
                 if verified_key in data:
-                    new_verified_val = data.get(verified_key)
+                    new_verified_val = int(data.get(verified_key))  # บังคับเป็น int
                     old_verified_val = getattr(person, verified_key)
-                    if str(new_verified_val) != str(old_verified_val):
-                        # ✅ ตรงนี้ต้องใช้ localtime เพื่อให้เวลาตรงกับ Asia/Bangkok
+
+                    if old_verified_val is None or old_verified_val != new_verified_val:
                         data[updated_key] = timezone.localtime(timezone.now()).isoformat()
+
 
             serializer = PersonSerializer(person, data=data)
             if serializer.is_valid():
@@ -567,7 +564,7 @@ class PersonList(APIView):
                     'name', 'degree', 'seat', 
                     'verified1', 'verified2', 'verified3',
                     'verified_updated_at1', 'verified_updated_at2', 'verified_updated_at3',
-                    'read_flag_in', 'read_flag_out', 'read_light_in', 'read_light_out', 'rfid'
+                    'read_flag', 'read_light', 'rfid'
                 ]
                 for field in fields_to_check:
                     old_val = original_data[field]
@@ -702,7 +699,7 @@ class PersonDetail(APIView):
                 'verified_updated_at2': person.verified_updated_at2,
                 'verified_updated_at3': person.verified_updated_at3,
                 'read_flag': person.read_flag,
-                'read_light_out': person.read_light,
+                'read_light': person.read_light,
                 'rfid': person.rfid,
             }
             serializer = PersonSerializer(person, data=request.data)
@@ -710,7 +707,7 @@ class PersonDetail(APIView):
                 serializer.save()
                 person.refresh_from_db()
                 changes = []
-                for field in ['name', 'degree', 'seat', 'verified1', 'verified2', 'verified3', 'read_flag_in', 'read_flag_out', 'read_light_in', 'read_light_in', 'rfid']:
+                for field in ['name', 'degree', 'seat', 'verified1', 'verified2', 'verified3', 'read_flag', 'read_light', 'rfid']:
                     old_val = original_data[field]
                     new_val = getattr(person, field)
                     if old_val != new_val:
@@ -791,6 +788,8 @@ class RFIDSimulator(APIView):
                     else:
                         setattr(person, verified_field, 1)
                         setattr(person, time_field, timezone.now())
+                        person.read_flag = True
+                        person.read_light = True
                         person.save()
 
                         if settings.USE_CHANNEL:
@@ -819,6 +818,8 @@ class RFIDSimulator(APIView):
                             'epc': epc,
                             'name': person.name,
                             'message': 'อัปเดตสถานะสำเร็จ',
+                            'flag': person.read_flag,
+                            'light': person.read_light,
                         })
 
                 except Person.DoesNotExist:
@@ -843,6 +844,9 @@ class RFIDSimulator(APIView):
 
                         setattr(person_with_empty_rfid, verified_field, 1)
                         setattr(person_with_empty_rfid, time_field, timezone.now())
+
+                        person_with_empty_rfid.read_flag = True 
+                        person_with_empty_rfid.read_light = True 
 
                         person_with_empty_rfid.save()
 
@@ -872,6 +876,8 @@ class RFIDSimulator(APIView):
                             'epc': epc,
                             'name': person_with_empty_rfid.name,
                             'message': 'เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว',
+                            'flag': person.read_flag,
+                            'light': person.read_light,
                         })
 
             return Response({'results': results}, status=status.HTTP_200_OK)

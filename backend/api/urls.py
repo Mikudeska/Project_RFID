@@ -12,7 +12,7 @@ urlpatterns = [
     path('export-pdf-result/', ExportPDFResult.as_view()),
     path('reset/', ResetDatabase.as_view(), name='reset-database'),
     path('resetlog/', ResetLog.as_view(), name='reset-log'),
-    path('simulate-rfid/', RFIDSimulator.as_view(), name='simulate-rfid'),
+    path('rfidAPI/', RFIDSimulator.as_view(), name='rfid_api'),
     path('logs/', LogList.as_view(), name='log-list'),
     path('logs/new/', LogCreateView.as_view(), name='log-create'),
 ]

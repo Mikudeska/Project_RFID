@@ -17,7 +17,7 @@ onMounted(async () => {
 });
 
 const online = useOnline();
-const wifistatus = computed(() => (online.value ? 'material-symbols:wifi-rounded' : 'material-symbols:wifi-off-rounded'));
+const wifistatus = computed(() => (online.value ? 'svg-spinners:wifi-fade' : 'material-symbols:wifi-off-rounded'));
 const clazz = computed(() => (online.value ? 'text-primary' : 'text-red-500'));
 const text = computed(() => (online.value ? 'Online' : 'Offline'));
 

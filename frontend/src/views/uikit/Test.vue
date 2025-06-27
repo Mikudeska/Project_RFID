@@ -5,44 +5,13 @@ import { ref, onUnmounted, computed } from 'vue';
 import { useOnline } from '@vueuse/core';
 
 const online = useOnline();
+const wifistatus = computed(() => (online.value ? 'svg-spinners:wifi-fade' : 'material-symbols:wifi-off-rounded'));
 const clazz = computed(() => (online.value ? 'text-primary' : 'text-red'));
 const text = computed(() => (online.value ? 'Online' : 'Offline'));
 const toast = useToast();
 const visible = ref(false);
 const progress = ref(0);
 const interval = ref();
-
-const socket = new WebSocket('ws://localhost:8000/ws/test/');
-const messageToSend = ref('');
-
-socket.onmessage = (event) => {
-    console.log('Received:', event.data);
-};
-
-socket.onopen = () => {
-    console.log('WebSocket connected');
-};
-
-const sendMessage = () => {
-    if (socket.readyState === WebSocket.OPEN && messageToSend.value.trim() !== '') {
-        socket.send(messageToSend.value);
-        messageToSend.value = '';
-    }
-};
-
-socket.onmessage = function (event) {
-    console.log('Received:', event.data);
-};
-
-socket.onopen = function () {
-    socket.send('Hello from Vue!');
-};
-
-onUnmounted(() => {
-    if (interval.value) {
-        clearInterval(interval.value);
-    }
-});
 
 const upload = () => {
     if (!visible.value) {
@@ -66,6 +35,7 @@ const upload = () => {
         }, 1000);
     }
 };
+
 </script>
 
 <template>
@@ -93,14 +63,11 @@ const upload = () => {
             </Toast>
         </div>
         <div class="card row-1 row-2 col-2 col-3">
-            <div class="text-5xl">
-                Status: <b :class="clazz">{{ text }}</b>
+            <div class="flex items-center gap-2 text-5xl">
+                Status: <b class="flex items-center gap-2 text-5xl" :class="clazz"><Icon :icon="wifistatus" />{{ text }}</b>
             </div>
         </div>
-        <div class="card row-1 row-2 col-3 col-4">
-            <input v-model="messageToSend" placeholder="พิมพ์ข้อความที่นี่" />
-            <button @click="sendMessage">ส่งข้อความ</button>
-        </div>
+        <div class="card row-1 row-2 col-3 col-4">3</div>
         <div class="card row-2 row-3 col-1 col-2">4</div>
         <div class="card row-2 row-3 col-2 col-3">5</div>
         <div class="card row-2 row-3 col-3 col-4">6</div>

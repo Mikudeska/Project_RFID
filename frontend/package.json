@@ -1,5 +1,5 @@
 {
-    "name": "sakai-vue",
+    "name": "rfidssru",
     "version": "4.2.0",
     "scripts": {
         "dev": "vite",
@@ -24,7 +24,8 @@
         "socket.io-client": "^4.8.1",
         "vue": "^3.4.34",
         "vue-json-excel3": "^1.0.30",
-        "vue-router": "^4.5.0"
+        "vue-router": "^4.5.0",
+        "web-vitals": "^3.3.1"
     },
     "devDependencies": {
         "@iconify/vue": "^4.3.0",

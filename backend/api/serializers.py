@@ -15,16 +15,34 @@ class PersonSerializer(serializers.ModelSerializer):
             verified_key = f"verified{i}"
             updated_key = f"verified_updated_at{i}"
             if verified_key in validated_data:
-                if validated_data[verified_key] != getattr(instance, verified_key):
+                new_val = validated_data[verified_key]
+                old_val = getattr(instance, verified_key)
+                if old_val is None or old_val != new_val:
                     validated_data[updated_key] = timezone.now()
         return super().update(instance, validated_data)
 
     def get_verified(self, obj):
-        verified_values = [obj.verified1, obj.verified2, obj.verified3]
-        valid_values = [v for v in verified_values if v is not None]
-        if valid_values:
-            return max(valid_values)
-        return None
+        latest_verified = None
+        latest_time = None
+
+        # เช็กจาก timestamp ก่อน
+        for i in range(1, 4):
+            verified_value = getattr(obj, f'verified{i}')
+            updated_time = getattr(obj, f'verified_updated_at{i}')
+            if updated_time:
+                if latest_time is None or updated_time > latest_time:
+                    latest_time = updated_time
+                    latest_verified = verified_value
+
+        # ถ้าไม่มี timestamp เลย (null หมด)
+        if latest_verified is None:
+            for i in range(1, 4):
+                verified_value = getattr(obj, f'verified{i}')
+                if verified_value is not None:
+                    return verified_value
+            return None
+
+        return latest_verified
 
     def validate_nisit(self, value):
         if Person.objects.filter(nisit=value).exclude(id=self.instance.id if self.instance else None).exists():

@@ -41,30 +41,23 @@ degree_list = [
 def generate_nisit():
     return ''.join(str(random.randint(0, 9)) for _ in range(11))
 
+def generate_rfid():
+    return ''.join(str(random.randint(0, 9)) for _ in range(15))
+
 data = []
 for _ in range(num_records):
     name = f"{random.choice(first_names)} {random.choice(last_names)}"
     degree = random.choice(degree_list)
     verified1 = random.choice([0, 1, 2])
-    verified2 = 0
-    verified3 = 0
-    read_flag_in = False
-    read_flag_out = False
-    read_light_in = False
-    read_light_out = False
     nisit = generate_nisit()
+    rfid = generate_rfid()
 
     data.append({
-        "ชื่อ-นามสกุล": name,
         "รหัสนิสิต": nisit,
+        "ชื่อ-นามสกุล": name,
         "ชื่อปริญญา": degree,
-        "verified1": verified1,
-        "verified2": verified2,
-        "verified3": verified3,
-        "read_flag_in": read_flag_in,
-        "read_flag_out": read_flag_out,
-        "read_light_in": read_light_in,
-        "read_light_out": read_light_out,
+        "สถานะรายงานตัว": verified1,
+        "รหัส RFID": rfid,
     })
 
 df = pd.DataFrame(data)

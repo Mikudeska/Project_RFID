@@ -196,7 +196,7 @@ const handleFileUpload = async () => {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                progress.value = Math.min(percent * 0.8, 80); // จำกัดไม่ให้เกิน 80%
+                progress.value = Math.min(percent * 0.8, 95); // จำกัดไม่ให้เกิน %
             }
         });
 
@@ -663,7 +663,7 @@ const verifiedMenuItems = [
                 <!-- Progress Bar -->
                 <template v-if="uploadInProgress">
                     <ProgressBar v-if="uploadInProgress" :value="progress" :showValue="false" class="w-full" style="height: 4px" />
-                    <p v-if="uploadInProgress" class="mt-2 text-sm text-center text-black">
+                    <p v-if="uploadInProgress" class="mt-2 text-sm text-center text-sold">
                         {{ progress < 80 ? 'กำลังอัปโหลดไฟล์...' : 'กำลังประมวลผลข้อมูล...' }}
                     </p>
                 </template>
