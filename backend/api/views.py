@@ -520,101 +520,57 @@ class PersonList(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def put(self, request, pk):
-        try:
-            person = Person.objects.get(pk=pk)
-            original_data = {
-                'name': person.name,
-                'nisit': person.nisit,
-                'degree': person.degree,
-                'seat': person.seat,
-                'verified1': person.verified1,
-                'verified2': person.verified2,
-                'verified3': person.verified3,
-                'verified_updated_at1': person.verified_updated_at1,
-                'verified_updated_at2': person.verified_updated_at2,
-                'verified_updated_at3': person.verified_updated_at3,
-                'read_flag': person.read_flag,
-                'read_light': person.read_light,
-                'rfid': person.rfid,
-            }
-            
-            data = request.data.copy()
+    def put(self, request):
+        ids = request.data.get('ids', [])
+        verified = request.data.get('verified')
+        verified_field = request.data.get('verified_field')
 
-            now = timezone.localtime(timezone.now())  # เวลาปัจจุบันตาม TIME_ZONE ใน settings.py
+        if not ids or not verified_field:
+            return Response({'error': 'ข้อมูลไม่ครบ'}, status=400)
 
-            for i in range(1, 4):
-                verified_key = f"verified{i}"
-                updated_key = f"verified_updated_at{i}"
-                if verified_key in data:
-                    new_verified_val = int(data.get(verified_key))  # บังคับเป็น int
-                    old_verified_val = getattr(person, verified_key)
+        persons = Person.objects.filter(id__in=ids)
+        now = timezone.localtime(timezone.now())
 
-                    if old_verified_val is None or old_verified_val != new_verified_val:
-                        data[updated_key] = timezone.localtime(timezone.now()).isoformat()
+        updated_ids = []
+        updated_values = set()  # เก็บค่าใหม่ที่อัปเดต (เช่น 0,1,2)
+        
+        for person in persons:
+            original_val = getattr(person, verified_field)
+            new_val = int(verified)
+            if original_val != new_val:
+                setattr(person, verified_field, new_val)
+                updated_field = verified_field.replace('verified', 'verified_updated_at')
+                setattr(person, updated_field, now)
+                person.save()
 
+                updated_ids.append(str(person.id))   # เก็บเป็น string เพื่อ join ทีหลัง
+                updated_values.add(str(new_val))     # เก็บค่าใหม่ (ไม่ซ้ำ)
 
-            serializer = PersonSerializer(person, data=data)
-            if serializer.is_valid():
-                serializer.save()
-                person.refresh_from_db()
-                
-                changes = []
-                fields_to_check = [
-                    'name', 'degree', 'seat', 
-                    'verified1', 'verified2', 'verified3',
-                    'verified_updated_at1', 'verified_updated_at2', 'verified_updated_at3',
-                    'read_flag', 'read_light', 'rfid'
-                ]
-                for field in fields_to_check:
-                    old_val = original_data[field]
-                    new_val = getattr(person, field)
-                    if isinstance(old_val, (type(None),)) and new_val is not None:
-                        changed = True
-                    elif isinstance(old_val, (type(None),)) and new_val is None:
-                        changed = False
-                    elif hasattr(old_val, 'isoformat') and hasattr(new_val, 'isoformat'):
-                        changed = old_val.isoformat() != new_val.isoformat()
-                    else:
-                        changed = old_val != new_val
-                    
-                    if changed:
-                        changes.append(f"{field}::{old_val}::{new_val}")
-
-                if changes:
-                    log_message = " | ".join(changes)
-                    Log.objects.create(
-                        action='Edit',
-                        model='Person',
-                        details=log_message, 
-                        record_id=person.id
-                    )
                 if settings.USE_CHANNEL:
                     broadcast_to_crud01({
                         'action': 'update',
                         'id': person.id,
-                        'fields': {
-                            'name': person.name,
-                            'nisit': person.nisit,
-                            'degree': person.degree,
-                            'seat': person.seat,
-                            'verified1': person.verified1,
-                            'verified2': person.verified2,
-                            'verified3': person.verified3,
-                            'verified_updated_at1': person.verified_updated_at1,
-                            'verified_updated_at2': person.verified_updated_at2,
-                            'verified_updated_at3': person.verified_updated_at3,
-                            'read_flag': person.read_flag,
-                            'read_light': person.read_light,
-                            'rfid': person.rfid,
-                        }
+                        'fields': person_to_dict(person),
                     })
-                    broadcast_stats_update()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Person.DoesNotExist:
-            return Response(status=status.HTTP_404_NOT_FOUND)
 
+        if updated_ids:
+            # สร้างข้อความ log แบบที่ต้องการ
+            log_message = f"[ID: {','.join(updated_ids)}] อัปเดตเป็น {','.join(sorted(updated_values))}"
+
+            Log.objects.create(
+                action='Edit',
+                model='Person',
+                details=log_message,
+                record_id=None  # เพราะหลาย id
+            )
+
+        if settings.USE_CHANNEL:
+            broadcast_stats_update()
+
+        return Response({
+            'updated_count': len(updated_ids),
+            'updated_ids': updated_ids,
+        }, status=200)
 
     def delete(self, request):
         ids = request.data.get('ids', [])
@@ -687,21 +643,7 @@ class PersonDetail(APIView):
     def put(self, request, pk):
         try:
             person = Person.objects.get(pk=pk)
-            original_data = {
-                'name': person.name,
-                'nisit': person.nisit,
-                'degree': person.degree,
-                'seat': person.seat,
-                'verified1': person.verified1,
-                'verified2': person.verified2,
-                'verified3': person.verified3,
-                'verified_updated_at1': person.verified_updated_at1,
-                'verified_updated_at2': person.verified_updated_at2,
-                'verified_updated_at3': person.verified_updated_at3,
-                'read_flag': person.read_flag,
-                'read_light': person.read_light,
-                'rfid': person.rfid,
-            }
+            original_data = person_to_dict(person)
             serializer = PersonSerializer(person, data=request.data)
             if serializer.is_valid():
                 serializer.save()
@@ -724,21 +666,7 @@ class PersonDetail(APIView):
                     broadcast_to_crud01({
                         'action': 'update',
                         'id': person.id,
-                        'fields': {
-                            'name': person.name,
-                            'nisit': person.nisit,
-                            'degree': person.degree,
-                            'seat': person.seat,
-                            'verified1': person.verified1,
-                            'verified2': person.verified2,
-                            'verified3': person.verified3,
-                            'verified_updated_at1': person.verified_updated_at1,
-                            'verified_updated_at2': person.verified_updated_at2,
-                            'verified_updated_at3': person.verified_updated_at3,
-                            'read_flag': person.read_flag,
-                            'read_light': person.read_light,
-                            'rfid': person.rfid,
-                        }
+                        'fields': person_to_dict(person),
                     })
                     broadcast_stats_update()
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -771,7 +699,6 @@ class RFIDSimulator(APIView):
                 epc = tag.get('epc')
                 if not epc:
                     continue
-
                 try:
                     person = Person.objects.get(rfid=epc)
 
@@ -780,11 +707,7 @@ class RFIDSimulator(APIView):
                     current_status = getattr(person, verified_field, 0)
 
                     if current_status == 1:
-                        results.append({
-                            'epc': epc,
-                            'name': person.name,
-                            'message': 'แท็กนี้ถูกสแกนแล้ว',
-                        })
+                        results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
                     else:
                         setattr(person, verified_field, 1)
                         setattr(person, time_field, timezone.now())
@@ -796,31 +719,11 @@ class RFIDSimulator(APIView):
                             broadcast_to_crud01({
                                 'action': 'update',
                                 'id': person.id,
-                                'fields': {
-                                    'name': person.name,
-                                    'nisit': person.nisit,
-                                    'degree': person.degree,
-                                    'seat': person.seat,
-                                    'verified1': person.verified1,
-                                    'verified2': person.verified2,
-                                    'verified3': person.verified3,
-                                    'verified_updated_at1': person.verified_updated_at1,
-                                    'verified_updated_at2': person.verified_updated_at2,
-                                    'verified_updated_at3': person.verified_updated_at3,
-                                    'rfid': person.rfid,
-                                    'read_flag': person.read_flag,
-                                    'read_light': person.read_light,
-                                }
+                                'fields': person_to_dict(person),
                             })
                             broadcast_stats_update()
 
-                        results.append({
-                            'epc': epc,
-                            'name': person.name,
-                            'message': 'อัปเดตสถานะสำเร็จ',
-                            'flag': person.read_flag,
-                            'light': person.read_light,
-                        })
+                        results.append(f"rfid: {epc} name: {person.name} status: อัปเดตสถานะสำเร็จ")
 
                 except Person.DoesNotExist:
                     # ถ้าไม่เจอ rfid นี้ในระบบ ให้ลองหา Person ที่ rfid ว่าง (null หรือ empty string)
@@ -830,11 +733,7 @@ class RFIDSimulator(APIView):
                         person_with_empty_rfid = Person.objects.filter(rfid='').first()
 
                     if not person_with_empty_rfid:
-                        results.append({
-                            'epc': epc,
-                            'name': None,
-                            'message': 'ไม่พบข้อมูลแท็กนี้ในระบบ'
-                        })
+                        results.append(f"rfid: {epc} name: null status: ไม่พบข้อมูลในระบบ")
                     else:
                         # อัปเดต rfid ของคนนี้เป็น epc ที่ส่งมา
                         person_with_empty_rfid.rfid = epc
@@ -872,13 +771,7 @@ class RFIDSimulator(APIView):
                             })
                             broadcast_stats_update()
 
-                        results.append({
-                            'epc': epc,
-                            'name': person_with_empty_rfid.name,
-                            'message': 'เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว',
-                            'flag': person.read_flag,
-                            'light': person.read_light,
-                        })
+                        results.append(f"epc: {epc} name: {person_with_empty_rfid.name} status: เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว")
 
             return Response({'results': results}, status=status.HTTP_200_OK)
 
@@ -899,3 +792,20 @@ class LogCreateView(APIView):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+def person_to_dict(person):
+    return {
+        'name': person.name,
+        'nisit': person.nisit,
+        'degree': person.degree,
+        'seat': person.seat,
+        'verified1': person.verified1,
+        'verified2': person.verified2,
+        'verified3': person.verified3,
+        'verified_updated_at1': person.verified_updated_at1,
+        'verified_updated_at2': person.verified_updated_at2,
+        'verified_updated_at3': person.verified_updated_at3,
+        'read_flag': person.read_flag,
+        'read_light': person.read_light,
+        'rfid': person.rfid,
+    }

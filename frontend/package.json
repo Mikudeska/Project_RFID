@@ -9,7 +9,7 @@
         "start": "npm run all",
         "all": "concurrently \"npm run frontend\" \"npm run backend\"",
         "frontend": "vite",
-        "backend": "cd ../backend && python manage.py runserver"
+        "backend": "cd ../backend && python manage.py runserver 0.0.0.0:8001"
     },
     "dependencies": {
         "@iconify/icons-material-symbols": "^1.2.58",

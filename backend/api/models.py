@@ -20,7 +20,7 @@ class Person(models.Model):
     read_light = models.BooleanField(default=False, blank=True) 
 
     date = models.DateTimeField(auto_now_add=True)
-    rfid = models.CharField(max_length=15, unique=True, blank=True, null=True)
+    rfid = models.CharField(max_length=25, unique=True, blank=True, null=True)  
 
     @staticmethod
     def generate_unique_value(length, model, field):
