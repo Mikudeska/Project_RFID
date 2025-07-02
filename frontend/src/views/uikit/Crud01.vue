@@ -399,7 +399,7 @@ const items = ref([
     },
     {
         label: '?',
-        icon: 'rivet-icons:happy',
+        icon: 'tdesign:certificate-filled',
         color: 'text-yellow-300',
         command: () => {
             applyVerifiedFilter(2);
@@ -440,7 +440,7 @@ const verifiedMenuItems = [
     },
     {
         label: 'อยู่ในห้องพิธี',
-        icon: 'rivet-icons:happy',
+        icon: 'tdesign:certificate-filled',
         color: 'text-yellow-300',
         command: () => updateSelectedVerified(2, 'verified1')
     }
