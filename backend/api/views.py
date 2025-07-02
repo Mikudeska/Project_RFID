@@ -704,11 +704,14 @@ class RFIDSimulator(APIView):
 
                     verified_field = f"verified{scanner_id}"
                     time_field = f"verified_updated_at{scanner_id}"
+                    current_status = getattr(person, verified_field, 0)
+                    verified_value = 2 if scanner_type == 'out' else 1
 
-                    if verified_field == 1:
+                    # เงื่อนไข: ถ้า current == verified_value → แสดงว่าแสกนซ้ำแบบเดิม
+                    if current_status == verified_value:
                         results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
                     else:
-                        verified_value = 2 if scanner_type == 'out' else 1
+                        setattr(person, verified_field, verified_value)
                         setattr(person, verified_field, verified_value)
                         setattr(person, time_field, timezone.now())
                         person.save()
