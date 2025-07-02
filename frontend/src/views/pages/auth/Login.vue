@@ -1,10 +1,15 @@
 <script setup>
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
+import router from '@/router';
 import { ref } from 'vue';
 
 const email = ref('');
 const password = ref('');
 const checked = ref(false);
+
+function goToDashboard (){
+    router.push('/')
+}
 </script>
 
 <template>
@@ -13,7 +18,12 @@ const checked = ref(false);
         <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
             <div class="flex flex-col items-center justify-center">
                 <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
-                    <div class="w-full px-8 py-20 bg-surface-0 dark:bg-surface-900 sm:px-20" style="border-radius: 53px">
+                    <div class="w-full px-8 py-16 bg-surface-0 dark:bg-surface-900 sm:px-20" style="border-radius: 53px">
+                        <div>
+                            <Button v-tooltip.top="'กลับหน้าแรก'" @click="goToDashboard" rounded text>
+                                <Icon icon="icon-park-solid:back" class="text-2xl" />
+                            </Button>
+                        </div>
                         <div class="mb-8 text-center">
                             <svg viewBox="0 0 100 30" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <image href="https://ssru.ac.th/datafiles/loadimg/SSRU_LOGO1.png" x="40" y="0" height="30" width="20" />

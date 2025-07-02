@@ -461,8 +461,8 @@ const verifiedMenuItems = [
                     <Button v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
                         <Icon icon="lucide:database-backup" />
                     </Button>
-                    <Button type="button" label="เปลี่ยนสถานะ" severity="secondary" @click="menu.toggle($event)" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
-                        <Icon icon="ion:filter" />
+                    <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="menu.toggle($event)" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
+                        <Icon icon="mdi:tag" />
                     </Button>
                     <Menu ref="menu" :model="verifiedMenuItems" :popup="true">
                         <template #item="{ item }">
