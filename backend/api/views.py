@@ -511,8 +511,6 @@ class PersonList(APIView):
                         'verified2': instance.verified2,
                         'verified3': instance.verified3,
                         'verified': instance.verified,
-                        'read_flag': instance.read_flag,
-                        'read_light': instance.read_light,
                         'rfid': instance.rfid,
                     }
                 })
@@ -649,7 +647,7 @@ class PersonDetail(APIView):
                 serializer.save()
                 person.refresh_from_db()
                 changes = []
-                for field in ['name', 'degree', 'seat', 'verified1', 'verified2', 'verified3', 'read_flag', 'read_light', 'rfid']:
+                for field in ['name', 'degree', 'seat', 'verified1', 'verified2', 'verified3', 'rfid']:
                     old_val = original_data[field]
                     new_val = getattr(person, field)
                     if old_val != new_val:
@@ -788,7 +786,5 @@ def person_to_dict(person):
         'verified_updated_at1': person.verified_updated_at1,
         'verified_updated_at2': person.verified_updated_at2,
         'verified_updated_at3': person.verified_updated_at3,
-        'read_flag': person.read_flag,
-        'read_light': person.read_light,
         'rfid': person.rfid,
     }
