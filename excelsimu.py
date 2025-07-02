@@ -1,7 +1,7 @@
 import pandas as pd
 import random
 
-num_records = 7000
+num_records = 20
 first_names = ["สมชาย", "สมหญิง", "ณัฐวุฒิ", "กิตติ", "ปวีณา", "ธนวัฒน์", "วรินทร", "อรทัย", "จิราพร", "สุนทร"]
 last_names = ["วงศ์แก้ว", "สังขกุล", "จันทร์แจ่ม", "ทองดี", "บุญมา", "สายทอง", "คำภีร์", "แสงทอง", "ศรีสุข", "รัตนสุข"]
 
@@ -41,8 +41,6 @@ degree_list = [
 def generate_nisit():
     return ''.join(str(random.randint(0, 9)) for _ in range(11))
 
-def generate_rfid():
-    return ''.join(str(random.randint(0, 9)) for _ in range(15))
 
 data = []
 for _ in range(num_records):
@@ -50,14 +48,11 @@ for _ in range(num_records):
     degree = random.choice(degree_list)
     verified1 = random.choice([0, 1, 2])
     nisit = generate_nisit()
-    rfid = generate_rfid()
-
     data.append({
         "รหัสนิสิต": nisit,
         "ชื่อ-นามสกุล": name,
         "ชื่อปริญญา": degree,
         "สถานะรายงานตัว": verified1,
-        "รหัส RFID": rfid,
     })
 
 df = pd.DataFrame(data)
