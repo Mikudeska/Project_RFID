@@ -707,7 +707,6 @@ class RFIDSimulator(APIView):
                     current_status = getattr(person, verified_field, 0)
                     verified_value = 2 if scanner_type == 'out' else 1
 
-                    # เงื่อนไข: ถ้า current == verified_value → แสดงว่าแสกนซ้ำแบบเดิม
                     if current_status == verified_value:
                         results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
                     else:
