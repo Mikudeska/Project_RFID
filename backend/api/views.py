@@ -676,20 +676,20 @@ class PersonDetail(APIView):
     
 class RFIDSimulator(APIView):
     parser_classes = [JSONParser]
-
     def post(self, request):
         try:
             simulated_tags = request.data.get('tags', [])
-            scanner_id = request.data.get('scanner_id')
+            scanner_type = request.data.get('scanner_type')  # 'in' or 'out'
+            scanner_id = request.data.get('scanner_id')       # 1, 2, or 3
 
             try:
                 scanner_id = int(scanner_id)
             except (TypeError, ValueError):
                 scanner_id = None
 
-            if not simulated_tags or scanner_id not in [1, 2, 3]:
+            if not simulated_tags or scanner_type not in ['in', 'out'] or scanner_id not in [1, 2, 3]:
                 return Response(
-                    {'error': 'Missing tags or invalid scanner_id (1-3)'},
+                    {'error': 'Missing tags or invalid scanner_type (in/out) or scanner_id (1-3)'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
@@ -709,10 +709,9 @@ class RFIDSimulator(APIView):
                     if current_status == 1:
                         results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
                     else:
-                        setattr(person, verified_field, 1)
+                        verified_value = 2 if scanner_type == 'out' else 1
+                        setattr(person, verified_field, verified_value)
                         setattr(person, time_field, timezone.now())
-                        person.read_flag = True
-                        person.read_light = True
                         person.save()
 
                         if settings.USE_CHANNEL:
@@ -720,54 +719,36 @@ class RFIDSimulator(APIView):
                                 'action': 'update',
                                 'id': person.id,
                                 'fields': person_to_dict(person),
+                                'scanner_type': scanner_type,
                             })
                             broadcast_stats_update()
 
                         results.append(f"rfid: {epc} name: {person.name} status: อัปเดตสถานะสำเร็จ")
 
                 except Person.DoesNotExist:
-                    # ถ้าไม่เจอ rfid นี้ในระบบ ให้ลองหา Person ที่ rfid ว่าง (null หรือ empty string)
                     person_with_empty_rfid = Person.objects.filter(rfid__isnull=True).first()
                     if not person_with_empty_rfid:
-                        # ลองเช็คกรณีที่ rfid เป็น empty string ด้วย
                         person_with_empty_rfid = Person.objects.filter(rfid='').first()
 
                     if not person_with_empty_rfid:
                         results.append(f"rfid: {epc} name: null status: ไม่พบข้อมูลในระบบ")
                     else:
-                        # อัปเดต rfid ของคนนี้เป็น epc ที่ส่งมา
                         person_with_empty_rfid.rfid = epc
 
                         verified_field = f"verified{scanner_id}"
                         time_field = f"verified_updated_at{scanner_id}"
 
-                        setattr(person_with_empty_rfid, verified_field, 1)
+                        verified_value = 2 if scanner_type == 'out' else 1
+                        setattr(person_with_empty_rfid, verified_field, verified_value)
                         setattr(person_with_empty_rfid, time_field, timezone.now())
-
-                        person_with_empty_rfid.read_flag = True 
-                        person_with_empty_rfid.read_light = True 
-
                         person_with_empty_rfid.save()
 
                         if settings.USE_CHANNEL:
                             broadcast_to_crud01({
                                 'action': 'update',
                                 'id': person_with_empty_rfid.id,
-                                'fields': {
-                                    'name': person_with_empty_rfid.name,
-                                    'nisit': person_with_empty_rfid.nisit,
-                                    'degree': person_with_empty_rfid.degree,
-                                    'seat': person_with_empty_rfid.seat,
-                                    'verified1': person_with_empty_rfid.verified1,
-                                    'verified2': person_with_empty_rfid.verified2,
-                                    'verified3': person_with_empty_rfid.verified3,
-                                    'verified_updated_at1': person_with_empty_rfid.verified_updated_at1,
-                                    'verified_updated_at2': person_with_empty_rfid.verified_updated_at2,
-                                    'verified_updated_at3': person_with_empty_rfid.verified_updated_at3,
-                                    'rfid': person_with_empty_rfid.rfid,
-                                    'read_flag': person_with_empty_rfid.read_flag,
-                                    'read_light': person_with_empty_rfid.read_light,
-                                }
+                                'fields': person_to_dict(person_with_empty_rfid),
+                                'scanner_type': scanner_type,
                             })
                             broadcast_stats_update()
 
@@ -777,6 +758,7 @@ class RFIDSimulator(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 class LogList(generics.ListAPIView):
     serializer_class = LogSerializer

@@ -399,7 +399,7 @@ const items = ref([
     },
     {
         label: '?',
-        icon: 'rivet-icons:exclamation-mark-circle-solid',
+        icon: 'rivet-icons:happy',
         color: 'text-yellow-300',
         command: () => {
             applyVerifiedFilter(2);
@@ -440,7 +440,7 @@ const verifiedMenuItems = [
     },
     {
         label: 'อยู่ในห้องพิธี',
-        icon: 'rivet-icons:exclamation-mark-circle-solid',
+        icon: 'rivet-icons:happy',
         color: 'text-yellow-300',
         command: () => updateSelectedVerified(2, 'verified1')
     }
@@ -544,11 +544,11 @@ const verifiedMenuItems = [
                     <template #body="{ data }">
                         <Icon
                             class="icon"
-                            :icon="data.verified === 1 ? 'rivet-icons:check-circle-solid' : data.verified === 0 ? 'rivet-icons:close-circle-solid' : 'rivet-icons:exclamation-mark-circle-solid'"
+                            :icon="data.verified === 1 ? 'rivet-icons:check-circle-solid' : data.verified === 0 ? 'rivet-icons:close-circle-solid' : 'tdesign:certificate-filled'"
                             :class="{
                                 'text-green-500': data.verified === 1,
                                 'text-red-500': data.verified === 0,
-                                'text-yellow-300': data.verified === 2
+                                'text-orange-600': data.verified === 2
                             }"
                         />
                     </template>
