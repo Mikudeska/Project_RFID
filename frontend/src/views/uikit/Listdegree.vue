@@ -70,7 +70,7 @@ const summaryByDegree = computed(() => {
             summary[degree] = { degree, total: 0, reported: 0, absent: 0 };
         }
         summary[degree].total += 1;
-        if (person.verified === 1) {
+        if (person.verified === 1 || person.verified === 2) {
             summary[degree].reported += 1;
         }
     });

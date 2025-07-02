@@ -608,7 +608,7 @@ const verifiedMenuItems = [
                         <div class="flex items-center col-span-4 gap-2">
                             <RadioButton id="verified2" v-model="product.verified1" name="verified" :value="2" />
                             <label for="verified2">
-                                <Icon icon="rivet-icons:exclamation-mark-circle-solid" class="text-yellow-300" />
+                                <Icon icon="tdesign:certificate-filled" class="text-orange-600" />
                             </label>
                         </div>
                     </div>

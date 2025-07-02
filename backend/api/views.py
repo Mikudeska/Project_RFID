@@ -704,9 +704,8 @@ class RFIDSimulator(APIView):
 
                     verified_field = f"verified{scanner_id}"
                     time_field = f"verified_updated_at{scanner_id}"
-                    current_status = getattr(person, verified_field, 0)
 
-                    if current_status == 1:
+                    if verified_field == 1:
                         results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
                     else:
                         verified_value = 2 if scanner_type == 'out' else 1

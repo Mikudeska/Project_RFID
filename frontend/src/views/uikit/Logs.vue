@@ -108,7 +108,7 @@ const getVerifiedIcon = (value) => {
     const icons = {
         0: 'rivet-icons:close-circle-solid',
         1: 'rivet-icons:check-circle-solid',
-        2: 'rivet-icons:exclamation-mark-circle-solid'
+        2: 'tdesign:certificate-filled'
     };
     const status = Number(value);
     return icons[status] || 'rivet-icons:check-circle-solid';
@@ -120,7 +120,7 @@ const getVerifiedColor = (value) => {
     const status = Number(value);
     if (status === 1) return 'text-green-500';
     if (status === 0) return 'text-red-500';
-    if (status === 2) return 'text-yellow-500';
+    if (status === 2) return 'text-orange-600';
     return 'text-gray-400';
 };
 
