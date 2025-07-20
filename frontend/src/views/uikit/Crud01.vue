@@ -1,11 +1,13 @@
 <script setup>
 import { FilterMatchMode } from '@primevue/core/api';
-import { useToast } from 'primevue/usetoast';
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
+import { useGlobalToast } from '@/layout/composables/useGlobalToast'
 
 const API_BASE = import.meta.env.VITE_API_BASE;
+
+const toast = useGlobalToast();
 
 function formatId(id) {
     return id.toString().padStart(4, '0');
@@ -19,7 +21,7 @@ function addFormattedId(person) {
     };
 }
 
-const persons = ref();
+const persons = ref([]);
 
 async function fetchPersons() {
     loading.value = true;
@@ -35,16 +37,41 @@ async function fetchPersons() {
 onMounted(fetchPersons);
 
 function handleWsMessage(event) {
-    const msg = event.detail.message;
+    const msg = event.detail;
     if (msg.action === 'update') {
-        const index = persons.value.findIndex((p) => p.id === msg.id);
+        const index = persons.value.findIndex(p => p.id === msg.id);
         if (index !== -1) {
-            persons.value[index] = { ...persons.value[index], ...msg.fields };
+            if ('verified1' in msg.fields) {
+                msg.fields.verified = msg.fields.verified1;
+            }
+
+            const updated = { ...persons.value[index], ...msg.fields };
+            persons.value.splice(index, 1, updated);
+
+            if (product.value && product.value.id === msg.id) {
+                product.value = { ...product.value, ...msg.fields };
+            }
+        } else {
+            console.warn('Person not found for update id:', msg.id);
         }
     } else if (msg.action === 'add') {
         persons.value.push({ id: msg.id, ...msg.fields });
+
     } else if (msg.action === 'delete') {
-        persons.value = persons.value.filter((p) => p.id !== msg.id);
+        const deletedId = msg.id;
+        if (product.value && product.value.id === deletedId) {
+            product.value = null;
+        }
+        persons.value = persons.value.filter(p => p && p.id !== deletedId);
+
+    } else if (msg.action === 'reset' || msg.action === 'upload') {
+        fetchPersons();
+        toast?.add?.({
+            severity: 'info',   
+            summary: msg.action === 'reset' ? 'รีเซ็ตข้อมูล' : 'นำเข้าข้อมูล',
+            detail: msg.action === 'reset' ? 'ข้อมูลได้ถูกรีเซ็ตเรียบร้อย' : 'ข้อมูลได้รับการอัพเดตเรียบร้อย',
+            life: 3000
+        });
     }
 }
 
@@ -56,7 +83,6 @@ onBeforeUnmount(() => {
     window.removeEventListener('ws-message', handleWsMessage);
 });
 
-const toast = useToast();
 const dt = ref();
 
 // Dialog
@@ -244,18 +270,6 @@ const closeDialog = () => {
     UploadDialog.value = false;
 };
 
-// กรองคนรายงานตัว
-const applyVerifiedFilter = (value) => {
-    filteredVerified.value = value;
-};
-
-const filteredPersons = computed(() => {
-    if (filteredVerified.value === null) {
-        return persons.value; // แสดงทั้งหมด
-    }
-    return persons.value.filter((person) => person.verified === filteredVerified.value);
-});
-
 // เพิ่ม Axios สำหรับ CRUD Operations
 const saveProduct = async () => {
     submitted.value = true;
@@ -284,21 +298,56 @@ const saveProduct = async () => {
 };
 
 const deleteProduct = async () => {
+    if (!product.value || !product.value.id) {
+        toast.add({ severity: 'warn', summary: 'ไม่พบข้อมูล', detail: 'ไม่สามารถลบข้อมูลที่ไม่ถูกต้อง', life: 3000 });
+        return;
+    }
+
+    const deletingId = product.value.id;
+
     try {
-        await axios.delete(`${API_BASE}/api/person/${product.value.id}/`);
-        persons.value = persons.value.filter((val) => val.id !== product.value.id);
+        await axios.delete(`${API_BASE}/api/person/${deletingId}/`);
+        persons.value = persons.value.filter((val) => val.id !== deletingId);
         deleteProductDialog.value = false;
         toast.add({ severity: 'success', summary: 'สำเร็จ', detail: 'ลบข้อมูลเรียบร้อย', life: 3000 });
     } catch (error) {
         console.error('Error deleting data:', error);
-        toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: 'ลบข้อมูลไม่สำเร็จ', life: 3000 });
+
+        if (error.response?.status === 404) {
+            toast.add({
+                severity: 'warn',
+                summary: 'ไม่พบข้อมูล',
+                detail: 'ข้อมูลถูกลบไปแล้ว',
+                life: 3000
+            });
+        } else {
+            toast.add({
+                severity: 'error',
+                summary: 'เกิดข้อผิดพลาด',
+                detail: 'ลบข้อมูลไม่สำเร็จ',
+                life: 3000
+            });
+        }
     }
+
 };
 
-// Crud01.vue
 async function deleteSelectedpersons() {
+    if (!selectedpersons.value || selectedpersons.value.length === 0) {
+        toast.add({
+            severity: 'warn',
+            summary: 'ไม่มีข้อมูล',
+            detail: 'กรุณาเลือกรายการที่จะลบ',
+            life: 3000
+        });
+        return;
+    }
+
+    const ids = selectedpersons.value
+        .map((person) => person.id)
+        .filter((id) => id != null);
+
     try {
-        const ids = selectedpersons.value.map((person) => person.id);
         await axios.delete(`${API_BASE}/api/person/delete/`, {
             data: { ids },
             headers: {
@@ -310,20 +359,28 @@ async function deleteSelectedpersons() {
         selectedpersons.value = null;
         deletepersonsDialog.value = false;
 
-        toast.add({ severity: 'success', summary: 'สำเร็จ', detail: 'ลบรายการเรียบร้อย', life: 3000 });
+        toast.add({
+            severity: 'success',
+            summary: 'สำเร็จ',
+            detail: 'ลบรายการเรียบร้อย',
+            life: 3000
+        });
     } catch (error) {
         console.error('Error deleting data:', error);
+        const detail = error.response?.data?.error || 'ลบรายการไม่สำเร็จ';
+
         toast.add({
             severity: 'error',
             summary: 'เกิดข้อผิดพลาด',
-            detail: error.response?.data?.error || 'ลบรายการไม่สำเร็จ',
+            detail,
             life: 5000
         });
     }
 }
 
+
 function confirmDeleteSelected() {
-    deletepersonsDialog.value = true;
+    deletepersonsDialog.value = true;   
 }
 
 function confirmDeleteProduct(prod) {
@@ -388,42 +445,28 @@ async function updateSelectedVerified(status, field = 'verified1') {
     }
 }
 
-const items = ref([
-    {
-        label: 'reset',
-        icon: 'grommet-icons:power-reset',
-        color: 'text-green-500',
-        command: () => {
-            applyVerifiedFilter(null);
-        }
-    },
-    {
-        label: '?',
-        icon: 'tdesign:certificate-filled',
-        color: 'text-orange-600',
-        command: () => {
-            applyVerifiedFilter(2);
-        }
-    },
-    {
-        label: 'ยังไม่รายงานตัว',
-        icon: 'rivet-icons:close-circle-solid',
-        color: 'text-red-500',
-        command: () => {
-            applyVerifiedFilter(0);
-        }
-    },
-    {
-        label: 'รายงานตัวแล้ว',
-        icon: 'rivet-icons:check-circle-solid',
-        color: 'text-green-500',
-        command: () => {
-            applyVerifiedFilter(1);
-        }
-    }
-]);
+const menu1 = ref(null);
+const menu2 = ref(null);
 
-const menu = ref();
+function toggleMenu1(event) {
+    menu1.value.toggle(event);
+}
+
+function toggleMenu2(event) {
+    menu2.value.toggle(event);
+}
+
+// กรองคนรายงานตัว
+const applyVerifiedFilter = (value) => {
+    filteredVerified.value = value;
+};
+
+const filteredPersons = computed(() => {
+    if (filteredVerified.value === null) {
+        return persons.value; // แสดงทั้งหมด
+    }
+    return persons.value.filter((person) => person.verified1 === filteredVerified.value);
+});
 
 const verifiedMenuItems = [
     {
@@ -445,10 +488,45 @@ const verifiedMenuItems = [
         command: () => updateSelectedVerified(2, 'verified1')
     }
 ];
+
+const items = ref([
+    {
+        label: 'รีเซ็ต',
+        icon: 'grommet-icons:power-reset',
+        color: 'text-green-500',
+        command: () => {
+            applyVerifiedFilter(null);
+        }
+    },
+    {
+        label: 'รายงานตัวแล้ว',
+        icon: 'rivet-icons:check-circle-solid',
+        color: 'text-green-500',
+        command: () => {
+            applyVerifiedFilter(1);
+        }
+    },
+    {
+        label: 'ยังไม่รายงานตัว',
+        icon: 'rivet-icons:close-circle-solid',
+        color: 'text-red-500',
+        command: () => {
+            applyVerifiedFilter(0);
+        }
+    },
+    {
+        label: 'อยู่ในห้องพิธี',
+        icon: 'tdesign:certificate-filled',
+        color: 'text-orange-600',
+        command: () => {
+            applyVerifiedFilter(2);
+        }
+    }
+]);
 </script>
 
 <template>
-    <div>
+    <div class="page-wrapper">
         <div class="card">
             <Toolbar class="mb-6">
                 <template #start>
@@ -461,10 +539,10 @@ const verifiedMenuItems = [
                     <Button v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
                         <Icon icon="lucide:database-backup" />
                     </Button>
-                    <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="menu.toggle($event)" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
+                    <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="toggleMenu1" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
                         <Icon icon="mdi:tag" />
                     </Button>
-                    <Menu ref="menu" :model="verifiedMenuItems" :popup="true">
+                    <Menu ref="menu1" :model="verifiedMenuItems" :popup="true">
                         <template #item="{ item }">
                             <div class="flex items-center gap-2 px-2 py-1">
                                 <Icon :icon="item.icon" :class="item.color" />
@@ -479,7 +557,6 @@ const verifiedMenuItems = [
                     <Button severity="secondary" class="mr-2" @click="choseExport" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์ </Button>
                 </template>
             </Toolbar>
-
             <DataTable
                 ref="dt"
                 v-model:selection="selectedpersons"
@@ -491,6 +568,8 @@ const verifiedMenuItems = [
                 paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
                 :rowsPerPageOptions="[5, 10, 25, 50]"
                 currentPageReportTemplate="จาก   {first} ถึง {last} ของทั้งหมด {totalRecords} คน"
+                scrollable
+                scrollHeight="600"
                 :sortField="'formatted_id'"
                 :sortOrder="1"
                 :loading="loading"
@@ -501,18 +580,17 @@ const verifiedMenuItems = [
                             <h4 class="m-0">จัดการรายชื่อบัญฑิต</h4>
                         </div>
                         <div class="flex items-center gap-2">
-                            <SpeedDial :model="items" direction="left" :transitionDelay="40" pt:menuitem="m">
-                                <template #button="{ toggleCallback }">
-                                    <Button outlined @click="toggleCallback" rounded>
-                                        <Icon icon="hugeicons:filter"></Icon>
-                                    </Button>
-                                </template>
-                                <template #item="{ item, toggleCallback }">
-                                    <Button class="justify-between gap-2 cursor-pointer text-nowrap" @click="toggleCallback" outlined rounded>
+                            <Button v-tooltip.top="'เช็คสถานะ'" severity="secondary" @click="toggleMenu2" rounded raised>
+                                <Icon icon="mdi:tag" />
+                            </Button>
+                            <Menu ref="menu2" :model="items" :popup="true">
+                                <template #item="{ item }">
+                                    <div class="flex items-center gap-2 px-2 py-1">
                                         <Icon :icon="item.icon" :class="item.color" />
-                                    </Button>
+                                        <span>{{ item.label }}</span>
+                                    </div>
                                 </template>
-                            </SpeedDial>
+                            </Menu>
                             <IconField>
                                 <InputIcon>
                                     <i class="pi pi-search" />
@@ -557,10 +635,16 @@ const verifiedMenuItems = [
                         <Checkbox v-model="filterModel.value" :indeterminate="filterModel.value === null" binary inputId="verified-filter" />
                     </template>
                 </Column>
-                <Column :exportable="false" style="min-width: 1rem">
+                <Column :exportable="false" frozen alignFrozen="right" style="min-width: 120px; max-width: 140px; text-align: center">
                     <template #body="slotProps">
-                        <Button icon="pi pi-pencil" outlined rounded class="mr-2" @click="editProduct(slotProps.data)" />
-                        <Button icon="pi pi-trash" outlined rounded severity="danger" @click="confirmDeleteProduct(slotProps.data)" />
+                        <div class="flex">
+                            <div class="flex justify-center gap-2">
+                                <Button icon="pi pi-pencil" outlined rounded class="p-1 mr-2" @click="editProduct(slotProps.data)" />
+                            </div>
+                            <div class="flex justify-center gap-2">
+                                <Button icon="pi pi-trash" outlined rounded severity="danger" class="p-1" @click="confirmDeleteProduct(slotProps.data)" />
+                            </div>
+                        </div>
                     </template>
                 </Column>
             </DataTable>

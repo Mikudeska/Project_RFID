@@ -24,7 +24,7 @@ const selectedPerson = ref({});
 const toast = useToast();
 
 function handleWsMessage(event) {
-    const msg = event.detail.message;
+    const msg = event.detail;
     if (msg.action === 'update') {
         const index = persons.value.findIndex((p) => p.id === msg.id);
         if (index !== -1) {

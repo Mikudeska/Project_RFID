@@ -65,11 +65,13 @@ const summaryByDegree = computed(() => {
     const summary = {};
 
     persons.value.forEach((person) => {
-        const degree = person.degree;
+        const degree = person.degree || 'ไม่ระบุ';
         if (!summary[degree]) {
             summary[degree] = { degree, total: 0, reported: 0, absent: 0 };
         }
         summary[degree].total += 1;
+
+        // ถ้า verified = 1 หรือ 2 ถือว่า "มา"
         if (person.verified === 1 || person.verified === 2) {
             summary[degree].reported += 1;
         }
@@ -77,10 +79,12 @@ const summaryByDegree = computed(() => {
 
     Object.values(summary).forEach((entry) => {
         entry.absent = entry.total - entry.reported;
-        entry.percentage = entry.total > 0 ? +((entry.reported / entry.total) * 100).toFixed(2) : 0;
+        entry.percentage = entry.total > 0
+            ? +((entry.reported / entry.total) * 100).toFixed(2)
+            : 0;
     });
 
-    // ลำดับประเภทปริญญา
+    // กำหนดลำดับประเภทปริญญา (เรียงตามนี้)
     const degreeOrder = ['บัณฑิต', 'ดุษฎีบัณฑิต', 'มหาบัณฑิต'];
 
     return Object.values(summary).sort((a, b) => {
@@ -98,7 +102,9 @@ const totalSummary = computed(() => {
         total.absent += item.absent;
     });
 
-    total.percentage = total.total > 0 ? ((total.reported / total.total) * 100).toFixed(2) : '0.00';
+    total.percentage = total.total > 0
+        ? ((total.reported / total.total) * 100).toFixed(2)
+        : '0.00';
 
     return total;
 });

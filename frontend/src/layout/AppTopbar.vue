@@ -5,7 +5,15 @@ import { useOnline } from '@vueuse/core';
 import { computed, onMounted } from 'vue';
 import { Icon, loadIcon } from '@iconify/vue';
 import { useRouter } from 'vue-router';
+import { useWebSocketStore } from '@/stores/websocket';
+import { storeToRefs } from 'pinia';
+import axios from 'axios';
 
+const wsStore = useWebSocketStore();
+const { isConnected, viewerCount } = storeToRefs(wsStore);
+
+// เชื่อมต่อทันทีเมื่อ mount
+wsStore.connect();
 const router = useRouter();
 
 function goToLogin() {
@@ -43,10 +51,23 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                 <b class="flex items-center gap-2 text-2xl" :class="clazz"><Icon :icon="wifistatus" />{{ text }}</b>
             </div>
             <div class="layout-config-menu">
+                <div class="flex items-center gap-2">
+                    <Icon
+                    :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'"
+                    :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'"
+                    width="20"
+                    height="20"
+                    />
+                    <span class="text-sm font-semibold">
+                    {{ isConnected ? (viewerCount ?? '-') : '-' }}
+                    </span>
+                </div>
+            </div>
+            <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
-                <div class="relative">
+                <!-- <div class="relative">
                     <button
                         v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
                         type="button"
@@ -55,31 +76,15 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                         <i class="pi pi-palette"></i>
                     </button>
                     <AppConfigurator />
-                </div>
-            </div>
-
-            <button
-                class="layout-topbar-menu-button layout-topbar-action"
-                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-            >
-                <i class="pi pi-ellipsis-v"></i>
-            </button>
-
-            <div class="hidden layout-topbar-menu lg:block">
-                <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
-                    </button>
-                    <button type="button" class="layout-topbar-action" @click="goToLogin">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button>
-                </div>
+                </div> -->
+                <button @click="togglePanel" ref="btn" type="button"  class="layout-topbar-action">
+                    <Icon icon="streamline-plump:inbox-content-solid" />
+                    <span>Messages</span>
+                </button>
+                <button type="button" class="layout-topbar-action" @click="goToLogin">
+                    <i class="pi pi-user"></i>
+                    <span>Profile</span>
+                </button>
             </div>
         </div>
     </div>

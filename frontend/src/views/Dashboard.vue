@@ -2,6 +2,9 @@
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import axios from 'axios';
+import { useGlobalToast } from '@/layout/composables/useGlobalToast';
+
+const toast = useGlobalToast();
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -28,8 +31,10 @@ const features = ref([
 ]);
 
 function handleWsMessage(event) {
-    const msg = event.detail.message;
+    const msg = event.detail;
+
     if (msg.action === 'stats') {
+        // อัพเดต features ตามข้อมูลใหม่
         const d = msg.data;
         features.value = [
             { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
@@ -37,25 +42,53 @@ function handleWsMessage(event) {
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
         ];
+    } 
+    else if (msg.action === 'comment') {
+        comments.value.push({
+            comment: msg.data.comment,
+            time: msg.data.time
+        });
+        nextTick().then(() => {
+            scrollToBottom();
+        });
+    } 
+    else if (msg.action === 'reset' || msg.action === 'upload') {
+        // รีเฟรชข้อมูลจาก API
+        fetchStats();
+
+        // แสดง toast แจ้งเตือน
+        toast?.add?.({
+            severity: 'info',
+            summary: msg.action === 'reset' ? 'รีเซ็ตข้อมูล' : 'นำเข้าข้อมูล',
+            detail: msg.action === 'reset' ? 'ข้อมูลได้ถูกรีเซ็ตเรียบร้อย' : 'ข้อมูลได้รับการอัปเดตเรียบร้อย',
+            life: 3000
+        });
+    }
+}
+
+async function fetchStats() {
+    try {
+        const res = await axios.get(`${API_BASE}/api/stats/`);
+        const d = res.data;
+        features.value = [
+            { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
+            { title: 'ยังไม่รายงานตัว', description: d.checked_in },
+            { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
+            { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
+        ];
+    } catch (error) {
+        console.error('Error fetching stats:', error);
     }
 }
 
 onMounted(async () => {
-    const res = await axios.get(`${API_BASE}/api/stats/`);
-    const d = res.data;
-    features.value = [
-        { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
-        { title: 'ยังไม่รายงานตัว', description: d.checked_in },
-        { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
-        { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
-    ];
+    await fetchStats();
     window.addEventListener('ws-message', handleWsMessage);
 });
 
 onBeforeUnmount(() => {
     window.removeEventListener('ws-message', handleWsMessage);
 });
-
 // ตัวแปรคอมเมนต์
 const newComment = ref('');
 const commentsContainer = ref(null);
@@ -71,11 +104,6 @@ const addComment = async () => {
             });
 
             newComment.value = '';
-            await loadComments(); // โหลดคอมเมนต์ใหม่หลังโพสต์
-
-            // ให้ scroll หลังอัปเดต DOM เสร็จ
-            await nextTick();
-            scrollToBottom();
         } catch (err) {
             console.error('❌ Error posting comment:', err);
         }
@@ -103,8 +131,14 @@ const loadComments = async () => {
         }));
 };
 
-onMounted(() => {
-    loadComments();
+onMounted(async () => {
+    await loadComments();
+    nextTick().then(() => {
+        scrollToBottom();
+    });
+
+    // ✅ ดัก WebSocket
+    window.addEventListener('ws-message', handleWsMessage);
 });
 </script>
 
@@ -133,7 +167,7 @@ onMounted(() => {
                                   ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
                                   : index % 4 === 2
                                     ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
-                                    : 'hover:border-b-8 hover:border-orange-600 rounded-lg'
+                                    : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
                         ]"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">

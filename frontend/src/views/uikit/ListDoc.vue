@@ -22,58 +22,83 @@ async function fetchPersons() {
     loading.value = true;
     try {
         const response = await axios.get(`${API_BASE}/api/person/`);
-        persons.value = response.data
-            .filter((p) => p.verified === 1) // กรองเฉพาะ verified === 1
-            .sort((a, b) => new Date(b.date) - new Date(a.date))
-            .map((person) => ({
-                ...person,
-                formatted_id: person.id.toString().padStart(4, '0')
-            }));
+        persons.value = response.data.map((person) => ({
+            ...person,
+            formatted_id: person.id.toString().padStart(4, '0')
+        }));
     } catch (error) {
         console.error('Error:', error);
     } finally {
         loading.value = false;
     }
 }
-onMounted(fetchPersons);
 
 function handleWsMessage(event) {
-    const msg = event.detail.message;
+    const msg = event.detail;
+
+    if (!msg || !msg.action) {
+        // ไม่ใช่ action-based message เช่น viewer_count
+        return;
+    }
+
     if (msg.action === 'update') {
-        const updated = { ...msg.fields, id: msg.id };
-        const verifiedValue = Number(updated.verified);
-        persons.value = persons.value.filter((p) => p.id !== updated.id);
-        if (verifiedValue === 1) {
-            persons.value.unshift({
-                ...updated,
-                formatted_id: updated.id.toString().padStart(4, '0')
-            });
-            persons.value.sort((a, b) => new Date(b.date) - new Date(a.date));
+        const index = persons.value.findIndex(p => p.id === msg.id);
+        if (index !== -1) {
+            if ('verified1' in msg.fields) {
+                msg.fields.verified = msg.fields.verified1;
+            }
+
+            const updated = { ...persons.value[index], ...msg.fields };
+            persons.value.splice(index, 1, updated);
+
+            // 👇 ตรวจให้แน่ใจก่อนว่า product ถูกประกาศ
+            if (typeof product !== 'undefined' && product.value?.id === msg.id) {
+                product.value = { ...product.value, ...msg.fields };
+            }
+        } else {
+            console.warn('Person not found for update id:', msg.id);
         }
-        currentPage.value = 0;
+
+    } else if (msg.action === 'add') {
+        persons.value.push({ id: msg.id, ...msg.fields });
+
+    } else if (msg.action === 'delete') {
+        const deletedId = msg.id;
+        if (typeof product !== 'undefined' && product.value?.id === deletedId) {
+            product.value = null;
+        }
+        persons.value = persons.value.filter(p => p && p.id !== deletedId);
+
+    } else if (msg.action === 'reset' || msg.action === 'upload') {
+        fetchPersons?.();  // call if available
+        toast?.add?.({
+            severity: 'info',
+            summary: msg.action === 'reset' ? 'รีเซ็ตข้อมูล' : 'นำเข้าข้อมูล',
+            detail: msg.action === 'reset' ? 'ข้อมูลได้ถูกรีเซ็ตเรียบร้อย' : 'ข้อมูลได้รับการอัพเดตเรียบร้อย',
+            life: 3000
+        });
     }
 }
 
 onMounted(async () => {
-    const res = await axios.get(`${API_BASE}/api/person/`);
-    persons.value = res.data
-        .filter((p) => p.verified === 1)
-        .sort((a, b) => new Date(b.date) - new Date(a.date))
-        .map((person) => ({
-            ...person,
-            formatted_id: person.id.toString().padStart(4, '0')
-        }));
+    await fetchPersons();
     window.addEventListener('ws-message', handleWsMessage);
 });
+
 
 onBeforeUnmount(() => {
     window.removeEventListener('ws-message', handleWsMessage);
 });
 
-// ฟิลเตอร์จาก search
 const filteredPersons = computed(() => {
     const query = searchQuery.value.toLowerCase();
-    return persons.value.filter((p) => p.name?.toLowerCase().includes(query) || p.nisit?.toLowerCase().includes(query) || p.seat?.toString().includes(query));
+    return persons.value
+        .filter(p => Number(p.verified) === 1)
+        .filter((p) =>
+            p.name?.toLowerCase().includes(query) ||
+            p.nisit?.toLowerCase().includes(query) ||
+            p.seat?.toString().includes(query)
+        );
 });
 
 // Pagination

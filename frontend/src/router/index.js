@@ -14,6 +14,11 @@ const router = createRouter({
                     component: () => import('@/views/Dashboard.vue')
                 },
                 {
+                    path: '/uikit/uc',
+                    name: 'uc',
+                    component: () => import('@/views/uikit/usercheck.vue')
+                },
+                {
                     path: '/uikit/test',
                     name: 'test',
                     component: () => import('@/views/uikit/Test.vue')

@@ -1,9 +1,11 @@
 from collections import Counter
 from django.http import HttpResponse
-from django.utils import timezone
 from django.conf import settings
 from django.db import transaction, connection
 from django.http import JsonResponse
+from django.utils import timezone
+from django.utils.dateformat import format as dj_format
+from django.db.models import Q
 from tablib import Dataset
 from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
@@ -15,9 +17,10 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from datetime import datetime
 from .resources import PersonResource
-from .consumers import broadcast_to_crud01, broadcast_stats_update
+from .consumers import broadcast_to_crud01, broadcast_stats_update, broadcast_ws
 from .models import Person, Log
 from .serializers import PersonSerializer, LogSerializer
+from datetime import datetime
 import urllib.parse
 import os, io, json
 import traceback
@@ -51,7 +54,8 @@ class ResetDatabase(APIView):
                     details=log_details,
                     record_id=None
                 )
-                
+                broadcast_ws("reset")
+                broadcast_stats_update()
                 return Response(
                     {'success': 'รีเซ็ตฐานข้อมูลสำเร็จ'}, 
                     status=status.HTTP_200_OK
@@ -138,7 +142,12 @@ class ExportPDF(View):
             persons = Person.objects.all().order_by('seat')
             y_position = 780  # ตำแหน่งเริ่มต้น
             def get_verified_status(person):
-                return "รายงานตัวแล้ว" if person.verified1 == 1 or person.verified2 == 1 or person.verified3 == 1 else "ยังไม่รายงานตัว"
+                if 2 in [person.verified1, person.verified2, person.verified3]:
+                    return "อยู่ในห้องพิธี"
+                elif 1 in [person.verified1, person.verified2, person.verified3]:
+                    return "รายงานตัวแล้ว"
+                else:
+                    return "ยังไม่รายงานตัว"
             
             for i, person in enumerate(persons, start=1):
                 p.drawString(50, y_position, f"{i:04d}")
@@ -195,7 +204,9 @@ class ExportPDFResult(View):
                 return 'ป.ตรี'
 
             def is_verified(person):
-                return person.verified1 == 1 or person.verified2 == 1 or person.verified3 == 1
+                # ถ้ามี verified1,2 หรือ 3 เป็น 1 หรือ 2 ถือว่า มา
+                return any(getattr(person, f'verified{i}') in [1, 2] for i in range(1, 4))
+
 
             persons = Person.objects.all()
 
@@ -426,7 +437,8 @@ class ImportData(APIView):
                 details=f"นำเข้าฐานข้อมูล {imported_count} รายการ ( ใหม่ {result.totals.get('new', 0)} อัปเดต {result.totals.get('update', 0)} )",
                 record_id=None
             )
-
+            broadcast_ws("upload")
+            broadcast_stats_update()
             return Response(
                 {'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ'}, 
                 status=status.HTTP_201_CREATED
@@ -510,7 +522,6 @@ class PersonList(APIView):
                         'verified1': instance.verified1,
                         'verified2': instance.verified2,
                         'verified3': instance.verified3,
-                        'verified': instance.verified,
                         'rfid': instance.rfid,
                     }
                 })
@@ -543,12 +554,15 @@ class PersonList(APIView):
 
                 updated_ids.append(str(person.id))   # เก็บเป็น string เพื่อ join ทีหลัง
                 updated_values.add(str(new_val))     # เก็บค่าใหม่ (ไม่ซ้ำ)
-
-                if settings.USE_CHANNEL:
+                if settings.USE_CHANNEL: 
+                    fields = person_to_dict(person)
+                    fields = convert_datetime_fields(fields, [
+                        'verified_updated_at1', 'verified_updated_at2', 'verified_updated_at3'
+                    ])
                     broadcast_to_crud01({
                         'action': 'update',
                         'id': person.id,
-                        'fields': person_to_dict(person),
+                        'fields': fields,
                     })
 
         if updated_ids:
@@ -591,12 +605,11 @@ class PersonList(APIView):
                 
                 # ส่ง WebSocket สำหรับแต่ละ ID
                 if settings.USE_CHANNEL:
-                    for id in ids_str:
+                    for id in ids:
                         broadcast_to_crud01({
                             'action': 'delete',
                             'id': id,
                         })
-                    
                     broadcast_stats_update()
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
@@ -661,10 +674,14 @@ class PersonDetail(APIView):
                         record_id=person.id
                     )
                 if settings.USE_CHANNEL:
+                    fields = person_to_dict(person)
+                    fields = convert_datetime_fields(fields, [
+                        'verified_updated_at1', 'verified_updated_at2', 'verified_updated_at3'
+                    ])
                     broadcast_to_crud01({
                         'action': 'update',
                         'id': person.id,
-                        'fields': person_to_dict(person),
+                        'fields': fields,
                     })
                     broadcast_stats_update()
                 return Response(serializer.data, status=status.HTTP_200_OK)
@@ -758,7 +775,6 @@ class RFIDSimulator(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class LogList(generics.ListAPIView):
     serializer_class = LogSerializer
     
@@ -770,7 +786,15 @@ class LogCreateView(APIView):
     def post(self, request):
         serializer = LogSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            log = serializer.save()
+
+            if log.action == "comment":
+                if settings.USE_CHANNEL:
+                    broadcast_ws("comment", {
+                        "comment": log.details,
+                        "time": log.timestamp.isoformat()
+                    })
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
@@ -783,8 +807,19 @@ def person_to_dict(person):
         'verified1': person.verified1,
         'verified2': person.verified2,
         'verified3': person.verified3,
-        'verified_updated_at1': person.verified_updated_at1,
-        'verified_updated_at2': person.verified_updated_at2,
-        'verified_updated_at3': person.verified_updated_at3,
+        'verified_updated_at1': datetime_to_str(person.verified_updated_at1),
+        'verified_updated_at2': datetime_to_str(person.verified_updated_at2),
+        'verified_updated_at3': datetime_to_str(person.verified_updated_at3),
         'rfid': person.rfid,
     }
+
+def datetime_to_str(dt):
+    if dt is None:
+        return None
+    return dt.isoformat()
+
+def convert_datetime_fields(data: dict, fields: list):
+    for f in fields:
+        if f in data and isinstance(data[f], datetime):
+            data[f] = data[f].isoformat()
+    return data

@@ -9,6 +9,7 @@ const API_BASE = import.meta.env.VITE_API_BASE;
 
 const toast = useToast();
 const logs = ref([]);
+const loading = ref(false);
 
 // รีเซ็ตข้อมูล
 const confirmResetDialog1 = ref(false);
@@ -108,7 +109,7 @@ const getVerifiedIcon = (value) => {
     const icons = {
         0: 'rivet-icons:close-circle-solid',
         1: 'rivet-icons:check-circle-solid',
-        2: 'tdesign:certificate-filled'
+        2: 'rivet-icons:exclamation-mark-circle-solid'
     };
     const status = Number(value);
     return icons[status] || 'rivet-icons:check-circle-solid';
@@ -120,11 +121,12 @@ const getVerifiedColor = (value) => {
     const status = Number(value);
     if (status === 1) return 'text-green-500';
     if (status === 0) return 'text-red-500';
-    if (status === 2) return 'text-orange-600';
+    if (status === 2) return 'text-yellow-500';
     return 'text-gray-400';
 };
 
 const fetchLogs = async () => {
+    loading.value = true;
     try {
         let allLogs = [];
         let nextUrl = `${API_BASE}/api/logs/`;
@@ -152,6 +154,8 @@ const fetchLogs = async () => {
             detail: 'ดึงข้อมูลไม่สำเร็จ',
             life: 3000
         });
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -235,6 +239,7 @@ const extractShortenedIDs = (details) => {
             scrollable
             scrollHeight="flex"
             class="h-full"
+            :loading="loading"
             :pt="{
                 root: { class: 'flex-1 flex flex-col' },
                 loadingOverlay: { class: 'flex-1' },
