@@ -2,9 +2,6 @@
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import axios from 'axios';
-import { useGlobalToast } from '@/layout/composables/useGlobalToast';
-
-const toast = useGlobalToast();
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -42,26 +39,13 @@ function handleWsMessage(event) {
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
         ];
-    } 
-    else if (msg.action === 'comment') {
+    } else if (msg.action === 'comment') {
         comments.value.push({
             comment: msg.data.comment,
             time: msg.data.time
         });
         nextTick().then(() => {
             scrollToBottom();
-        });
-    } 
-    else if (msg.action === 'reset' || msg.action === 'upload') {
-        // รีเฟรชข้อมูลจาก API
-        fetchStats();
-
-        // แสดง toast แจ้งเตือน
-        toast?.add?.({
-            severity: 'info',
-            summary: msg.action === 'reset' ? 'รีเซ็ตข้อมูล' : 'นำเข้าข้อมูล',
-            detail: msg.action === 'reset' ? 'ข้อมูลได้ถูกรีเซ็ตเรียบร้อย' : 'ข้อมูลได้รับการอัปเดตเรียบร้อย',
-            life: 3000
         });
     }
 }
@@ -164,10 +148,10 @@ onMounted(async () => {
                             index % 4 === 0
                                 ? 'hover:border-b-8 hover:border-blue-500 rounded-lg'
                                 : index % 4 === 1
-                                  ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
-                                  : index % 4 === 2
-                                    ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
-                                    : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
+                                ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
+                                : index % 4 === 2
+                                ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
+                                : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
                         ]"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">

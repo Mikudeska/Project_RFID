@@ -3,11 +3,11 @@ import { FilterMatchMode } from '@primevue/core/api';
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
-import { useGlobalToast } from '@/layout/composables/useGlobalToast'
+import { createLocalToast } from '@/stores/toast';
+
+const toast = createLocalToast();
 
 const API_BASE = import.meta.env.VITE_API_BASE;
-
-const toast = useGlobalToast();
 
 function formatId(id) {
     return id.toString().padStart(4, '0');
@@ -39,7 +39,7 @@ onMounted(fetchPersons);
 function handleWsMessage(event) {
     const msg = event.detail;
     if (msg.action === 'update') {
-        const index = persons.value.findIndex(p => p.id === msg.id);
+        const index = persons.value.findIndex((p) => p.id === msg.id);
         if (index !== -1) {
             if ('verified1' in msg.fields) {
                 msg.fields.verified = msg.fields.verified1;
@@ -56,22 +56,12 @@ function handleWsMessage(event) {
         }
     } else if (msg.action === 'add') {
         persons.value.push({ id: msg.id, ...msg.fields });
-
     } else if (msg.action === 'delete') {
         const deletedId = msg.id;
         if (product.value && product.value.id === deletedId) {
             product.value = null;
         }
-        persons.value = persons.value.filter(p => p && p.id !== deletedId);
-
-    } else if (msg.action === 'reset' || msg.action === 'upload') {
-        fetchPersons();
-        toast?.add?.({
-            severity: 'info',   
-            summary: msg.action === 'reset' ? 'รีเซ็ตข้อมูล' : 'นำเข้าข้อมูล',
-            detail: msg.action === 'reset' ? 'ข้อมูลได้ถูกรีเซ็ตเรียบร้อย' : 'ข้อมูลได้รับการอัพเดตเรียบร้อย',
-            life: 3000
-        });
+        persons.value = persons.value.filter((p) => p && p.id !== deletedId);
     }
 }
 
@@ -118,31 +108,16 @@ const handleResetStep1 = () => {
 
 const handleResetStep2 = async () => {
     if (resetKeyword.value.toUpperCase() !== 'RESET') {
-        toast.add({
-            severity: 'error',
-            summary: 'ยืนยันไม่สำเร็จ',
-            detail: 'กรุณาพิมพ์คำว่า "RESET" ให้ถูกต้อง',
-            life: 3000
-        });
+        toast.error('ยืนยันไม่สำเร็จ', 'กรุณาพิมพ์คำว่า "RESET" ให้ถูกต้อง');
         resetKeyword.value = '';
         return;
     }
     try {
         await axios.post(`${API_BASE}/api/reset/`);
         await fetchPersons();
-        toast.add({
-            severity: 'success',
-            summary: 'รีเซ็ตสำเร็จ',
-            detail: 'ลบข้อมูลทั้งหมดเรียบร้อย',
-            life: 5000
-        });
+        toast.success('รีเซ็ตสำเร็จ', 'ลบข้อมูลทั้งหมดเรียบร้อย');
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'รีเซ็ตล้มเหลว',
-            detail: error.response?.data?.error || 'เกิดข้อผิดพลาด',
-            life: 5000
-        });
+        toast.error('รีเซ็ตล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
     } finally {
         confirmResetDialog2.value = false;
         resetKeyword.value = '';
@@ -171,7 +146,6 @@ const exportPDF = async () => {
         link.remove();
     } catch (error) {
         console.error('PDF Export Error:', error);
-        alert('ส่งออก PDF ไม่สำเร็จ: ' + error.message);
     }
 };
 
@@ -240,21 +214,10 @@ const handleFileUpload = async () => {
 
         clearInterval(processingInterval.value);
         progress.value = 100;
-
-        toast.add({
-            severity: 'success',
-            summary: 'อัปโหลดสำเร็จ',
-            detail: 'นำเข้าข้อมูลเรียบร้อย',
-            life: 5000
-        });
+        toast.success('อัปโหลดสำเร็จ', 'นำเข้าข้อมูลเรียบร้อย');
     } catch (error) {
         clearInterval(processingInterval.value);
-        toast.add({
-            severity: 'error',
-            summary: 'อัปโหลดล้มเหลว',
-            detail: error.response?.data?.error || 'เกิดข้อผิดพลาด',
-            life: 5000
-        });
+        toast.error('อัปโหลดล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
     } finally {
         uploadInProgress.value = false;
         processing.value = false;
@@ -279,10 +242,10 @@ const saveProduct = async () => {
         try {
             if (product.value.id) {
                 await axios.put(`${API_BASE}/api/person/${product.value.id}/`, product.value);
-                toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'อัพเดตข้อมูลเรียบร้อย', life: 3000 });
+                toast.success('บันทึกสำเร็จ', 'อัพเดตข้อมูลเรียบร้อย');
             } else {
                 await axios.post(`${API_BASE}/api/person/`, product.value);
-                toast.add({ severity: 'success', summary: 'บันทึกสำเร็จ', detail: 'สร้างข้อมูลเรียบร้อย', life: 3000 });
+                toast.success('บันทึกสำเร็จ', 'สร้างข้อมูลเรียบร้อย');
             }
             // ดึงข้อมูลใหม่หลังบันทึก เพื่ออัพเดตตารางหรือรายการ
             await fetchPersons();
@@ -290,16 +253,16 @@ const saveProduct = async () => {
             productDialog.value = false;
         } catch (error) {
             console.error('Error saving data:', error);
-            toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: error.response?.data?.error || 'บันทึกข้อมูลไม่สำเร็จ', life: 3000 });
+            toast.error('เกิดข้อผิดพลาด', error.response?.data?.error || 'บันทึกข้อมูลไม่สำเร็จ');
         }
     } else {
-        toast.add({ severity: 'warn', summary: 'ข้อมูลไม่ครบ', detail: 'กรุณากรอกชื่อ', life: 3000 });
+        toast.warn('ข้อมูลไม่ครบ', 'กรุณากรอกชื่อ');
     }
 };
 
 const deleteProduct = async () => {
     if (!product.value || !product.value.id) {
-        toast.add({ severity: 'warn', summary: 'ไม่พบข้อมูล', detail: 'ไม่สามารถลบข้อมูลที่ไม่ถูกต้อง', life: 3000 });
+        toast.warn('ไม่พบข้อมูล', 'ไม่สามารถลบข้อมูลที่ไม่ถูกต้อง');
         return;
     }
 
@@ -309,43 +272,25 @@ const deleteProduct = async () => {
         await axios.delete(`${API_BASE}/api/person/${deletingId}/`);
         persons.value = persons.value.filter((val) => val.id !== deletingId);
         deleteProductDialog.value = false;
-        toast.add({ severity: 'success', summary: 'สำเร็จ', detail: 'ลบข้อมูลเรียบร้อย', life: 3000 });
+        toast.success('สำเร็จ', 'ลบข้อมูลเรียบร้อย');
     } catch (error) {
         console.error('Error deleting data:', error);
 
         if (error.response?.status === 404) {
-            toast.add({
-                severity: 'warn',
-                summary: 'ไม่พบข้อมูล',
-                detail: 'ข้อมูลถูกลบไปแล้ว',
-                life: 3000
-            });
+            toast.warn('ไม่พบข้อมูล', 'ข้อมูลถูกลบไปแล้ว');
         } else {
-            toast.add({
-                severity: 'error',
-                summary: 'เกิดข้อผิดพลาด',
-                detail: 'ลบข้อมูลไม่สำเร็จ',
-                life: 3000
-            });
+            toast.error('เกิดข้อผิดพลาด', 'ลบข้อมูลไม่สำเร็จ');
         }
     }
-
 };
 
 async function deleteSelectedpersons() {
     if (!selectedpersons.value || selectedpersons.value.length === 0) {
-        toast.add({
-            severity: 'warn',
-            summary: 'ไม่มีข้อมูล',
-            detail: 'กรุณาเลือกรายการที่จะลบ',
-            life: 3000
-        });
+        toast.success('ไม่มีข้อมูล', 'กรุณาเลือกรายการที่จะลบ');
         return;
     }
 
-    const ids = selectedpersons.value
-        .map((person) => person.id)
-        .filter((id) => id != null);
+    const ids = selectedpersons.value.map((person) => person.id).filter((id) => id != null);
 
     try {
         await axios.delete(`${API_BASE}/api/person/delete/`, {
@@ -358,29 +303,15 @@ async function deleteSelectedpersons() {
         persons.value = persons.value.filter((val) => !ids.includes(val.id));
         selectedpersons.value = null;
         deletepersonsDialog.value = false;
-
-        toast.add({
-            severity: 'success',
-            summary: 'สำเร็จ',
-            detail: 'ลบรายการเรียบร้อย',
-            life: 3000
-        });
+        toast.success('สำเร็จ', 'ลบรายการเรียบร้อย');
     } catch (error) {
         console.error('Error deleting data:', error);
-        const detail = error.response?.data?.error || 'ลบรายการไม่สำเร็จ';
-
-        toast.add({
-            severity: 'error',
-            summary: 'เกิดข้อผิดพลาด',
-            detail,
-            life: 5000
-        });
+        toast.error('เกิดข้อผิดพลาด', error.response?.data?.error || 'ลบรายการไม่สำเร็จ');
     }
 }
 
-
 function confirmDeleteSelected() {
-    deletepersonsDialog.value = true;   
+    deletepersonsDialog.value = true;
 }
 
 function confirmDeleteProduct(prod) {
@@ -428,20 +359,9 @@ async function updateSelectedVerified(status, field = 'verified1') {
         persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, [field]: status } : p));
 
         selectedpersons.value = null;
-
-        toast.add({
-            severity: 'success',
-            summary: 'สำเร็จ',
-            detail: `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`,
-            life: 3000
-        });
+        toast.success('สำเร็จ', `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`);
     } catch (error) {
-        toast.add({
-            severity: 'error',
-            summary: 'เกิดข้อผิดพลาด',
-            detail: error.response?.data?.error || 'ไม่สามารถเปลี่ยนสถานะได้',
-            life: 5000
-        });
+        toast.error('เกิดข้อผิดพลาด', error.response?.data?.error || 'ไม่สามารถเปลี่ยนสถานะได้');
     }
 }
 

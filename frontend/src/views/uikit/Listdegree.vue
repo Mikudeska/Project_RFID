@@ -79,9 +79,7 @@ const summaryByDegree = computed(() => {
 
     Object.values(summary).forEach((entry) => {
         entry.absent = entry.total - entry.reported;
-        entry.percentage = entry.total > 0
-            ? +((entry.reported / entry.total) * 100).toFixed(2)
-            : 0;
+        entry.percentage = entry.total > 0 ? +((entry.reported / entry.total) * 100).toFixed(2) : 0;
     });
 
     // กำหนดลำดับประเภทปริญญา (เรียงตามนี้)
@@ -102,9 +100,7 @@ const totalSummary = computed(() => {
         total.absent += item.absent;
     });
 
-    total.percentage = total.total > 0
-        ? ((total.reported / total.total) * 100).toFixed(2)
-        : '0.00';
+    total.percentage = total.total > 0 ? ((total.reported / total.total) * 100).toFixed(2) : '0.00';
 
     return total;
 });

@@ -53,9 +53,3 @@ class PersonResource(resources.ModelResource):
         if hasattr(instance, 'verified1') and instance.verified1 is None:
             instance.verified1 = 0
         return super().save_instance(instance, *args, **kwargs)
-
-
-
-
-
-

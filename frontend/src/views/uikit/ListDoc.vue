@@ -42,7 +42,7 @@ function handleWsMessage(event) {
     }
 
     if (msg.action === 'update') {
-        const index = persons.value.findIndex(p => p.id === msg.id);
+        const index = persons.value.findIndex((p) => p.id === msg.id);
         if (index !== -1) {
             if ('verified1' in msg.fields) {
                 msg.fields.verified = msg.fields.verified1;
@@ -50,33 +50,20 @@ function handleWsMessage(event) {
 
             const updated = { ...persons.value[index], ...msg.fields };
             persons.value.splice(index, 1, updated);
-
-            // 👇 ตรวจให้แน่ใจก่อนว่า product ถูกประกาศ
-            if (typeof product !== 'undefined' && product.value?.id === msg.id) {
-                product.value = { ...product.value, ...msg.fields };
+            if (typeof product !== 'undefined' && persons.value?.id === msg.id) {
+                persons.value = { ...persons.value, ...msg.fields };
             }
         } else {
             console.warn('Person not found for update id:', msg.id);
         }
-
     } else if (msg.action === 'add') {
         persons.value.push({ id: msg.id, ...msg.fields });
-
     } else if (msg.action === 'delete') {
         const deletedId = msg.id;
-        if (typeof product !== 'undefined' && product.value?.id === deletedId) {
-            product.value = null;
+        if (typeof product !== 'undefined' && persons.value?.id === deletedId) {
+            persons.value = null;
         }
-        persons.value = persons.value.filter(p => p && p.id !== deletedId);
-
-    } else if (msg.action === 'reset' || msg.action === 'upload') {
-        fetchPersons?.();  // call if available
-        toast?.add?.({
-            severity: 'info',
-            summary: msg.action === 'reset' ? 'รีเซ็ตข้อมูล' : 'นำเข้าข้อมูล',
-            detail: msg.action === 'reset' ? 'ข้อมูลได้ถูกรีเซ็ตเรียบร้อย' : 'ข้อมูลได้รับการอัพเดตเรียบร้อย',
-            life: 3000
-        });
+        persons.value = persons.value.filter((p) => p && p.id !== deletedId);
     }
 }
 
@@ -85,20 +72,13 @@ onMounted(async () => {
     window.addEventListener('ws-message', handleWsMessage);
 });
 
-
 onBeforeUnmount(() => {
     window.removeEventListener('ws-message', handleWsMessage);
 });
 
 const filteredPersons = computed(() => {
     const query = searchQuery.value.toLowerCase();
-    return persons.value
-        .filter(p => Number(p.verified) === 1)
-        .filter((p) =>
-            p.name?.toLowerCase().includes(query) ||
-            p.nisit?.toLowerCase().includes(query) ||
-            p.seat?.toString().includes(query)
-        );
+    return persons.value.filter((p) => Number(p.verified) === 1).filter((p) => p.name?.toLowerCase().includes(query) || p.nisit?.toLowerCase().includes(query) || p.seat?.toString().includes(query));
 });
 
 // Pagination
