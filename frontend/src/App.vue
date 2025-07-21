@@ -1,10 +1,9 @@
 <script setup>
 import { onMounted, onBeforeUnmount } from 'vue';
 import { useWebSocketStore } from '@/stores/websocket';
-import { useGlobalToastStore } from '@/stores/toast';
+import { useGlobalToast } from '@/components/utils/toastUtils';
 
-const toastStore = useGlobalToastStore();
-toastStore.init();
+const toastStore = useGlobalToast();
 
 function globalWsHandler(msg) {
     toastStore.show(msg.action);
@@ -23,6 +22,6 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Toast />
+    <Toast showProgressBar />
     <router-view />
 </template>

@@ -8,6 +8,7 @@ import Aura from '@primevue/themes/aura';
 import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
+import Toast from 'primevue/toast';
 import Tooltip from 'primevue/tooltip';
 import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
@@ -85,6 +86,7 @@ app.use(PrimeVue, {
 app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('tooltip', Tooltip);
+app.component('Toast', Toast);
 app.component('downloadExcel', JsonExcel);
 app.component('Icon', Icon);
 app.mount('#app');

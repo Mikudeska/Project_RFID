@@ -3,7 +3,7 @@ import { FilterMatchMode } from '@primevue/core/api';
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
-import { createLocalToast } from '@/stores/toast';
+import { createLocalToast } from '@/components/utils/toastUtils';
 
 const toast = createLocalToast();
 
@@ -114,7 +114,6 @@ const handleResetStep2 = async () => {
     try {
         await axios.post(`${API_BASE}/api/reset/`);
         await fetchPersons();
-        toast.success('รีเซ็ตสำเร็จ', 'ลบข้อมูลทั้งหมดเรียบร้อย');
     } catch (error) {
         toast.error('รีเซ็ตล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
     } finally {
@@ -213,7 +212,6 @@ const handleFileUpload = async () => {
 
         clearInterval(processingInterval.value);
         progress.value = 100;
-        toast.success('อัปโหลดสำเร็จ', 'นำเข้าข้อมูลเรียบร้อย');
     } catch (error) {
         clearInterval(processingInterval.value);
         toast.error('อัปโหลดล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
@@ -516,7 +514,6 @@ const items = ref([
                                 </InputIcon>
                                 <InputText v-model="filters['global'].value" placeholder="ค้นหาข้อมูลบัญฑิต" />
                             </IconField>
-                            <Toast />
                         </div>
                     </div>
                 </template>
