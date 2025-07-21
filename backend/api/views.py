@@ -24,6 +24,9 @@ from datetime import datetime
 import urllib.parse
 import os, io, json
 import traceback
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -399,6 +402,7 @@ class ExportData(APIView):
             return response
 
         except Exception as e:
+            logger.error(f"Reset failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': 'Internal Server Error'}, 
                 status=500
@@ -415,7 +419,7 @@ class ImportData(APIView):
             if file.name.endswith('.xlsx'):
                 dataset.load(file.read(), format='xlsx')
             elif file.name.endswith('.csv'):
-                dataset.load(file.read().decode('utf-8-sig'), format='csv')
+                dataset.load(file.read(), format='csv', encoding='utf-8-sig')
 
             # ตรวจสอบข้อมูล
             if len(dataset) == 0:
@@ -451,6 +455,7 @@ class ImportData(APIView):
                 details=f"นำเข้าข้อมูลล้มเหลว: {str(e)}",
                 record_id=None
             )
+            logger.error(f"Import failed: {str(e)}", exc_info=True)
             return Response(
                 {'error': str(e)}, 
                 status=status.HTTP_400_BAD_REQUEST

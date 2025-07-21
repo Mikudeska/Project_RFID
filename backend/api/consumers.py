@@ -7,21 +7,28 @@ from .models import Person
 from datetime import datetime, timezone
 import json
 
-def broadcast_to_crud01(message):
-    if not settings.USE_CHANNEL:
-        print("📡 WebSocket disabled. Skipping broadcast.")
+def safe_group_send(group_name, message_type, message_content):
+    # เช็คก่อนว่าเปิดใช้ channels ไหม
+    if not getattr(settings, 'USE_CHANNEL', False):
+        print("WebSocket disabled. Skipping group_send.")
         return
-    
-    print("📡 Broadcasting message to crud01_group:", message)  # <-- เพิ่มตรงนี้
-    
+
     channel_layer = get_channel_layer()
+    if channel_layer is None:
+        print("Channel layer is None. Skipping group_send.")
+        return
+
     async_to_sync(channel_layer.group_send)(
-        "crud01_group",
+        group_name,
         {
-            "type": "send_message",
-            "message": message,
+            "type": message_type,
+            "message": message_content,
         }
     )
+
+def broadcast_to_crud01(message):
+    print("📡 Broadcasting message to crud01_group:", message)
+    safe_group_send("crud01_group", "send_message", message)
 
 def broadcast_stats_update():
     persons = Person.objects.all()
@@ -40,31 +47,17 @@ def broadcast_stats_update():
         'in_graduation_room': verified_counter[2],
     }
 
-    channel_layer = get_channel_layer()
-    print("📊 Stats:", stats)
-    async_to_sync(channel_layer.group_send)(
-        "crud01_group",
-        {
-            "type": "send_update",
-            "message": {
-                "action": "stats",
-                "data": stats
-            }
-        }
-    )
+    print("Stats:", stats)
+    safe_group_send("crud01_group", "send_update", {
+        "action": "stats",
+        "data": stats
+    })
 
 def broadcast_ws(action, data=None):
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        "crud01_group",  # กลุ่มที่ client join
-        {
-            "type": "send.message",
-            "message": {
-                "action": action,
-                "data": data or {}
-            }
-        }
-    )
+    safe_group_send("crud01_group", "send.message", {
+        "action": action,
+        "data": data or {}
+    })
 
 def get_latest_verified(person):
     times = {
@@ -90,8 +83,6 @@ def get_latest_verified(person):
                 latest_verified = value
 
     return latest_verified
-
-connected_clients = set()
 
 # เก็บชื่อ channel ของผู้เชื่อมต่อทั้งหมด
 connected_clients = set()
@@ -138,5 +129,3 @@ class CrudConsumer(AsyncWebsocketConsumer):
             "type": "viewer_count",
             "count": event["count"]
         }))
-
-

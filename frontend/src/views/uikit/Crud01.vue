@@ -96,7 +96,6 @@ const confirmResetDialog1 = ref(false);
 const confirmResetDialog2 = ref(false);
 const resetKeyword = ref('');
 
-// รีเซ็ตข้อมูล
 const confirmResetdatabase = () => {
     confirmResetDialog1.value = true;
 };
