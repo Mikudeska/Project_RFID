@@ -13,7 +13,6 @@ const wsStore = useWebSocketStore();
 const { isConnected, viewerCount } = storeToRefs(wsStore);
 
 // เชื่อมต่อทันทีเมื่อ mount
-wsStore.connect();
 const router = useRouter();
 
 function goToLogin() {

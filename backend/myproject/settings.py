@@ -57,10 +57,12 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
 CORS_ALLOW_ALL_ORIGINS = False
 
 CORS_ALLOWED_ORIGINS = [
     "http://27.254.134.124",
+    "http://localhost:5173",
 ]
 
 ROOT_URLCONF = 'myproject.urls'
@@ -85,12 +87,19 @@ TEMPLATES = [
 
 ASGI_APPLICATION = 'myproject.asgi.application'
 
-CHANNEL_LAYERS = {
-  "default": {
-    "BACKEND": "channels_redis.core.RedisChannelLayer",
-    "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
-  },
-}
+if not config('USE_CHANNEL', default=True, cast=bool):
+    # ไม่ใช้ Channels
+    WSGI_APPLICATION = 'myproject.wsgi.application'
+else:
+    # ใช้ Channels และ Redis
+    ASGI_APPLICATION = 'myproject.asgi.application'
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+        },
+    }
+
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

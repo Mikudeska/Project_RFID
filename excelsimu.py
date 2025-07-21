@@ -56,5 +56,6 @@ for _ in range(num_records):
     })
 
 df = pd.DataFrame(data)
-df.to_excel("persons_7000.xlsx", index=False)
-print("สร้างไฟล์ persons_7000.xlsx สำหรับ import เรียบร้อยแล้ว")
+output_path = r"C:\Users\Acer\Downloads\RFID\rfid_main\simu_person.xlsx"
+df.to_excel(output_path, index=False)
+print("สร้างไฟล์ simu_person.xlsx สำหรับ import เรียบร้อยแล้ว")
