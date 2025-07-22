@@ -27,7 +27,7 @@ def safe_group_send(group_name, message_type, message_content):
     )
 
 def broadcast_to_crud01(message):
-    print("📡 Broadcasting message to crud01_group:", message)
+    print("Broadcasting message to crud01_group:", message)
     safe_group_send("crud01_group", "send_message", message)
 
 def broadcast_stats_update():
@@ -118,7 +118,7 @@ class CrudConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_send(
             "crud01_group",
             {
-                "type": "send.viewer.count",
+                "type": "send_viewer_count",
                 "count": count
             }
         )

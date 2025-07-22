@@ -35,21 +35,32 @@ const ExportPDFResult = async () => {
             timeout: 30000
         });
 
-        // ตรวจสอบขนาดไฟล์
         if (response.data.size < 1024) {
             throw new Error('ไฟล์ PDF ว่างเปล่า');
+        }
+
+        // อ่านชื่อไฟล์จาก header Content-Disposition
+        const disposition = response.headers['content-disposition'];
+        let filename = 'download.pdf';
+        if (disposition && disposition.includes('filename=')) {
+            filename = disposition.split('filename=')[1].replace(/["']/g, '').trim();
+        } else if (disposition && disposition.includes('filename*=')) {
+            // กรณี filename* ที่ encode UTF-8
+            const matches = disposition.match(/filename\*\=UTF-8''([^;]+)/);
+            if (matches && matches[1]) {
+                filename = decodeURIComponent(matches[1]);
+            }
         }
 
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'รายชื่อสรุปบัณฑิต.pdf');
+        link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
         link.remove();
     } catch (error) {
         console.error('PDF Export Error:', error);
-        toast.add({ severity: 'error', summary: 'เกิดข้อผิดพลาด', detail: 'โหลดไฟล์สรุป pdf ไม่สำเร็จ', life: 3000 });
     }
 };
 
@@ -79,7 +90,7 @@ const summaryByDegree = computed(() => {
 
     Object.values(summary).forEach((entry) => {
         entry.absent = entry.total - entry.reported;
-        entry.percentage = entry.total > 0 ? +((entry.reported / entry.total) * 100).toFixed(2) : 0;
+        entry.percentage = entry.total > 0 ? Math.round((entry.reported / entry.total) * 100) : 0;
     });
 
     // กำหนดลำดับประเภทปริญญา (เรียงตามนี้)
@@ -92,7 +103,7 @@ const summaryByDegree = computed(() => {
 
 // รวมสรุปทั้งหมด
 const totalSummary = computed(() => {
-    const total = { degree: 'รวมทั้งหมด', total: 0, reported: 0, absent: 0, percentage: '0.00' };
+    const total = { degree: 'รวมทั้งหมด', total: 0, reported: 0, absent: 0, percentage: '0' };
 
     summaryByDegree.value.forEach((item) => {
         total.total += item.total;
@@ -100,7 +111,7 @@ const totalSummary = computed(() => {
         total.absent += item.absent;
     });
 
-    total.percentage = total.total > 0 ? ((total.reported / total.total) * 100).toFixed(2) : '0.00';
+    total.percentage = total.total > 0 ? Math.round((total.reported / total.total) * 100).toString() : '0';
 
     return total;
 });
@@ -188,7 +199,7 @@ onMounted(() => {
                     <template #body="{ data }">
                         <div class="relative w-full">
                             <div class="h-6 bg-gray-200 rounded-full">
-                                <div class="h-6 bg-green-500 rounded-full" :style="{ width: data.percentage + '%' }"></div>
+                                <div class="h-6 bg-green-500 rounded-full" :style="{ width: Math.round(data.percentage) + '%' }"></div>
                             </div>
                             <div class="absolute left-0 flex items-center justify-center w-full h-4 text-lg font-semibold text-black top-1">{{ data.percentage }}%</div>
                         </div>

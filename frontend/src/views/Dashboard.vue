@@ -164,7 +164,7 @@ onMounted(async () => {
             <!-- ส่วนแสดงคอมเมนต์ -->
             <div class="col-span-12 md:col-span-4">
                 <div class="card h-[calc(100vh-100px)] max-h-[calc(100vh-230px)] xl:max-h-[calc(100vh-310px)] overflow-auto" ref="commentsContainer">
-                    <div class="pb-2 text-4xl">Comments</div>
+                    <div class="pb-2 text-4xl">ช่องข้อความ</div>
                     <div v-for="(comment, index) in comments" :key="index" class="pt-2 mb-4 border-t-2 border-indigo-600">
                         <p class="w-full mb-2 text-lg text-center">
                             {{

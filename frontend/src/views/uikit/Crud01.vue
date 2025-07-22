@@ -130,15 +130,21 @@ const exportPDF = async () => {
             timeout: 30000
         });
 
-        // ตรวจสอบขนาดไฟล์
         if (response.data.size < 1024) {
             throw new Error('ไฟล์ PDF ว่างเปล่า');
+        }
+
+        // อ่านชื่อไฟล์จาก header Content-Disposition
+        const disposition = response.headers['content-disposition'];
+        let filename = 'download.pdf';
+        if (disposition && disposition.includes('filename=')) {
+            filename = disposition.split('filename=')[1].replace(/["']/g, '').trim();
         }
 
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'รายชื่อบัณฑิต.pdf');
+        link.setAttribute('download', filename);
         document.body.appendChild(link);
         link.click();
         link.remove();

@@ -1,10 +1,8 @@
-from collections import Counter
 from django.http import HttpResponse
 from django.conf import settings
 from django.db import transaction, connection
-from django.http import JsonResponse
+from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
-from django.utils.dateformat import format as dj_format
 from django.db.models import Q
 from tablib import Dataset
 from rest_framework.views import APIView, View
@@ -21,12 +19,20 @@ from .consumers import broadcast_to_crud01, broadcast_stats_update, broadcast_ws
 from .models import Person, Log
 from .serializers import PersonSerializer, LogSerializer
 from datetime import datetime
+from urllib.parse import quote
 import urllib.parse
-import os, io, json
-import traceback
+import os, io
 import logging
 
 logger = logging.getLogger(__name__)
+
+def file_iterator(buffer, chunk_size=8192):
+    buffer.seek(0)
+    while True:
+        chunk = buffer.read(chunk_size)
+        if not chunk:
+            break
+        yield chunk
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -130,20 +136,29 @@ class ExportPDF(View):
             BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
             pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
-
             buffer = io.BytesIO()
             p = canvas.Canvas(buffer, pagesize=A4)
-            p.setFont('THSarabun', 14)
+            width, height = A4
+            p.setFont('THSarabun', 25)
+            date_str = datetime.now().strftime("%d/%m/%Y")
+            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+            p.setFont('THSarabun', 15)
+            time_str = datetime.now().strftime("%H:%M")
+            p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
+
+            p.setFont('THSarabun', 20)
+            p.drawCentredString(width / 2, 780, "รายชื่อผู้รายงานตัว")
 
             # เขียนหัวตาราง
-            p.drawString(50, 800, "ลำดับ")
-            p.drawString(150, 800, "ชื่อ-นามสกุล")
-            p.drawString(300, 800, "รหัสนิสิต")
-            p.drawString(400, 800, "สถานะรายงานตัว")
+            p.setFont('THSarabun', 14)
+            p.drawString(50, 750, "ลำดับ")
+            p.drawString(150, 750, "ชื่อ-นามสกุล")
+            p.drawString(300, 750, "รหัสนิสิต")
+            p.drawString(400, 750, "สถานะรายงานตัว")
 
             # ดึงข้อมูล
             persons = Person.objects.all().order_by('seat')
-            y_position = 780  # ตำแหน่งเริ่มต้น
+            y_position = 730  # ตำแหน่งเริ่มต้น
             def get_verified_status(person):
                 if 2 in [person.verified1, person.verified2, person.verified3]:
                     return "อยู่ในห้องพิธี"
@@ -168,13 +183,16 @@ class ExportPDF(View):
             p.save()
             buffer.seek(0)
 
-            # สร้าง HTTP Response
-            response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-            response['Content-Disposition'] = 'inline; filename="graduates.pdf"'
-            response["Access-Control-Expose-Headers"] = "Content-Disposition"
-            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            date_str = datetime.now().strftime('%Y%m%d')
+            filename = f"รายชื่อ_{date_str}.pdf"
+            quoted_filename = quote(filename)
+
+            response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
+            response['Cache-Control'] = 'no-store'
             response['Pragma'] = 'no-cache'
-            response['Content-Length'] = str(len(buffer.getvalue()))
+            response['Expires'] = '0'
+            response['Content-Disposition'] = f"attachment; filename*=UTF-8''{quoted_filename}"
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
             Log.objects.create(
                 action='Export',
                 model='Person',
@@ -241,8 +259,12 @@ class ExportPDFResult(View):
                 if is_verified(person):
                     branch_summary[branch]['present'] += 1
 
+            p.setFont('THSarabun', 25)
             date_str = datetime.now().strftime("%d/%m/%Y")
             p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+            p.setFont('THSarabun', 15)
+            time_str = datetime.now().strftime("%H:%M")
+            p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
 
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
@@ -278,9 +300,6 @@ class ExportPDFResult(View):
 
             # --- หน้าใหม่ และส่วนสาขา ---
             p.showPage()
-
-            p.setFont('THSarabun', 25)
-            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
 
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "ตารางแต่ละสาขา")
@@ -346,12 +365,17 @@ class ExportPDFResult(View):
             p.save()
             buffer.seek(0)
 
-            response = HttpResponse(buffer.getvalue(), content_type='application/pdf')
-            response["Access-Control-Expose-Headers"] = "Content-Disposition"
-            response['Content-Disposition'] = 'attachment; filename="result.pdf"'
-            response['Content-Transfer-Encoding'] = 'binary'
-            response['Cache-Control'] = 'no-cache'
+            date_str = datetime.now().strftime('%Y%m%d')
+            filename = f"รายชื่อสรุป_{date_str}.pdf"
+            quoted_filename = quote(filename)
 
+            response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+            response['Content-Disposition'] = f"attachment; filename*=UTF-8''{quoted_filename}"
+            response['Content-Transfer-Encoding'] = 'binary'
+            response['Cache-Control'] = 'no-store'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
             Log.objects.create(
                 action='Export',
                 model='Person',

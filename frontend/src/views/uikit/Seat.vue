@@ -256,6 +256,35 @@ watch([searchQuery, searchType], async () => {
 function setHighlightedSeatRef(el) {
     if (el) highlightedSeatRef.value = el;
 }
+
+function handleWsMessage(event) {
+    const msg = event.detail;
+    if (msg.action === 'update') {
+        const index = persons.value.findIndex((p) => p.id === msg.id);
+        if (index !== -1) {
+            if ('verified1' in msg.fields) {
+                msg.fields.verified = msg.fields.verified1;
+            }
+            const updated = { ...persons.value[index], ...msg.fields };
+            persons.value.splice(index, 1, updated);
+        } else {
+            console.warn('Person not found for update id:', msg.id);
+        }
+    } else if (msg.action === 'add') {
+        persons.value.push({ id: msg.id, ...msg.fields });
+    } else if (msg.action === 'delete') {
+        const deletedId = msg.id;
+        persons.value = persons.value.filter((p) => p && p.id !== deletedId);
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('ws-message', handleWsMessage);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('ws-message', handleWsMessage);
+});
 </script>
 
 <template>
@@ -372,7 +401,7 @@ function setHighlightedSeatRef(el) {
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
                             </div>
-                            <div v-else class="flex flex-col items-center opacity-80 bg-gray-100/60 dark:bg-gray-700/30 rounded">
+                            <div v-else class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold text-gray-400 dark:text-gray-400">ว่าง</span>
                             </div>
@@ -401,7 +430,7 @@ function setHighlightedSeatRef(el) {
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
                             </div>
-                            <div v-else class="flex flex-col items-center opacity-80 bg-gray-100/60 dark:bg-gray-700/30 rounded">
+                            <div v-else class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold text-gray-400 dark:text-gray-400">ว่าง</span>
                             </div>

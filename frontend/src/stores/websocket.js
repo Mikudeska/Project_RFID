@@ -33,7 +33,7 @@ export const useWebSocketStore = defineStore('websocket', () => {
                 viewerCount.value = data.count;
             }
 
-            handlers.forEach(fn => fn(data));
+            handlers.forEach((fn) => fn(data));
 
             // ✅ ไม่กระทบระบบเดิม (ยังส่ง customEvent เหมือนเดิม)
             window.dispatchEvent(new CustomEvent('ws-message', { detail: data }));
@@ -70,6 +70,6 @@ export const useWebSocketStore = defineStore('websocket', () => {
         disconnect,
         isConnected,
         viewerCount,
-        registerHandler,
+        registerHandler
     };
 });
