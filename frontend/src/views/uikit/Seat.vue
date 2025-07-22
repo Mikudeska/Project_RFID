@@ -1,120 +1,190 @@
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import axios from 'axios';
-import { Icon } from '@iconify/vue';
 import Dialog from 'primevue/dialog';
-import Toast from 'primevue/toast';
-import Skeleton from 'primevue/skeleton';
-import Badge from 'primevue/badge';
 import { useToast } from 'primevue/usetoast';
+import { Icon } from '@iconify/vue';
 
+const NUM_ROWS = 70;
+const SEATS_PER_ROW = 70;
+const SEATS_PER_SIDE = 35;
 const API_BASE = import.meta.env.VITE_API_BASE;
-
-const TOTAL_SEATS = 7000;
-const COLS = 60;
-const ROWS_COUNT = Math.ceil(TOTAL_SEATS / COLS);
-
 const persons = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
+const searchType = ref('nisit4'); // เพิ่มตัวแปรประเภทการค้นหา
 const verifiedFilter = ref('all');
-const showFilters = ref(false);
 const dialogVisible = ref(false);
 const selectedPerson = ref({});
 const toast = useToast();
+const showFilterDropdown = ref(false);
+const filterDropdownRef = ref(null);
+const searchMessage = ref('');
+// เพิ่ม ref สำหรับเก้าอี้ที่ถูก highlight
+const highlightedSeatRef = ref(null);
 
-function handleWsMessage(event) {
-    const msg = event.detail;
-    if (msg.action === 'update') {
-        const index = persons.value.findIndex((p) => p.id === msg.id);
-        if (index !== -1) {
-            persons.value[index] = { ...persons.value[index], ...msg.fields };
-        }
-    } else if (msg.action === 'add') {
-        const newPerson = { id: msg.id, ...msg.fields, seat: Number(msg.fields.seat) };
-        if (newPerson.seat >= 1 && newPerson.seat <= TOTAL_SEATS) {
-            persons.value.push(newPerson);
-        }
-    } else if (msg.action === 'delete') {
-        persons.value = persons.value.filter((p) => p.id !== msg.id);
+function handleClickOutside(event) {
+    if (filterDropdownRef.value && !filterDropdownRef.value.contains(event.target)) {
+        showFilterDropdown.value = false;
     }
 }
+onMounted(() => {
+    document.addEventListener('mousedown', handleClickOutside);
+});
+onBeforeUnmount(() => {
+    document.removeEventListener('mousedown', handleClickOutside);
+});
+
+// ระบบเสาแบบใหม่: กำหนดเสาเป็น array ของ object
+const pillars = [
+    // เพิ่ม/ลบ/ย้ายเสาได้ที่นี่
+    { row: 3, side: 'left', index: 6, length: 3 }, // แถว 4, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    { row: 3, side: 'right', index: 16, length: 3 }, // แถว 4, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    { row: 16, side: 'left', index: 6, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    { row: 16, side: 'left', index: 32, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
+    { row: 16, side: 'right', index: 16, length: 3 }, // แถว 17, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    { row: 29, side: 'left', index: 6, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    { row: 29, side: 'left', index: 32, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
+    { row: 29, side: 'right', index: 16, length: 3 } // แถว 30, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
+];
 
 onMounted(async () => {
-    const { data } = await axios.get(`${API_BASE}/api/person/`);
-    persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) })).filter((p) => p.seat >= 1 && p.seat <= TOTAL_SEATS);
-    window.addEventListener('ws-message', handleWsMessage);
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener('ws-message', handleWsMessage);
-});
-
-async function fetchPersons() {
     loading.value = true;
     try {
         const { data } = await axios.get(`${API_BASE}/api/person/`);
-        persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) })).filter((p) => p.seat >= 1 && p.seat <= TOTAL_SEATS);
+        persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) }));
     } catch (e) {
-        console.error(e);
+        toast.add({ severity: 'error', summary: 'โหลดข้อมูลล้มเหลว', detail: e.message, life: 3000 });
     } finally {
         loading.value = false;
     }
+});
+
+const degreeList = computed(() => {
+    // สร้างรายการคณะจากข้อมูล persons ทั้งหมด (ไม่ซ้ำ)
+    const set = new Set(persons.value.map((p) => p.degree).filter(Boolean));
+    return Array.from(set);
+});
+const selectedDegree = ref('');
+
+const statusLabels = {
+    0: 'ยังไม่รายงานตัว',
+    1: 'รายงานตัวแล้ว',
+    2: 'เข้าหอประชุมเรียบร้อยแล้ว',
+    unknown: 'ไม่ทราบสถานะ'
+};
+
+// เพิ่ม computed สำหรับ activeFilters
+const activeFilters = computed(() => {
+    const filters = [];
+    if (verifiedFilter.value !== 'all') {
+        filters.push({
+            key: 'verified',
+            label: statusLabels[verifiedFilter.value],
+            type: 'status'
+        });
+    }
+    if (selectedDegree.value) {
+        filters.push({ key: 'degree', label: selectedDegree.value, type: 'degree' });
+    }
+    return filters;
+});
+function removeFilter(key) {
+    if (key === 'verified') verifiedFilter.value = 'all';
+    if (key === 'degree') selectedDegree.value = '';
+}
+
+function resetFilter() {
+    searchQuery.value = '';
+    verifiedFilter.value = 'all';
+    selectedDegree.value = '';
 }
 
 const filteredPersons = computed(() => {
-    let r = [...persons.value];
-    if (verifiedFilter.value === 'verified') r = r.filter((p) => p.verified === 1);
-    else if (verifiedFilter.value === 'unverified') r = r.filter((p) => p.verified === 0);
-    else if (verifiedFilter.value === 'unknown') r = r.filter((p) => p.verified !== 0 && p.verified !== 1);
-
-    if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase();
-        r = r.filter((p) => p.name?.toLowerCase().includes(q) || p.nisit?.includes(q) || p.degree?.toLowerCase().includes(q) || p.seat.toString().includes(q));
-        clearTimeout(window._toastTimer);
-        window._toastTimer = setTimeout(() => {
-            toast.add({ severity: 'info', summary: 'ผลการค้นหา', detail: `พบ ${r.length} รายการ`, life: 2000 });
-        }, 300);
-    }
-    return r;
+    // คืนค่าทุกคน ไม่กรองคณะ
+    return persons.value.sort((a, b) => a.seat - b.seat);
 });
 
-watch(filteredPersons, () => {});
+// เพิ่มฟังก์ชันกำหนดสีเก้าอี้ตามสถานะที่เลือก
+function getChairColor(person) {
+    // ถ้าเลือกคณะ และไม่ตรงกับคนนี้ ให้สีจาง
+    if (selectedDegree.value && person.degree !== selectedDegree.value) {
+        return 'text-gray-400 opacity-30';
+    }
 
-const seatsGrid = computed(() => {
-    const rows = Array.from({ length: ROWS_COUNT }, () => Array.from({ length: COLS }, () => null));
+    const filter = verifiedFilter.value;
+    const personStatus = person.verified;
 
-    filteredPersons.value.forEach((p) => {
-        let seat = p.seat;
-        let ri, ci;
+    // กำหนดสีตามสถานะ
+    let colorClass = 'text-gray-400'; // สถานะไม่แน่ชัด (default)
+    if (personStatus === 0) colorClass = 'text-red-500'; // ยังไม่รายงานตัว
+    if (personStatus === 1) colorClass = 'text-green-500'; // รายงานตัวแล้ว
+    if (personStatus === 2) colorClass = 'text-yellow-500'; // เข้าหอประชุมแล้ว
 
-        if (seat >= 1777) {
-            // แถวที่ 31 เริ่มจาก seat 1777
-            const offset = seat - 1777;
-            ri = 30 + Math.floor(offset / COLS); // แถว index 30 คือแถวที่ 31
-            ci = offset % COLS;
-        } else if (seat >= 1006) {
-            // แถวที่ 18 เริ่มจาก seat 1006
-            const offset = seat - 1006;
-            ri = 17 + Math.floor(offset / COLS); // แถว index 17 คือแถวที่ 18
-            ci = offset % COLS;
-        } else if (seat >= 235) {
-            // แถวที่ 5 เริ่มจาก seat 235
-            const offset = seat - 235;
-            ri = 4 + Math.floor(offset / COLS); // แถว index 4 คือแถวที่ 5
-            ci = offset % COLS;
-        } else {
-            // ก่อนหน้า seat 235
-            const idx = seat - 1;
-            ri = Math.floor(idx / COLS);
-            ci = idx % COLS;
-        }
+    // ตรรกะการกรอง
+    if (filter === 'all') {
+        return colorClass;
+    }
+    if (filter === 'unknown') {
+        // ถ้าตัวกรองเป็น 'ไม่ทราบสถานะ' ให้แสดงเฉพาะคนที่ไม่ใช่สถานะ 0, 1, 2
+        return ![0, 1, 2].includes(personStatus) ? colorClass : 'text-gray-400 opacity-30';
+    }
 
-        if (rows[ri] && !rows[ri][ci]) {
-            rows[ri][ci] = p;
+    // สำหรับตัวกรองที่เป็นตัวเลข "0", "1", "2"
+    // แปลง personStatus เป็น string เพื่อเปรียบเทียบกับค่าจาก select
+    return personStatus.toString() === filter ? colorClass : 'text-gray-400 opacity-30';
+}
+
+// Pre-calculate layoutMatrix สำหรับทุกแถว
+const layoutMatrix = [];
+for (let rowIdx = 0; rowIdx < NUM_ROWS; rowIdx++) {
+    const layout = Array(SEATS_PER_ROW).fill('seat');
+    // แทรกเสาในตำแหน่งที่ต้องการ
+    pillars
+        .filter((p) => p.row === rowIdx)
+        .forEach((p) => {
+            let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE + p.index;
+            layout.splice(insertIdx, 0, 'pillar');
+        });
+    layoutMatrix.push(layout);
+}
+
+// 4. สร้างฟังก์ชันสำหรับจัดการข้อความ WebSocket
+
+function getRowLayout(rowIdx) {
+    // เริ่มต้นด้วย array 70 ช่อง
+    const layout = Array(SEATS_PER_ROW).fill('seat');
+    // หาเสาในแถวนี้
+    const rowPillars = pillars.filter((p) => p.row === rowIdx);
+    // แทรกเสาตามความยาว (length)
+    rowPillars.forEach((p) => {
+        let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE + p.index;
+        for (let i = 0; i < (p.length || 1); i++) {
+            layout[insertIdx + i] = 'pillar';
         }
     });
+    return layout;
+}
 
+const seatRows = computed(() => {
+    const rows = [];
+    const personsList = [...filteredPersons.value];
+    let rowIdx = 0;
+    while (personsList.length > 0) {
+        const layout = getRowLayout(rowIdx);
+        const row = [];
+        for (const slot of layout) {
+            if (slot === 'pillar') {
+                row.push({ type: 'pillar' });
+            } else if (personsList.length > 0) {
+                row.push({ type: 'person', data: personsList.shift() });
+            } else {
+                row.push({ type: 'empty' });
+            }
+        }
+        rows.push(row);
+        rowIdx++;
+    }
     return rows;
 });
 
@@ -123,349 +193,243 @@ function showPersonDetail(person) {
     dialogVisible.value = true;
 }
 
-function buttonClass(status) {
-    return ['px-3 py-1 rounded-full text-sm font-semibold transition', verifiedFilter.value === status ? 'bg-blue-600 text-white shadow' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'].join(' ');
+function isHighlighted(person) {
+    if (!searchQuery.value) return false;
+    const q = searchQuery.value.toLowerCase();
+    if (searchType.value === 'seat') {
+        return person.seat?.toString() === q;
+    } else if (searchType.value === 'nisit4') {
+        return person.nisit && person.nisit.slice(-4).includes(q);
+    }
+    return false;
 }
 
-onMounted(fetchPersons);
+// ปรับ buildSidesWithPillars ให้รองรับ row ที่เป็น array ของ object (type: 'person'/'pillar'/'empty')
+function buildSidesWithPillars(row) {
+    return {
+        left: row.slice(0, SEATS_PER_SIDE),
+        right: row.slice(SEATS_PER_SIDE, SEATS_PER_ROW)
+    };
+}
+
+watch([searchQuery, searchType], async () => {
+    if (!searchQuery.value) {
+        searchMessage.value = '';
+        return;
+    }
+    let found = null;
+    if (searchType.value === 'seat') {
+        found = persons.value.find((p) => p.seat?.toString() === searchQuery.value);
+    } else if (searchType.value === 'nisit4') {
+        found = persons.value.find((p) => p.nisit && p.nisit.slice(-4) === searchQuery.value);
+    }
+    if (found) {
+        // หาแถวและฝั่งจาก seatRows layout จริง
+        let foundRow = null;
+        let foundSide = null;
+        seatRows.value.forEach((row, rowIdx) => {
+            row.forEach((item, i) => {
+                if (item.type === 'person' && item.data.seat === found.seat) {
+                    foundRow = rowIdx + 1;
+                    foundSide = i < SEATS_PER_SIDE ? 'A' : 'B';
+                }
+            });
+        });
+        if (foundRow && foundSide) {
+            searchMessage.value = `พบที่นั่งเลข ${found.seat} อยู่แถว ${foundSide}${foundRow}`;
+        } else {
+            searchMessage.value = 'ไม่พบที่นั่งที่ค้นหา';
+        }
+        // scroll ไปยังเก้าอี้ที่ highlight
+        await nextTick();
+        if (highlightedSeatRef.value) {
+            highlightedSeatRef.value.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        }
+    } else {
+        searchMessage.value = 'ไม่พบที่นั่งที่ค้นหา';
+    }
+});
+
+// ลบ placeholder animation เดิม (animatedPlaceholder, placeholderList, placeholderIndex)
+
+// เพิ่มฟังก์ชัน setHighlightedSeatRef
+function setHighlightedSeatRef(el) {
+    if (el) highlightedSeatRef.value = el;
+}
 </script>
 
 <template>
     <div>
         <Toast />
-        <!-- Search Bar -->
-        <div class="relative my-4 sticky-top">
-            <Icon icon="material-symbols:search" class="absolute text-2xl text-blue-500 -translate-y-1/2 left-4 top-1/2" />
-            <input v-model="searchQuery" type="text" placeholder="ค้นหา (ชื่อ, ID, รหัสนิสิต, ที่นั่ง...)" class="w-full h-12 pl-12 pr-4 border border-blue-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-        </div>
-
-        <!-- Filter Speed Dial -->
-        <div class="fixed z-50 flex flex-col items-end space-y-3 bottom-6 right-6">
-            <transition-group name="fade" tag="div" v-if="showFilters">
-                <button key="all" @click="verifiedFilter = 'all'" :class="buttonClass('all')"><Badge value="📋" severity="info" class="mr-1" /> ทั้งหมด</button>
-                <button key="verified" @click="verifiedFilter = 'verified'" :class="buttonClass('verified')"><Badge value="✅" /> รายงานตัว</button>
-                <button key="unverified" @click="verifiedFilter = 'unverified'" :class="buttonClass('unverified')"><Badge value="❌" /> ยังไม่รายงาน</button>
-                <button key="unknown" @click="verifiedFilter = 'unknown'" :class="buttonClass('unknown')"><Badge value="❓" severity="warning" /> ไม่ทราบสถานะ</button>
-            </transition-group>
-            <button @click="showFilters = !showFilters" class="p-4 text-white transition-transform rounded-full shadow-lg bg-gradient-to-br from-blue-500 to-indigo-600 hover:scale-105">
-                <Icon icon="material-symbols:filter-list" class="text-2xl" />
+        <!-- Filter Icon Button (Right Top) -->
+        <div class="fixed z-50 top-20 right-6">
+            <button @click="showFilterDropdown = !showFilterDropdown" class="p-2 transition bg-blue-100 border border-blue-300 rounded-full shadow-lg hover:bg-blue-200">
+                <Icon icon="mdi:filter-variant" class="text-blue-600" width="28" height="28" />
             </button>
-        </div>
-
-        <!-- Seat Grid -->
-        <div v-if="loading" class="grid grid-cols-5 gap-4 p-4"><Skeleton v-for="n in 10" :key="n" width="100%" height="4rem" /></div>
-        <div v-else class="relative max-w-full p-4 overflow-auto rounded-lg shadow-inner card">
-            <div v-for="(row, rowIndex) in seatsGrid" :key="rowIndex" class="relative h-16 mb-2">
-                <!-- Label -->
-                <div class="absolute left-0 flex items-center justify-between w-16 px-3 py-2 text-xs font-bold text-white -translate-y-1/2 bg-purple-600 shadow rounded-xl top-1/2">
-                    <span>แถว</span><span>{{ rowIndex + 1 }}</span>
-                </div>
-                <div class="flex items-center h-full ml-16">
-                    <template v-if="rowIndex === 3 || rowIndex === 16 || rowIndex === 29">
-                        <!-- 👇 rowIndex 3: เสา 2 ต้น แบบเดิม -->
-                        <template v-if="rowIndex === 3">
-                            <!-- seats 181–186 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(0, 6)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 1 -->
-                            <div class="flex-none flex items-center justify-center w-[7.75rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- seats 187–210 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(6, 30)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- spacer -->
-                            <div class="flex-none w-16"></div>
-
-                            <!-- seats 211–226 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(30, 46)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 2 -->
-                            <div class="flex-none flex items-center justify-center w-[7.75rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- seats 227–234 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(46, 54)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- 👇 rowIndex 16: เสา 3 ต้น -->
-                        <template v-else-if="rowIndex === 29">
-                            <!-- seats 961–981 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(0, 6)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 1 -->
-                            <div class="flex-none flex items-center justify-center w-[7.75rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- seats 982–1001 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(6, 27)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 2 -->
-                            <div class="flex-none flex items-center justify-center w-[7.45rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- spacer -->
-                            <div class="flex-none w-16"></div>
-
-                            <!-- seats 1002–1016 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(27, 43)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 3 -->
-                            <div class="flex-none flex items-center justify-center w-[7.75rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- seats 1017–1020 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(43, 51)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-                        </template>
-
-                        <!-- 👇 rowIndex 16: เสา 3 ต้น -->
-                        <template v-else-if="rowIndex === 16">
-                            <!-- seats 961–981 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(0, 6)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 1 -->
-                            <div class="flex-none flex items-center justify-center w-[7.75rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- seats 982–1001 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(6, 27)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 2 -->
-                            <div class="flex-none flex items-center justify-center w-[7.45rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- spacer -->
-                            <div class="flex-none w-16"></div>
-
-                            <!-- seats 1002–1016 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(27, 43)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-
-                            <!-- เสา 3 -->
-                            <div class="flex-none flex items-center justify-center w-[7.75rem] h-full border-2 border-yellow-400 rounded-lg bg-yellow-100 shadow">
-                                <span class="text-xs font-bold text-yellow-800">เสา</span>
-                            </div>
-
-                            <!-- seats 1017–1020 -->
-                            <div class="flex space-x-1">
-                                <div v-for="(p, i) in row.slice(43, 51)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                    <Icon
-                                        v-if="p"
-                                        icon="material-symbols:event-seat"
-                                        class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                        :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                        v-tooltip="p.name"
-                                        @click="showPersonDetail(p)"
-                                    />
-                                    <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                    <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                                </div>
-                            </div>
-                        </template>
-                    </template>
-
-                    <!-- แถวอื่นๆ -->
-                    <template v-else>
-                        <div class="flex space-x-1">
-                            <div v-for="(p, i) in row.slice(0, 33)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                <Icon
-                                    v-if="p"
-                                    icon="material-symbols:event-seat"
-                                    class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                    :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                    v-tooltip="p.name"
-                                    @click="showPersonDetail(p)"
-                                />
-                                <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
+            <!-- Dropdown Filter Bar -->
+            <div v-if="showFilterDropdown" ref="filterDropdownRef" class="absolute right-0 mt-2 z-50 bg-white/90 rounded-xl shadow-xl p-4 w-96 max-w-[95vw] flex flex-col gap-3 border border-blue-100">
+                <div class="flex flex-col gap-3">
+                    <div class="flex items-center min-w-0 gap-3 px-2 py-1 border-b border-blue-100">
+                        <Icon icon="mdi:magnify" class="text-blue-800" width="40" height="40" />
+                        <div class="relative w-full">
+                            <form @submit.prevent style="width: 100%">
+                                <input v-model="searchQuery" class="flex-1 w-full min-w-0 pl-3 text-gray-900 placeholder-transparent border border-blue-400 rounded-lg shadow h-9 bg-white/80 focus:ring-0 focus:outline-none" />
+                                <button type="submit" style="display: none"></button>
+                            </form>
+                            <div v-if="!searchQuery" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-[calc(100%-2.5rem)] overflow-hidden">
+                                <span class="block text-sm text-gray-400 animate-marquee whitespace-nowrap"> ค้นหาเลขนิสิต 4 ตัวท้าย หรือ เลขที่นั่ง... </span>
                             </div>
                         </div>
-                        <div class="flex-none w-16"></div>
-                        <div class="flex space-x-1">
-                            <div v-for="(p, i) in row.slice(33)" :key="i" class="flex flex-col items-center justify-center h-full w-9">
-                                <Icon
-                                    v-if="p"
-                                    icon="material-symbols:event-seat"
-                                    class="text-2xl rounded shadow cursor-pointer hover:scale-110 hover:shadow-lg"
-                                    :class="p.verified === 1 ? 'text-green-500' : p.verified === 0 ? 'text-red-500' : 'text-gray-400'"
-                                    v-tooltip="p.name"
-                                    @click="showPersonDetail(p)"
-                                />
-                                <div v-else class="w-6 h-6 text-xs text-gray-400">–</div>
-                                <div v-if="p" class="text-[10px] mt-1" v-tooltip="'ที่นั่ง ' + p.seat">{{ p.seat }}</div>
-                            </div>
+                        <select v-model="searchType" class="h-9 bg-white/80 border border-blue-400 rounded-lg shadow focus:ring-0 focus:outline-none text-gray-900 font-semibold px-2 w-auto max-w-[120px]">
+                            <option value="nisit4">เลขนิสิต 4 ตัวท้าย</option>
+                            <option value="seat">เลขที่นั่ง</option>
+                        </select>
+                    </div>
+                    <div
+                        v-if="searchMessage"
+                        :class="[
+                            'flex items-center w-full justify-center gap-2 mt-2 mb-3 px-4 py-2 rounded-xl text-base font-semibold shadow',
+                            searchMessage.includes('ไม่พบ') ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-green-100 text-green-900 border border-green-300'
+                        ]"
+                    >
+                        <Icon :icon="searchMessage.includes('ไม่พบ') ? 'mdi:alert-circle-outline' : 'mdi:check-circle-outline'" :class="searchMessage.includes('ไม่พบ') ? 'text-red-600' : 'text-green-600'" width="24" height="24" />
+                        <span class="whitespace-pre-line">{{ searchMessage }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 px-2 py-1 border-b border-blue-100">
+                        <Icon icon="mdi:account-check" class="text-blue-800" width="20" height="20" />
+                        <div class="relative w-full">
+                            <select
+                                v-model="verifiedFilter"
+                                class="w-full h-10 pl-4 pr-10 font-semibold text-blue-700 transition border border-blue-200 rounded-lg shadow appearance-none bg-white/80 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                            >
+                                <option value="all">ทั้งหมด</option>
+                                <option value="1">รายงานตัวแล้ว</option>
+                                <option value="0">ยังไม่รายงานตัว</option>
+                                <option value="2">เข้าหอประชุมเรียบร้อยแล้ว</option>
+                                <option value="unknown">ไม่ทราบสถานะ</option>
+                            </select>
+                            <span class="absolute text-blue-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+                                <Icon icon="mdi:chevron-down" width="20" height="20" />
+                            </span>
                         </div>
-                    </template>
+                    </div>
+                    <div class="flex items-center gap-2 px-2 py-1 border-b border-blue-100">
+                        <Icon icon="mdi:school" class="text-blue-800" width="20" height="20" />
+                        <div class="relative w-full">
+                            <select
+                                v-model="selectedDegree"
+                                class="w-full h-10 pl-4 pr-10 font-semibold text-blue-700 transition border border-blue-200 rounded-lg shadow appearance-none bg-white/80 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                            >
+                                <option value="">ทุกคณะ</option>
+                                <option v-for="d in degreeList" :key="d" :value="d">{{ d }}</option>
+                            </select>
+                            <span class="absolute text-blue-400 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+                                <Icon icon="mdi:chevron-down" width="20" height="20" />
+                            </span>
+                        </div>
+                    </div>
+                    <!-- เปลี่ยนปุ่มปิดเป็นปุ่มรีเฟรช -->
+                    <button @click="resetFilter" class="flex items-center self-end justify-center transition border-none rounded-full h-9 w-9 hover:bg-blue-200" title="รีเซ็ตตัวกรอง">
+                        <Icon icon="mdi:refresh" class="text-blue-800 hover:text-blue-600" width="24" height="24" />
+                    </button>
+                    <!-- Filter Chips -->
+                    <!-- ลบ searchMessage ออกจาก filter chips -->
+                    <div v-if="activeFilters.length > 0" class="flex flex-wrap justify-end gap-2 mt-4">
+                        <span v-for="f in activeFilters" :key="f.key" class="flex items-center px-2 py-1 text-blue-800 bg-blue-100 rounded-full">
+                            {{ f.label }}
+                            <button @click="removeFilter(f.key)" class="ml-1 text-blue-500 hover:text-blue-700">&times;</button>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
-        <!-- Detail Dialog -->
-        <Dialog v-model:visible="dialogVisible" header="รายละเอียดผู้เข้าร่วม" modal :closable="true" class="p-fluid">
-            <div class="space-y-4">
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t">
-                    <label class="font-semibold text-white-600">ชื่อ</label>
-                    <p class="col-span-2 text-white-800">{{ selectedPerson.name }}</p>
+        <!-- Seat Layout -->
+        <div v-if="loading" class="grid grid-cols-5 gap-4 p-4"><Skeleton v-for="n in 10" :key="n" width="100%" height="4rem" /></div>
+        <div v-else class="overflow-auto pt-9">
+            <div class="flex flex-col gap-4">
+                <div v-for="(row, rowIdx) in seatRows" :key="rowIdx" class="flex items-center mb-2">
+                    <div class="flex-shrink-0 w-24 pr-2 text-xs font-bold text-right text-gray-300">
+                        <span class="bg-blue-100 border border-blue-400 rounded px-2 py-1 text-blue-800 min-w-[4.5rem]">แถว A{{ rowIdx + 1 }}</span>
+                    </div>
+                    <!-- ฝั่งซ้าย: 0-34 -->
+                    <div class="flex gap-2">
+                        <template v-for="(item, i) in buildSidesWithPillars(row).left" :key="i">
+                            <div
+                                v-if="item.type === 'pillar'"
+                                class="flex items-center justify-center text-xs font-bold text-yellow-800 bg-yellow-200 border border-yellow-400 rounded"
+                                :style="item.length > 1 ? { gridColumn: `span ${item.length} / span ${item.length}`, width: `calc(1.5rem * ${item.length})` } : { width: '2.25rem' }"
+                            >
+                                เสา
+                            </div>
+                            <div
+                                v-else-if="item.type === 'person'"
+                                class="flex flex-col items-center cursor-pointer"
+                                :title="item.data.name"
+                                @click="showPersonDetail(item.data)"
+                                :class="isHighlighted(item.data) ? 'ring-4 ring-yellow-400 ring-offset-2 rounded-lg' : ''"
+                                :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
+                            >
+                                <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
+                                <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
+                            </div>
+                            <div v-else class="w-6 h-6"></div>
+                        </template>
+                    </div>
+                    <!-- ช่องว่างตรงกลาง (mx-12) -->
+                    <div class="mx-12"></div>
+                    <!-- ฝั่งขวา: 35-69 -->
+                    <div class="flex gap-2">
+                        <template v-for="(item, i) in buildSidesWithPillars(row).right" :key="i">
+                            <div
+                                v-if="item.type === 'pillar'"
+                                class="flex items-center justify-center text-xs font-bold text-yellow-800 bg-yellow-200 border border-yellow-400 rounded"
+                                :style="item.length > 1 ? { gridColumn: `span ${item.length} / span ${item.length}`, width: `calc(1.5rem * ${item.length})` } : { width: '2.35rem' }"
+                            >
+                                เสา
+                            </div>
+                            <div
+                                v-else-if="item.type === 'person'"
+                                class="flex flex-col items-center cursor-pointer"
+                                :title="item.data.name"
+                                @click="showPersonDetail(item.data)"
+                                :class="isHighlighted(item.data) ? 'ring-4 ring-yellow-400 ring-offset-2 rounded-lg' : ''"
+                                :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
+                            >
+                                <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
+                                <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
+                            </div>
+                            <div v-else class="w-6 h-6"></div>
+                        </template>
+                    </div>
+                    <div class="flex-shrink-0 w-24 pl-2 text-xs font-bold text-left text-gray-300">
+                        <span class="bg-blue-100 border border-blue-400 rounded px-2 py-1 text-blue-800 min-w-[4.5rem]">แถว B{{ rowIdx + 1 }}</span>
+                    </div>
                 </div>
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t">
-                    <label class="font-semibold text-white-600">รหัสนิสิต</label>
-                    <p class="col-span-2 text-white-800">{{ selectedPerson.nisit }}</p>
+            </div>
+        </div>
+        <!-- Person Detail Dialog -->
+        <Dialog v-model:visible="dialogVisible" header="" modal :closable="false" class="p-fluid max-w-lg w-[98vw] rounded-2xl shadow-2xl ring-2 ring-blue-200/60 backdrop-blur-xl animate-fade-in" :dismissableMask="true" :closeOnEscape="true">
+            <div v-if="selectedPerson" class="relative flex flex-col items-center p-0 shadow-xl bg-white/90 rounded-2xl md:flex-row">
+                <!-- ปุ่มปิด -->
+                <button @click="dialogVisible = false" class="absolute flex items-center justify-center w-10 h-10 text-blue-400 transition rounded-full shadow-lg top-4 right-4 bg-white/80 hover:bg-blue-200 hover:text-blue-700" aria-label="ปิด">
+                    <Icon icon="mdi:close" width="26" height="26" />
+                </button>
+                <!-- Avatar -->
+                <div class="flex flex-col items-center justify-center flex-shrink-0 p-8">
+                    <Icon icon="mdi:account-circle" class="text-blue-300" width="80" height="80" />
                 </div>
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t">
-                    <label class="font-semibold text-white-600">คณะ</label>
-                    <p class="col-span-2 text-white-800">{{ selectedPerson.degree }}</p>
-                </div>
-                <div class="grid grid-cols-3 gap-2 pt-3 border-t">
-                    <label class="font-semibold text-white-600">ที่นั่ง</label>
-                    <p class="col-span-2 text-white-800">{{ selectedPerson.seat }}</p>
+                <!-- ข้อมูล -->
+                <div class="flex-1 p-8">
+                    <div class="mb-2 text-2xl font-bold text-blue-900">{{ selectedPerson.name }}</div>
+                    <div class="mb-1 text-gray-500">
+                        รหัสนิสิต: <span class="font-semibold text-gray-800">{{ selectedPerson.nisit }}</span>
+                    </div>
+                    <div class="mb-1 text-gray-500">
+                        คณะ: <span class="font-semibold text-gray-800">{{ selectedPerson.degree }}</span>
+                    </div>
+                    <div class="text-gray-500">
+                        ที่นั่ง: <span class="font-semibold text-gray-800">{{ selectedPerson.seat }}</span>
+                    </div>
                 </div>
             </div>
         </Dialog>
@@ -473,16 +437,42 @@ onMounted(fetchPersons);
 </template>
 
 <style scoped>
-.p-dialog {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.fade-enter-active,
-.fade-leave-active {
-    transition: all 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
+.fade-slide-enter-from,
+.fade-slide-leave-to {
     opacity: 0;
-    transform: translateY(5px);
+    transform: translateY(40px) scale(0.98);
+}
+.fade-slide-enter-to,
+.fade-slide-leave-from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(32px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+.animate-fade-in {
+    animation: fade-in 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes marquee {
+    0% {
+        transform: translateX(100%);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+.animate-marquee {
+    animation: marquee 6s linear infinite;
 }
 </style>
