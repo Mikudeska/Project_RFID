@@ -372,7 +372,10 @@ function setHighlightedSeatRef(el) {
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
                             </div>
-                            <div v-else class="w-6 h-6"></div>
+                            <div v-else class="flex flex-col items-center opacity-80 bg-gray-100/60 dark:bg-gray-700/30 rounded">
+                                <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
+                                <span class="mt-1 text-xs font-bold text-gray-400 dark:text-gray-400">ว่าง</span>
+                            </div>
                         </template>
                     </div>
                     <!-- ช่องว่างตรงกลาง (mx-12) -->
@@ -398,7 +401,10 @@ function setHighlightedSeatRef(el) {
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
                             </div>
-                            <div v-else class="w-6 h-6"></div>
+                            <div v-else class="flex flex-col items-center opacity-80 bg-gray-100/60 dark:bg-gray-700/30 rounded">
+                                <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
+                                <span class="mt-1 text-xs font-bold text-gray-400 dark:text-gray-400">ว่าง</span>
+                            </div>
                         </template>
                     </div>
                     <div class="flex-shrink-0 w-24 pl-2 text-xs font-bold text-left text-gray-300">
