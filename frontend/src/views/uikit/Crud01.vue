@@ -41,10 +41,15 @@ function handleWsMessage(event) {
     if (msg.action === 'update') {
         const index = persons.value.findIndex((p) => p.id === msg.id);
         if (index !== -1) {
-            if ('verified1' in msg.fields) {
-                msg.fields.verified = msg.fields.verified1;
+            if ('verified1' in msg.fields || 'verified2' in msg.fields || 'verified3' in msg.fields) {
+                const updatedAts = {
+                    1: msg.fields.verified_updated_at1 || persons.value[index]?.verified_updated_at1,
+                    2: msg.fields.verified_updated_at2 || persons.value[index]?.verified_updated_at2,
+                    3: msg.fields.verified_updated_at3 || persons.value[index]?.verified_updated_at3
+                };
+                const latest = Object.entries(updatedAts).sort((a, b) => new Date(b[1]) - new Date(a[1]))[0]?.[0];
+                msg.fields.verified = msg.fields[`verified${latest}`];
             }
-
             const updated = { ...persons.value[index], ...msg.fields };
             persons.value.splice(index, 1, updated);
 
@@ -134,22 +139,43 @@ const exportPDF = async () => {
             throw new Error('ไฟล์ PDF ว่างเปล่า');
         }
 
-        // อ่านชื่อไฟล์จาก header Content-Disposition
+        // อ่านชื่อไฟล์จาก header
         const disposition = response.headers['content-disposition'];
-        let filename = 'download.pdf';
-        if (disposition && disposition.includes('filename=')) {
-            filename = disposition.split('filename=')[1].replace(/["']/g, '').trim();
+        let filename = 'รายชื่อ.pdf';
+        
+        if (disposition) {
+            // วิธีที่ 1: แยกด้วย regex
+            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+            if (matches && matches[1]) {
+                filename = matches[1].replace(/['"]/g, '');
+            }
+            
+            // วิธีที่ 2: สำหรับ UTF-8 filename (ทางเลือกเสริม)
+            const utf8Filename = disposition.match(/filename\*=UTF-8''(.*)/)?.[1];
+            if (utf8Filename) {
+                filename = decodeURIComponent(utf8Filename);
+            }
         }
 
-        const url = window.URL.createObjectURL(new Blob([response.data]));
+        // สร้างลิงก์ดาวน์โหลด
+        const blob = new Blob([response.data], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', filename);
+        link.download = filename;
+        link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        link.remove();
+        
+        // ล้างทรัพยากร
+        setTimeout(() => {
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        }, 100);
     } catch (error) {
         console.error('PDF Export Error:', error);
+        alert('การส่งออก PDF ล้มเหลว: ' + error.message);
     }
 };
 

@@ -54,7 +54,7 @@ def broadcast_stats_update():
     })
 
 def broadcast_ws(action, data=None):
-    safe_group_send("crud01_group", "send.message", {
+    safe_group_send("crud01_group", "send_message", {
         "action": action,
         "data": data or {}
     })
@@ -82,7 +82,7 @@ def get_latest_verified(person):
                 latest_time = time
                 latest_verified = value
 
-    return latest_verified
+    return latest_verified if latest_verified is not None else -1
 
 # เก็บชื่อ channel ของผู้เชื่อมต่อทั้งหมด
 connected_clients = set()

@@ -28,40 +28,82 @@ async function fetchPersons() {
     }
 }
 
-const ExportPDFResult = async () => {
-    try {
-        const response = await axios.get(`${API_BASE}/api/export-pdf-result/`, {
-            responseType: 'blob',
-            timeout: 30000
-        });
+const exportPDFResult = async () => {
+  try {
+    const API_BASE = import.meta.env.VITE_API_BASE; // หรือที่ตั้ง API ของคุณ
+    const response = await axios.get(`${API_BASE}/api/export-pdf-result/`, {
+      responseType: 'blob',
+      timeout: 30000,
+    });
 
-        if (response.data.size < 1024) {
-            throw new Error('ไฟล์ PDF ว่างเปล่า');
-        }
-
-        // อ่านชื่อไฟล์จาก header Content-Disposition
-        const disposition = response.headers['content-disposition'];
-        let filename = 'download.pdf';
-        if (disposition && disposition.includes('filename=')) {
-            filename = disposition.split('filename=')[1].replace(/["']/g, '').trim();
-        } else if (disposition && disposition.includes('filename*=')) {
-            // กรณี filename* ที่ encode UTF-8
-            const matches = disposition.match(/filename\*\=UTF-8''([^;]+)/);
-            if (matches && matches[1]) {
-                filename = decodeURIComponent(matches[1]);
-            }
-        }
-
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', filename);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-    } catch (error) {
-        console.error('PDF Export Error:', error);
+    // ตรวจสอบสถานะ HTTP
+    if (response.status !== 200) {
+      // อ่านข้อความ error จาก blob
+      const errorText = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.readAsText(response.data);
+      });
+      throw new Error(`Server error: ${errorText}`);
     }
+
+    // ตรวจสอบขนาดไฟล์
+    if (response.data.size < 1024) {
+      throw new Error('ไฟล์ PDF ว่างเปล่าหรือมีขนาดเล็กเกินไป');
+    }
+
+    // อ่านชื่อไฟล์จาก header
+    const disposition = response.headers['content-disposition'];
+    let filename = 'ListResult.pdf';
+    
+    // ฟังก์ชันช่วยอ่านชื่อไฟล์จาก Content-Disposition
+    const getFilenameFromDisposition = (disp) => {
+      if (!disp) return null;
+      
+      // ลองอ่านแบบ UTF-8 filename
+      const utf8Match = disp.match(/filename\*=UTF-8''([\w%\-\.]+)/i);
+      if (utf8Match && utf8Match[1]) {
+        return decodeURIComponent(utf8Match[1]);
+      }
+      
+      // ลองอ่านแบบ filename มาตรฐาน
+      const filenameMatch = disp.match(/filename="?([^"]+)"?/i);
+      if (filenameMatch && filenameMatch[1]) {
+        return filenameMatch[1].replace(/['"]/g, '');
+      }
+      
+      return null;
+    };
+
+    const extractedFilename = getFilenameFromDisposition(disposition);
+    if (extractedFilename) {
+      filename = extractedFilename;
+    }
+
+    // สร้าง Blob URL
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const blobUrl = URL.createObjectURL(blob);
+    
+    // สร้างลิงก์ดาวน์โหลด
+    const downloadLink = document.createElement('a');
+    downloadLink.href = blobUrl;
+    downloadLink.download = filename;
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    
+    // ล้างทรัพยากร
+    setTimeout(() => {
+      document.body.removeChild(downloadLink);
+      URL.revokeObjectURL(blobUrl);
+    }, 100);
+    
+  } catch (error) {
+    console.error('PDF Export Error:', error);
+    
+    // แสดงข้อผิดพลาดให้ผู้ใช้เห็น
+    alert(`การส่งออก PDF ล้มเหลว: ${error.message}`);
+  }
 };
 
 // ฟังก์ชันช่วยจัดกลุ่มประเภทปริญญา
@@ -168,7 +210,7 @@ onMounted(() => {
                 <template #start> </template>
 
                 <template #end>
-                    <Button severity="secondary" class="mr-2" @click="ExportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
+                    <Button severity="secondary" class="mr-2" @click="exportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
                 </template>
             </Toolbar>
 

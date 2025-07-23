@@ -19,7 +19,9 @@ class PersonSerializer(serializers.ModelSerializer):
                 old_val = getattr(instance, verified_key)
                 if old_val is None or old_val != new_val:
                     validated_data[updated_key] = timezone.now()
-        return super().update(instance, validated_data)
+        instance = super().update(instance, validated_data)
+        instance.save()  # บันทึกจริง
+        return instance
 
     def get_verified(self, obj):
         latest_verified = None
