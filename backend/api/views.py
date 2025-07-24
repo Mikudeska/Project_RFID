@@ -9,6 +9,7 @@ from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework import status, generics
+from rest_framework.pagination import PageNumberPagination
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -1081,9 +1082,13 @@ class RFIDSimulator(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class LogPagination(PageNumberPagination):
+    page_size = 5
 
 class LogList(generics.ListAPIView):
     serializer_class = LogSerializer
+    pagination_class = LogPagination
     
     def get_queryset(self):
         # กรองข้อมูลที่อาจมี timestamp เป็น null

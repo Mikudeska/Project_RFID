@@ -2,12 +2,15 @@
 import { useLayout } from '@/layout/composables/layout';
 import AppConfigurator from './AppConfigurator.vue';
 import { useOnline } from '@vueuse/core';
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { Icon, loadIcon } from '@iconify/vue';
 import { useRouter } from 'vue-router';
 import { useWebSocketStore } from '@/stores/websocket';
 import { storeToRefs } from 'pinia';
 import axios from 'axios';
+import OverlayPanel from 'primevue/overlaypanel';
+
+const API_BASE = import.meta.env.VITE_API_BASE;
 
 const wsStore = useWebSocketStore();
 const { isConnected, viewerCount } = storeToRefs(wsStore);
@@ -29,6 +32,38 @@ const clazz = computed(() => (online.value ? 'text-primary' : 'text-red-500'));
 const text = computed(() => (online.value ? 'Online' : 'Offline'));
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+
+// Log
+const logs = ref([]);
+const op = ref(null);
+
+function togglePanel(event) {
+    op.value.toggle(event);
+}
+
+async function fetchLogs() {
+  try {
+    const { data } = await axios.get(`${API_BASE}/api/logs/?limit=5`);
+    logs.value = (data.results ?? []).filter(l => l && l.id != null);
+  } catch (err) {
+    console.error('โหลด logs ไม่สำเร็จ:', err);
+  }
+}
+
+// รูปแบบวันที่
+function formatDate(datetimeStr) {
+    const date = new Date(datetimeStr);
+    return date.toLocaleString('th-TH', {
+        dateStyle: 'short',
+        timeStyle: 'short'
+    });
+}
+
+const filteredLogs = computed(() => {
+  return logs.value.filter(log => ['comment','Import','Reset'].includes(log.action));
+});
+
+onMounted(fetchLogs);
 </script>
 
 <template>
@@ -76,10 +111,29 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
                     </button>
                     <AppConfigurator />
                 </div> -->
-                <button @click="togglePanel" ref="btn" type="button"  class="layout-topbar-action">
-                    <Icon icon="streamline-plump:inbox-content-solid" />
-                    <span>Messages</span>
-                </button>
+                <div>
+                    <!-- ปุ่มกล่องข้อความ -->
+                    <button @click="togglePanel($event)" ref="btn" type="button" class="layout-topbar-action relative">
+                        <Icon icon="streamline-plump:inbox-content-solid" />
+                        <span>Messages</span>
+                        <!-- ตัวเลขแจ้งเตือน -->
+                        <span v-if="logs.length" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            {{ logs.length }}
+                        </span>
+                    </button>
+
+                    <!-- เมนูแจ้งเตือน -->
+                    <OverlayPanel ref="op">
+                        <ul class="w-72">
+                            <li v-for="log in filteredLogs" :key="log.id" class="p-2 text-mg flex justify-between items-center">
+                                <div class="flex-1">{{ log.user || 'ผู้ใช้' }}</div>
+                                <div class="flex-1 text-green-800 text-center">{{ log.action || 'ไม่รู้หัวข้อ' }}</div>
+                                <div class="flex-1 text-gray-500 text-xs text-right">{{ formatDate(log.timestamp) }}</div>
+                            </li>
+                            <li v-if="!logs.length" class="p-2 text-center text-gray-400">ไม่มีข้อความล่าสุด</li>
+                        </ul>
+                    </OverlayPanel>
+                </div>  
                 <button type="button" class="layout-topbar-action" @click="goToLogin">
                     <i class="pi pi-user"></i>
                     <span>Profile</span>

@@ -68,6 +68,9 @@ function handleWsMessage(event) {
         }
         persons.value = persons.value.filter((p) => p && p.id !== deletedId);
     }
+    else if (msg.action === 'reset' || msg.action === 'upload') {
+        fetchPersons();
+    }
 }
 
 onMounted(() => {

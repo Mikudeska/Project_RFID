@@ -13,6 +13,7 @@ import Tooltip from 'primevue/tooltip';
 import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
 import { createPinia } from 'pinia';
+import OverlayPanel from 'primevue/overlaypanel';
 
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
@@ -86,6 +87,7 @@ app.use(PrimeVue, {
 app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('tooltip', Tooltip);
+app.component('OverlayPanel', OverlayPanel);
 app.component('Toast', Toast);
 app.component('downloadExcel', JsonExcel);
 app.component('Icon', Icon);
