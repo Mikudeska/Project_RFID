@@ -9,6 +9,7 @@ import { useWebSocketStore } from '@/stores/websocket';
 import { storeToRefs } from 'pinia';
 import axios from 'axios';
 import OverlayPanel from 'primevue/overlaypanel';
+import Badge from 'primevue/badge';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -34,6 +35,8 @@ const text = computed(() => (online.value ? 'Online' : 'Offline'));
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 
 // Log
+defineProps();
+defineEmits();
 const logs = ref([]);
 const op = ref(null);
 
@@ -42,12 +45,22 @@ function togglePanel(event) {
 }
 
 async function fetchLogs() {
-  try {
-    const { data } = await axios.get(`${API_BASE}/api/logs/?limit=5`);
-    logs.value = (data.results ?? []).filter(l => l && l.id != null);
-  } catch (err) {
-    console.error('โหลด logs ไม่สำเร็จ:', err);
-  }
+    logs.value = [];
+    let page = 1;
+    let hasNext = true;
+
+    while (hasNext) {
+        try {
+            const response = await axios.get(`${API_BASE}/api/logs/?page=${page}`);
+            const data = response.data;
+            logs.value.push(...(data.results ?? []));
+            hasNext = !!data.next;
+            page++;
+        } catch (error) {
+            console.error('โหลด logs ล้มเหลวที่หน้า', page, error);
+            break;
+        }
+    }
 }
 
 // รูปแบบวันที่
@@ -59,9 +72,11 @@ function formatDate(datetimeStr) {
     });
 }
 
-const filteredLogs = computed(() => {
-  return logs.value.filter(log => ['comment','Import','Reset'].includes(log.action));
-});
+const filteredLogs = computed(() =>
+    logs.value
+        .filter(log => ['comment', 'import', 'reset'].includes(log.action?.toLowerCase()))
+        .slice(0, 5)
+);
 
 onMounted(fetchLogs);
 </script>
@@ -113,19 +128,31 @@ onMounted(fetchLogs);
                 </div> -->
                 <div>
                     <!-- ปุ่มกล่องข้อความ -->
-                    <button @click="togglePanel($event)" ref="btn" type="button" class="layout-topbar-action relative">
-                        <Icon icon="streamline-plump:inbox-content-solid" />
-                        <span>Messages</span>
-                        <!-- ตัวเลขแจ้งเตือน -->
-                        <span v-if="logs.length" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                            {{ logs.length }}
-                        </span>
-                    </button>
+                    <div class="relative">
+                        <button
+                            @click="togglePanel($event)"
+                            ref="btn"
+                            type="button"
+                            class="layout-topbar-action"
+                        >
+                            <Icon icon="streamline-plump:inbox-content-solid" class="mr-2" />
+                            <span>Messages</span>
+                        </button>
 
+                        <Badge
+                            severity="warn"
+                            class="absolute top-1.5 right-3 rounded-full flex items-center justify-center"
+                            style="width: 10px; height: 10px; font-size: 10px; padding: 0"
+                        />
+                    </div>
                     <!-- เมนูแจ้งเตือน -->
                     <OverlayPanel ref="op">
                         <ul class="w-72">
-                            <li v-for="log in filteredLogs" :key="log.id" class="p-2 text-mg flex justify-between items-center">
+                            <li
+                                v-for="log in filteredLogs"
+                                :key="log.id"
+                                class="p-2 text-mg flex justify-between items-center"
+                            >
                                 <div class="flex-1">{{ log.user || 'ผู้ใช้' }}</div>
                                 <div class="flex-1 text-green-800 text-center">{{ log.action || 'ไม่รู้หัวข้อ' }}</div>
                                 <div class="flex-1 text-gray-500 text-xs text-right">{{ formatDate(log.timestamp) }}</div>

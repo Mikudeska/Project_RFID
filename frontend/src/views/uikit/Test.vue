@@ -66,7 +66,9 @@ const upload = () => {
                 Status: <b class="flex items-center gap-2 text-5xl" :class="clazz"><Icon :icon="wifistatus" />{{ text }}</b>
             </div>
         </div>
-        <div class="card row-1 row-2 col-3 col-4">3</div>
+        <div class="card row-1 row-2 col-3 col-4">
+            <Badge value="3" severity="danger" />
+        </div>
         <div class="card row-2 row-3 col-1 col-2">4</div>
         <div class="card row-2 row-3 col-2 col-3">5</div>
         <div class="card row-2 row-3 col-3 col-4">6</div>

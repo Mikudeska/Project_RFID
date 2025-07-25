@@ -22,6 +22,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
+    <Badge />
     <Toast showProgressBar />
     <router-view />
 </template>

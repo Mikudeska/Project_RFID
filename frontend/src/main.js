@@ -14,6 +14,7 @@ import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
 import { createPinia } from 'pinia';
 import OverlayPanel from 'primevue/overlaypanel';
+import Badge from 'primevue/badge';
 
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
@@ -87,6 +88,7 @@ app.use(PrimeVue, {
 app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('tooltip', Tooltip);
+app.component('Badge', Badge);
 app.component('OverlayPanel', OverlayPanel);
 app.component('Toast', Toast);
 app.component('downloadExcel', JsonExcel);
