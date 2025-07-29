@@ -67,11 +67,15 @@ class Log(models.Model):
         ('comment', 'Comment'),
     ]
     
-    action = models.CharField(max_length=10, choices=ACTION_CHOICES)
+    action = models.CharField(max_length=10)
     model = models.CharField(max_length=50)
     details = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     record_id = models.CharField(max_length=100, blank=True, null=True)
+
+    def save(self, *args, **kwargs):
+        self.action = self.action.lower()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.timestamp} - {self.action} - {self.model}"
