@@ -164,7 +164,7 @@ onMounted(async () => {
             <!-- ส่วนแสดงคอมเมนต์ -->
             <div class="col-span-12 md:col-span-4">
                 <div class="card h-[calc(100vh-100px)] max-h-[calc(100vh-230px)] xl:max-h-[calc(100vh-310px)] overflow-auto" ref="commentsContainer">
-                    <div class="pb-2 text-4xl">ช่องข้อความ</div>
+                    <div class="pb-2 text-4xl">กล่องข้อความ</div>
                     <div v-for="(comment, index) in comments" :key="index" class="pt-2 mb-4 border-t-2 border-indigo-600">
                         <p class="w-full mb-2 text-lg text-center">
                             {{
@@ -185,7 +185,7 @@ onMounted(async () => {
                     <div class="">
                         <div class="grid grid-cols-12 gap-2 pt-4 md:flex-row">
                             <InputText type="text" v-model="newComment" placeholder="พิมพ์คอมเมนต์ของคุณ.... " class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-10 text-1xl" />
-                            <Button label="Post" @click="addComment" class="flex flex-col col-span-12 text-xl xl:col-span-2" Rounded />
+                            <Button label="ส่ง" @click="addComment" class="flex flex-col col-span-12 text-xl xl:col-span-2" Rounded />
                         </div>
                     </div>
                 </div>
