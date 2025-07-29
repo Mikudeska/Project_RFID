@@ -436,7 +436,7 @@ const verifiedMenuItems = [
     {
         label: 'อยู่ในห้องพิธี',
         icon: 'tdesign:certificate-filled',
-        color: 'text-yellow-500',
+        color: 'text-yellow-300',
         command: () => updateSelectedVerified(2, 'verified1')
     }
 ];
@@ -469,7 +469,7 @@ const items = ref([
     {
         label: 'อยู่ในห้องพิธี',
         icon: 'tdesign:certificate-filled',
-        color: 'text-yellow-500',
+        color: 'text-yellow-300',
         command: () => {
             applyVerifiedFilter(2);
         }
@@ -577,7 +577,7 @@ const items = ref([
                             :class="{
                                 'text-green-500': data.verified === 1,
                                 'text-red-500': data.verified === 0,
-                                'text-yellow-500': data.verified === 2
+                                'text-yellow-300': data.verified === 2
                             }"
                         />
                     </template>
@@ -643,7 +643,7 @@ const items = ref([
                         <div class="flex items-center col-span-4 gap-2">
                             <RadioButton id="verified2" v-model="product.verified1" name="verified" :value="2" />
                             <label for="verified2">
-                                <Icon icon="tdesign:certificate-filled" class="text-yellow-500" />
+                                <Icon icon="tdesign:certificate-filled" class="text-yellow-300" />
                             </label>
                         </div>
                     </div>

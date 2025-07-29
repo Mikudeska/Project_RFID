@@ -195,12 +195,12 @@ onMounted(() => {
                 <Icon icon="rivet-icons:close-circle" class="text-red-500" style="width: 36px; height: 36px" />
             </div>
 
-            <div class="flex items-center justify-between p-4 border-b-8 border-yellow-500 shadow rounded-3xl card">
+            <div class="flex items-center justify-between p-4 border-b-8 border-yellow-300 shadow rounded-3xl card">
                 <div>
                     <div class="text-lg font-semibold">เปอร์เซ็นต์</div>
                     <div class="text-5xl font-bold">{{ totalSummary.percentage }}%</div>
                 </div>
-                <Icon icon="mage:chart-fill" class="text-yellow-500" style="width: 36px; height: 36px" />
+                <Icon icon="mage:chart-fill" class="text-yellow-300" style="width: 36px; height: 36px" />
             </div>
         </div>
 

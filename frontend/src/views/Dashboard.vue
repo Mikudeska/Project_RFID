@@ -146,12 +146,12 @@ onMounted(async () => {
                         :key="feat"
                         :class="[
                             index % 4 === 0
-                                ? 'hover:border-b-8 hover:border-blue-500 rounded-lg'
+                                ? 'border-b-8 border-blue-500 rounded-b-xl'
                                 : index % 4 === 1
-                                ? 'hover:border-b-8 hover:border-red-500 rounded-lg6'
+                                ? 'border-b-8 border-red-500 rounded-b-xl'
                                 : index % 4 === 2
-                                ? 'hover:border-b-8 hover:border-green-500 rounded-lg'
-                                : 'hover:border-b-8 hover:border-yellow-300 rounded-lg'
+                                ? 'border-b-8 border-green-500 rounded-b-xl'
+                                : 'border-b-8 border-yellow-300 rounded-b-xl'
                         ]"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">

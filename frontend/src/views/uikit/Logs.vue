@@ -121,7 +121,7 @@ const getVerifiedColor = (value) => {
     const status = Number(value);
     if (status === 1) return 'text-green-500';
     if (status === 0) return 'text-red-500';
-    if (status === 2) return 'text-yellow-500';
+    if (status === 2) return 'text-yellow-300';
     return 'text-gray-400';
 };
 

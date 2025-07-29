@@ -119,7 +119,7 @@ function getChairColor(person) {
     let colorClass = 'text-gray-400'; // สถานะไม่แน่ชัด (default)
     if (personStatus === 0) colorClass = 'text-red-500'; // ยังไม่รายงานตัว
     if (personStatus === 1) colorClass = 'text-green-500'; // รายงานตัวแล้ว
-    if (personStatus === 2) colorClass = 'text-yellow-500'; // เข้าหอประชุมแล้ว
+    if (personStatus === 2) colorClass = 'text-yellow-300'; // เข้าหอประชุมแล้ว
 
     // ตรรกะการกรอง
     if (filter === 'all') {
@@ -385,7 +385,7 @@ onBeforeUnmount(() => {
                         <template v-for="(item, i) in buildSidesWithPillars(row).left" :key="i">
                             <div
                                 v-if="item.type === 'pillar'"
-                                class="flex items-center justify-center text-xs font-bold text-yellow-800 bg-yellow-200 border border-yellow-400 rounded"
+                                class="flex items-center justify-center text-xs font-bold -800 bg-yellow-200 border border-yellow-400 rounded"
                                 :style="item.length > 1 ? { gridColumn: `span ${item.length} / span ${item.length}`, width: `calc(1.5rem * ${item.length})` } : { width: '2.25rem' }"
                             >
                                 เสา
@@ -414,7 +414,7 @@ onBeforeUnmount(() => {
                         <template v-for="(item, i) in buildSidesWithPillars(row).right" :key="i">
                             <div
                                 v-if="item.type === 'pillar'"
-                                class="flex items-center justify-center text-xs font-bold text-yellow-800 bg-yellow-200 border border-yellow-400 rounded"
+                                class="flex items-center justify-center text-xs font-bold -800 bg-yellow-200 border border-yellow-400 rounded"
                                 :style="item.length > 1 ? { gridColumn: `span ${item.length} / span ${item.length}`, width: `calc(1.5rem * ${item.length})` } : { width: '2.35rem' }"
                             >
                                 เสา
