@@ -296,13 +296,13 @@ const extractShortenedIDs = (details) => {
                         :value="data.action"
                         :severity="
                             {
-                                Add: 'success',
-                                Edit: 'info',
-                                Delete: 'danger',
-                                Import: 'warning',
-                                Export: 'help',
-                                Reset: 'danger',
-                                Comment: 'help'
+                                add: 'success',
+                                edit: 'info',
+                                delete: 'danger',
+                                import: 'warning',
+                                export: 'help',
+                                reset: 'danger',
+                                comment: 'help'
                             }[data.action]
                         "
                     />
