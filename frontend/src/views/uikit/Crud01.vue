@@ -385,8 +385,6 @@ async function updateSelectedVerified(status, field = 'verified1') {
             verified_field: field
         });
 
-        await fetchPersons();
-
         // อัปเดตแสดงผลเฉพาะ field ที่ถูกเปลี่ยน
         persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, [field]: status } : p));
 
@@ -475,6 +473,16 @@ const items = ref([
         }
     }
 ]);
+
+function getLatestVerified(data) {
+    const updatedAts = {
+        1: data.verified_updated_at1,
+        2: data.verified_updated_at2,
+        3: data.verified_updated_at3
+    };
+    const latest = Object.entries(updatedAts).sort((a, b) => new Date(b[1]) - new Date(a[1]))[0]?.[0];
+    return data[`verified${latest}`];
+}
 </script>
 
 <template>
@@ -569,8 +577,8 @@ const items = ref([
                     </template>
                 </Column> -->
                 <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 8rem"></Column>
-                <Column field="verified" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
-                    <template #body="{ data }">
+                <Column field="verified" :body="(data) => getLatestVerified(data)" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
+                    <template #body="{ data }"> 
                         <Icon
                             class="icon"
                             :icon="data.verified === 1 ? 'rivet-icons:check-circle-solid' : data.verified === 0 ? 'rivet-icons:close-circle-solid' : 'tdesign:certificate-filled'"
