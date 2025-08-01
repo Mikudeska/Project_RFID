@@ -117,6 +117,16 @@ const filteredLogs = computed(() => logs.value);
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
 
+                <div class="relative">
+                    <Button
+                        icon="pi pi-palette"
+                        v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
+                        type="button"
+                        rounded
+                    />
+                    <AppConfigurator />
+                </div>
+
                 <!-- Inbox -->
                 <div>
                     <div class="relative">
@@ -124,16 +134,15 @@ const filteredLogs = computed(() => logs.value);
                             @click="togglePanel($event)"
                             ref="btn"
                             type="button"
-                            class="layout-topbar-action"
+                            class="layout-topbar-action flex items-center justify-center w-10 h-10 rounded-full"
                         >
-                            <Icon icon="streamline-plump:inbox-content-solid" class="mr-2" />
-                            <span>Messages</span>
+                            <Icon icon="streamline-plump:inbox-content-solid" class="text-xl" />
                         </button>
 
                         <Badge
                             v-if="logs.length"
                             severity="warn"
-                            class="absolute top-1.5 right-3 rounded-full flex items-center justify-center"
+                            class="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
                             style="width: 10px; height: 10px; font-size: 10px; padding: 0"
                         />
                     </div>
@@ -152,7 +161,7 @@ const filteredLogs = computed(() => logs.value);
                             <li v-if="!logs.length" class="p-2 text-center text-gray-400">ไม่มีข้อความล่าสุด</li>
                         </ul>
                     </OverlayPanel>
-                </div>  
+                </div> 
 
                 <button type="button" class="layout-topbar-action" @click="goToLogin">
                     <i class="pi pi-user"></i>
