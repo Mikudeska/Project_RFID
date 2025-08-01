@@ -529,48 +529,7 @@ function getMiniMapColor(status) {
                         </span>
                     </div>
 
-                    <!-- Statistics Section -->
-                    <div class="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-700 rounded-xl border border-blue-200 dark:border-gray-600 animate-fade-in">
-                        <div class="flex items-center gap-2 mb-3">
-                            <Icon icon="mdi:chart-line" class="text-blue-600 dark:text-blue-400 animate-bounce" width="20" height="20" />
-                            <span class="font-bold text-blue-800 dark:text-blue-200">สถิติการรายงานตัว</span>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <!-- Total -->
-                            <div class="text-center p-2 bg-white dark:bg-gray-700 rounded-lg border border-blue-200 dark:border-gray-600 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                                <div class="text-2xl font-bold text-blue-600 dark:text-blue-400 animate-pulse">{{ statistics.total }}</div>
-                                <div class="text-xs text-blue-500 dark:text-blue-300">ทั้งหมด</div>
-                            </div>
-                            <!-- Reported -->
-                            <div class="text-center p-2 bg-white dark:bg-gray-700 rounded-lg border border-green-200 dark:border-green-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                                <div class="text-2xl font-bold text-green-600 dark:text-green-400 animate-pulse">{{ statistics.reported }}</div>
-                                <div class="text-xs text-green-500 dark:text-green-300">รายงานตัวแล้ว ({{ statistics.reportedPercentage }}%)</div>
-                            </div>
-                            <!-- In Hall -->
-                            <div class="text-center p-2 bg-white dark:bg-gray-700 rounded-lg border border-yellow-200 dark:border-yellow-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                                <div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400 animate-pulse">{{ statistics.inHall }}</div>
-                                <div class="text-xs text-yellow-500 dark:text-yellow-300">เข้าหอประชุม ({{ statistics.inHallPercentage }}%)</div>
-                            </div>
-                            <!-- Not Reported -->
-                            <div class="text-center p-2 bg-white dark:bg-gray-700 rounded-lg border border-red-200 dark:border-red-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                                <div class="text-2xl font-bold text-red-600 dark:text-red-400 animate-pulse">{{ statistics.notReported }}</div>
-                                <div class="text-xs text-red-500 dark:text-red-300">ยังไม่รายงาน ({{ statistics.notReportedPercentage }}%)</div>
-                            </div>
-                        </div>
-                        <!-- Progress Bar -->
-                        <div class="mt-3">
-                            <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                                <span>ความคืบหน้า</span>
-                                <span>{{ statistics.reportedPercentage }}%</span>
-                            </div>
-                                                    <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                            <div 
-                                class="bg-gradient-to-r from-green-500 to-blue-500 dark:from-green-400 dark:to-blue-400 h-2 rounded-full transition-all duration-500 ease-out animate-pulse"
-                                :style="{ width: `${statistics.reportedPercentage}%` }"
-                            ></div>
-                        </div>
-                        </div>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -733,113 +692,166 @@ function getMiniMapColor(status) {
             </div>
         </Dialog>
         
-                <!-- Mini Map Overview - New Design -->
+                <!-- Mini Map Overview with Statistics from Filter -->
         <div v-if="showMiniMap" class="fixed bottom-6 right-6 z-50">
-            <div class="bg-white/30 dark:bg-gray-800/30 rounded-2xl shadow-2xl border border-white/50 dark:border-gray-600/50 backdrop-blur-xl p-4 max-w-lg">
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-4">
-                    <div class="flex items-center gap-3">
+            <div class="flex gap-4">
+                <!-- Statistics Panel (Left Side) - Moved from Filter -->
+                <div class="bg-white/30 dark:bg-gray-800/30 rounded-2xl shadow-2xl border border-white/50 dark:border-gray-600/50 backdrop-blur-xl p-4 w-64 h-fit">
+                    <!-- Header -->
+                    <div class="flex items-center gap-3 mb-4">
                         <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <Icon icon="mdi:map-marker" class="text-white" width="20" height="20" />
+                            <Icon icon="mdi:chart-line" class="text-white" width="20" height="20" />
                         </div>
                         <div>
-                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">แผนที่ย่อ</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">คลิกเพื่อนำทางไปยังที่นั่ง</p>
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">สถิติการรายงานตัว</h3>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">สรุปสถานะที่นั่ง</p>
                         </div>
                     </div>
-                    <button @click="showMiniMap = false" class="w-8 h-8 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
-                        <Icon icon="mdi:close" width="16" height="16" />
-                    </button>
+                    
+                    <!-- Statistics Grid -->
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <!-- Total -->
+                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-blue-200 dark:border-gray-600 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                            <div class="text-xl font-bold text-blue-600 dark:text-blue-400 animate-pulse">{{ statistics.total }}</div>
+                            <div class="text-xs text-blue-500 dark:text-blue-300">ทั้งหมด</div>
+                        </div>
+                        <!-- Reported -->
+                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-green-200 dark:border-green-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                            <div class="text-xl font-bold text-green-600 dark:text-green-400 animate-pulse">{{ statistics.reported }}</div>
+                            <div class="text-xs text-green-500 dark:text-green-300">รายงานตัวแล้ว</div>
+                            <div class="text-xs text-green-500 dark:text-green-300">({{ statistics.reportedPercentage }}%)</div>
+                        </div>
+                        <!-- In Hall -->
+                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-yellow-200 dark:border-yellow-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                            <div class="text-xl font-bold text-yellow-600 dark:text-yellow-400 animate-pulse">{{ statistics.inHall }}</div>
+                            <div class="text-xs text-yellow-500 dark:text-yellow-300">เข้าหอประชุม</div>
+                            <div class="text-xs text-yellow-500 dark:text-yellow-300">({{ statistics.inHallPercentage }}%)</div>
+                        </div>
+                        <!-- Not Reported -->
+                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-red-200 dark:border-red-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                            <div class="text-xl font-bold text-red-600 dark:text-red-400 animate-pulse">{{ statistics.notReported }}</div>
+                            <div class="text-xs text-red-500 dark:text-red-300">ยังไม่รายงาน</div>
+                            <div class="text-xs text-red-500 dark:text-red-300">({{ statistics.notReportedPercentage }}%)</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Progress Bar -->
+                    <div class="mt-3">
+                        <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                            <span>ความคืบหน้า</span>
+                            <span>{{ statistics.reportedPercentage }}%</span>
+                        </div>
+                        <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                            <div 
+                                class="bg-gradient-to-r from-green-500 to-blue-500 dark:from-green-400 dark:to-blue-400 h-2 rounded-full transition-all duration-500 ease-out animate-pulse"
+                                :style="{ width: `${statistics.reportedPercentage}%` }"
+                            ></div>
+                        </div>
+                    </div>
                 </div>
                 
-
-                
-                <!-- Mini Map Grid -->
-                <div class="relative bg-white/50 dark:bg-gray-800/50 rounded-xl border border-white/50 dark:border-gray-600/50 overflow-hidden backdrop-blur-sm">
-                    <!-- Header with Row Labels -->
-                    <div class="bg-gray-50/80 dark:bg-gray-700/80 px-3 py-2 border-b border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
-                        <div class="flex justify-center gap-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
-                            <span class="w-28 text-center -ml-6">ฝั่ง A</span>
-                            <span class="w-6 text-center -ml-1">กลาง</span>
-                            <span class="w-28 text-center">ฝั่ง B</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Scrollable Grid -->
-                    <div class="p-3 max-h-56 overflow-y-auto">
-                        <div v-for="(row, rowIdx) in seatRows" :key="rowIdx" class="mb-1">
-                            <!-- Row Label -->
-                            <div class="flex justify-center mb-1">
-                                <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-1 py-0.5 rounded-full">
-                                    แถว {{ rowIdx + 1 }}
-                                </span>
+                <!-- Mini Map Panel (Right Side) -->
+                <div class="bg-white/30 dark:bg-gray-800/30 rounded-2xl shadow-2xl border border-white/50 dark:border-gray-600/50 backdrop-blur-xl p-4 max-w-lg">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <Icon icon="mdi:map-marker" class="text-white" width="20" height="20" />
                             </div>
-                            
-                            <!-- Seat Grid -->
-                            <div class="flex justify-center gap-3">
-                                <!-- ฝั่งซ้าย (A) -->
-                                <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
-                                    <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
-                                        <div
-                                            v-for="(item, colIdx) in row.slice(0, 35)"
-                                            :key="colIdx"
-                                            :class="[
-                                                'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
-                                                item.type === 'person' ? getMiniMapColor(item.data.verified) : 
-                                                item.type === 'pillar' ? 'bg-yellow-400 dark:bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
-                                            ]"
-                                            @click="item.type === 'person' ? clickMiniMapSimple(rowIdx, colIdx, 'A') : null"
-                                            :title="item.type === 'person' ? `แถว A${rowIdx + 1} ที่นั่ง ${item.data.seat}` : 
-                                                   item.type === 'pillar' ? 'เสา' : 'ว่าง'"
-                                        ></div>
-                                    </div>
-                                </div>
-                                
-                                <!-- ช่องว่างตรงกลาง -->
-                                <div class="w-4 bg-gradient-to-b from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-lg flex items-center justify-center">
-                                    <div class="w-1 h-6 bg-blue-400 dark:bg-blue-300 rounded-full"></div>
-                                </div>
-                                
-                                <!-- ฝั่งขวา (B) -->
-                                <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
-                                    <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
-                                        <div
-                                            v-for="(item, colIdx) in row.slice(35, 70)"
-                                            :key="colIdx + 35"
-                                            :class="[
-                                                'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
-                                                item.type === 'person' ? getMiniMapColor(item.data.verified) : 
-                                                item.type === 'pillar' ? 'bg-yellow-400 dark:bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
-                                            ]"
-                                            @click="item.type === 'person' ? clickMiniMapSimple(rowIdx, colIdx, 'B') : null"
-                                            :title="item.type === 'person' ? `แถว B${rowIdx + 1} ที่นั่ง ${item.data.seat}` : 
-                                                   item.type === 'pillar' ? 'เสา' : 'ว่าง'"
-                                        ></div>
-                                    </div>
-                                </div>
+                            <div>
+                                <h3 class="text-lg font-bold text-gray-800 dark:text-white">แผนที่ย่อ</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">คลิกเพื่อนำทางไปยังที่นั่ง</p>
                             </div>
                         </div>
+                        <button @click="showMiniMap = false" class="w-8 h-8 bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-800/50 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110">
+                            <Icon icon="mdi:close" width="16" height="16" />
+                        </button>
                     </div>
                     
-                    <!-- Legend -->
-                    <div class="bg-gray-50/80 dark:bg-gray-700/80 p-3 border-t border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
-                        <div class="flex items-center justify-between text-xs">
-                            <div class="flex items-center gap-3">
-                                <div class="flex items-center gap-1">
-                                    <div class="w-2 h-2 bg-green-500 rounded-sm"></div>
-                                    <span class="text-gray-600 dark:text-gray-300">รายงานแล้ว</span>
+                    <!-- Mini Map Grid -->
+                    <div class="relative bg-white/50 dark:bg-gray-800/50 rounded-xl border border-white/50 dark:border-gray-600/50 overflow-hidden backdrop-blur-sm">
+                        <!-- Header with Row Labels -->
+                        <div class="bg-gray-50/80 dark:bg-gray-700/80 px-3 py-2 border-b border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
+                            <div class="flex justify-center gap-3 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                                <span class="w-28 text-center -ml-4">ฝั่ง A</span>
+                                <span class="w-6 text-center -ml-2">กลาง</span>
+                                <span class="w-28 text-center">ฝั่ง B</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Scrollable Grid -->
+                        <div class="p-3 max-h-56 overflow-y-auto">
+                            <div v-for="(row, rowIdx) in seatRows" :key="rowIdx" class="mb-1">
+                                <!-- Row Label -->
+                                <div class="flex justify-center mb-1">
+                                    <span class="text-xs font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 px-1 py-0.5 rounded-full">
+                                        แถว {{ rowIdx + 1 }}
+                                    </span>
                                 </div>
-                                <div class="flex items-center gap-1">
-                                    <div class="w-2 h-2 bg-red-500 rounded-sm"></div>
-                                    <span class="text-gray-600 dark:text-gray-300">ยังไม่รายงาน</span>
-                                </div>
-                                <div class="flex items-center gap-1">
-                                    <div class="w-2 h-2 bg-yellow-400 rounded-sm"></div>
-                                    <span class="text-gray-600 dark:text-gray-300">เสา</span>
+                                
+                                <!-- Seat Grid -->
+                                <div class="flex justify-center gap-3">
+                                    <!-- ฝั่งซ้าย (A) -->
+                                    <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
+                                        <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
+                                            <div
+                                                v-for="(item, colIdx) in row.slice(0, 35)"
+                                                :key="colIdx"
+                                                :class="[
+                                                    'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
+                                                    item.type === 'person' ? getMiniMapColor(item.data.verified) : 
+                                                    item.type === 'pillar' ? 'bg-yellow-400 dark:bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
+                                                ]"
+                                                @click="item.type === 'person' ? clickMiniMapSimple(rowIdx, colIdx, 'A') : null"
+                                                :title="item.type === 'person' ? `แถว A${rowIdx + 1} ที่นั่ง ${item.data.seat}` : 
+                                                       item.type === 'pillar' ? 'เสา' : 'ว่าง'"
+                                            ></div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- ช่องว่างตรงกลาง -->
+                                    <div class="w-4 bg-gradient-to-b from-blue-200 to-indigo-200 dark:from-blue-800 dark:to-indigo-800 rounded-lg flex items-center justify-center">
+                                        <div class="w-1 h-6 bg-blue-400 dark:bg-blue-300 rounded-full"></div>
+                                    </div>
+                                    
+                                    <!-- ฝั่งขวา (B) -->
+                                    <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
+                                        <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
+                                            <div
+                                                v-for="(item, colIdx) in row.slice(35, 70)"
+                                                :key="colIdx + 35"
+                                                :class="[
+                                                    'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
+                                                    item.type === 'person' ? getMiniMapColor(item.data.verified) : 
+                                                    item.type === 'pillar' ? 'bg-yellow-400 dark:bg-yellow-500' : 'bg-gray-300 dark:bg-gray-600'
+                                                ]"
+                                                @click="item.type === 'person' ? clickMiniMapSimple(rowIdx, colIdx, 'B') : null"
+                                                :title="item.type === 'person' ? `แถว B${rowIdx + 1} ที่นั่ง ${item.data.seat}` : 
+                                                       item.type === 'pillar' ? 'เสา' : 'ว่าง'"
+                                            ></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="text-gray-500 dark:text-gray-400">
-                                ทั้งหมด: {{ statistics.total }}
+                        </div>
+                        
+                        <!-- Legend -->
+                        <div class="bg-gray-50/80 dark:bg-gray-700/80 p-3 border-t border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex items-center gap-1">
+                                        <div class="w-2 h-2 bg-green-500 rounded-sm"></div>
+                                        <span class="text-gray-600 dark:text-gray-300">รายงานแล้ว</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <div class="w-2 h-2 bg-red-500 rounded-sm"></div>
+                                        <span class="text-gray-600 dark:text-gray-300">ยังไม่รายงาน</span>
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <div class="w-2 h-2 bg-yellow-400 rounded-sm"></div>
+                                        <span class="text-gray-600 dark:text-gray-300">เข้าหอประชุม</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
