@@ -101,12 +101,7 @@ const filteredLogs = computed(() => logs.value);
             </div>
             <div class="layout-config-menu">
                 <div class="flex items-center gap-2">
-                    <Icon
-                        :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'"
-                        :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'"
-                        width="20"
-                        height="20"
-                    />
+                    <Icon :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'" :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'" width="20" height="20" />
                     <span class="text-sm font-semibold">
                         {{ isConnected ? (viewerCount ?? '-') : '-' }}
                     </span>
@@ -130,38 +125,24 @@ const filteredLogs = computed(() => logs.value);
                 <!-- Inbox -->
                 <div>
                     <div class="relative">
-                        <button
-                            @click="togglePanel($event)"
-                            ref="btn"
-                            type="button"
-                            class="layout-topbar-action flex items-center justify-center w-10 h-10 rounded-full"
-                        >
+                        <button @click="togglePanel($event)" ref="btn" type="button" class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action">
                             <Icon icon="streamline-plump:inbox-content-solid" class="text-xl" />
                         </button>
 
-                        <Badge
-                            v-if="logs.length"
-                            severity="warn"
-                            class="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 rounded-full flex items-center justify-center"
-                            style="width: 10px; height: 10px; font-size: 10px; padding: 0"
-                        />
+                        <Badge v-if="logs.length" severity="warn" class="absolute top-0 right-0 flex items-center justify-center translate-x-1/2 -translate-y-1/2 rounded-full" style="width: 10px; height: 10px; font-size: 10px; padding: 0" />
                     </div>
 
                     <OverlayPanel ref="op">
                         <ul class="w-72">
-                            <li
-                                v-for="log in filteredLogs"
-                                :key="log.id"
-                                class="p-2 text-mg flex justify-between items-center"
-                            >
+                            <li v-for="log in filteredLogs" :key="log.id" class="flex items-center justify-between p-2 text-mg">
                                 <div class="flex-1">{{ log.user }}</div>
-                                <div class="flex-1 text-green-800 text-center">{{ log.action }}</div>
-                                <div class="flex-1 text-gray-500 text-xs text-right">{{ formatDate(log.timestamp) }}</div>
+                                <div class="flex-1 text-center text-green-800">{{ log.action }}</div>
+                                <div class="flex-1 text-xs text-right text-gray-500">{{ formatDate(log.timestamp) }}</div>
                             </li>
                             <li v-if="!logs.length" class="p-2 text-center text-gray-400">ไม่มีข้อความล่าสุด</li>
                         </ul>
                     </OverlayPanel>
-                </div> 
+                </div>
 
                 <button type="button" class="layout-topbar-action" @click="goToLogin">
                     <i class="pi pi-user"></i>
