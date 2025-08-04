@@ -1,8 +1,9 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from django.db import transaction, connection
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db.models import Q
 from tablib import Dataset
 from rest_framework.views import APIView, View
@@ -10,6 +11,9 @@ from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
 from rest_framework import status, generics
 from rest_framework.pagination import PageNumberPagination
+from django.contrib.auth import authenticate
+from rest_framework.decorators import api_view
+from rest_framework import status
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -26,6 +30,22 @@ import os, io
 import logging
 
 logger = logging.getLogger(__name__)
+
+@ensure_csrf_cookie
+def get_csrf_token(request):
+    return JsonResponse({'detail': 'CSRF cookie set'})
+@api_view(['POST'])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    user = authenticate(username=username, password=password)
+    if user:
+        return Response({
+            'username': user.username,
+            'id': user.id,
+            # ถ้ามี token หรือ JWT ก็ใส่เพิ่มตรงนี้
+        })
+    return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 def file_iterator(buffer, chunk_size=8192):
     buffer.seek(0)

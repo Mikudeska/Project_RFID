@@ -15,6 +15,10 @@ import { definePreset } from '@primevue/themes';
 import { createPinia } from 'pinia';
 import OverlayPanel from 'primevue/overlaypanel';
 import Badge from 'primevue/badge';
+import { useAuthStore } from '@/stores/auth'
+import axios from 'axios';
+
+axios.defaults.withCredentials = true;
 
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
@@ -74,8 +78,11 @@ const MyPreset = definePreset(Aura, {
 });
 
 const pinia = createPinia();
-
 app.use(pinia);
+
+const auth = useAuthStore()
+auth.loadUser()
+
 app.use(router);
 app.use(PrimeVue, {
     theme: {

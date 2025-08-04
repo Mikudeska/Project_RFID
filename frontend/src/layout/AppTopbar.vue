@@ -9,6 +9,22 @@ import { useWebSocketStore } from '@/stores/websocket';
 import { storeToRefs } from 'pinia';
 import OverlayPanel from 'primevue/overlaypanel';
 import Badge from 'primevue/badge';
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+auth.loadUser() // โหลด user จาก localStorage ตอนเริ่ม
+const { user } = storeToRefs(auth)
+
+const opRef = ref(null)
+
+function toggleOverlay(event) {
+    opRef.value.toggle(event)
+}
+
+function logout() {
+  auth.logout();
+  location.reload()
+}
 
 const wsStore = useWebSocketStore();
 const { isConnected, viewerCount } = storeToRefs(wsStore);
@@ -144,11 +160,59 @@ const filteredLogs = computed(() => logs.value);
                     </OverlayPanel>
                 </div>
 
-                <button type="button" class="layout-topbar-action" @click="goToLogin">
-                    <i class="pi pi-user"></i>
-                    <span>Profile</span>
-                </button>
+                <!-- ด้านล่างแทนที่ปุ่ม Profile -->
+                <div>
+                    <!-- ถ้ายังไม่ login -->
+                    <button
+                        v-if="!user"
+                        type="button"
+                        class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action"
+                        @click="goToLogin"
+                    >
+                        <Icon icon="mingcute:user-4-line" class="text-3xl" />
+                        <span class="font-semibold">Login</span>
+                    </button>
+
+                    <!-- ถ้า login แล้ว -->
+                    <div v-else>
+                        <!-- ปุ่ม Avatar -->
+                        <button
+                            type="button"
+                            @click="toggleOverlay($event)"
+                            class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action"
+                        >
+                            <Icon icon="mingcute:user-4-fill" class="text-3xl" />
+                            <span class="font-semibold">{{ user?.username ?? '-' }}</span>
+                        </button>
+
+                        <!-- Overlay Panel -->
+                        <OverlayPanel ref="opRef">
+                            <div class="p-2 text-lg space-y-1 w-56">
+                                <div class="text-xl text-center"><strong>Profile</strong></div>
+                                <div><strong>ชื่อ:</strong> {{ user?.name ?? '-' }}</div>
+                                <div><strong>ชื่อเล่น:</strong> {{ user?.nickname ?? '-' }}</div>
+                                <div class="text-right mt-2">
+                                    <button
+                                        @click="logout()"
+                                        class="text-red-500 hover:underline"
+                                    >
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                        </OverlayPanel>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </template>
+
+<style>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+</style>
