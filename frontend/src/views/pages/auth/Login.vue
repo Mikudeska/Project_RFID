@@ -57,7 +57,7 @@ async function handleLogin() {
     setTimeout(() => {
         setTimeout(() => {
             router.push('/').then(() => {
-                 toast.success('ล็อคอินสำเร็จ','ยินดีต้อนรับสู้หน้าเว็บ RFID');
+                 toast.success('ล็อคอินสำเร็จ','ยินดีต้อนรับสู่หน้าเว็บ RFID');
             })
         }, 500)
     }, 0)

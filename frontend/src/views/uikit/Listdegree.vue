@@ -223,14 +223,14 @@ onMounted(() => {
                         </Tag>
                     </template>
                 </Column>
-                <Column field="reported" header="รายงานตัวแล้ว" style="min-width: 100px" class="text-lg text-green-700" :body="reportedTemplate">
+                <Column field="reported" header="รายงานตัวแล้ว" style="min-width: 100px" class="text-lg text-green-700">
                     <template #body="{ data }">
                         <Tag :value="data.reported" severity="success" class="px-3 py-1 text-5xl font-bold">
                             <span class="text-lg font-bold">{{ data.reported }}</span>
                         </Tag>
                     </template>
                 </Column>
-                <Column field="absent" header="ขาด" style="min-width: 100px" class="text-lg text-red-500" :body="absentTemplate">
+                <Column field="absent" header="ขาด" style="min-width: 100px" class="text-lg text-red-500">
                     <template #body="{ data }">
                         <Tag :value="data.absent" severity="danger" class="px-3 py-1 text-5xl font-bold">
                             <span class="text-lg font-bold">{{ data.absent }}</span>

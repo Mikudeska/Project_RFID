@@ -13,7 +13,6 @@ import Tooltip from 'primevue/tooltip';
 import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
 import { createPinia } from 'pinia';
-import OverlayPanel from 'primevue/overlaypanel';
 import Badge from 'primevue/badge';
 import { useAuthStore } from '@/stores/auth'
 import axios from 'axios';
@@ -96,7 +95,6 @@ app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('tooltip', Tooltip);
 app.component('Badge', Badge);
-app.component('OverlayPanel', OverlayPanel);
 app.component('Toast', Toast);
 app.component('downloadExcel', JsonExcel);
 app.component('Icon', Icon);
