@@ -13,8 +13,11 @@ import Tooltip from 'primevue/tooltip';
 import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
 import { createPinia } from 'pinia';
-import OverlayPanel from 'primevue/overlaypanel';
 import Badge from 'primevue/badge';
+import { useAuthStore } from '@/stores/auth'
+import axios from 'axios';
+
+axios.defaults.withCredentials = true;
 
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
@@ -74,8 +77,11 @@ const MyPreset = definePreset(Aura, {
 });
 
 const pinia = createPinia();
-
 app.use(pinia);
+
+const auth = useAuthStore()
+auth.loadUser()
+
 app.use(router);
 app.use(PrimeVue, {
     theme: {
@@ -89,7 +95,6 @@ app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('tooltip', Tooltip);
 app.component('Badge', Badge);
-app.component('OverlayPanel', OverlayPanel);
 app.component('Toast', Toast);
 app.component('downloadExcel', JsonExcel);
 app.component('Icon', Icon);
