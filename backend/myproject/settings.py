@@ -88,10 +88,6 @@ TEMPLATES = [
     },
 ]
 
-# WSGI_APPLICATION = 'myproject.wsgi.application'
-
-ASGI_APPLICATION = 'myproject.asgi.application'
-
 if not config('USE_CHANNEL', default=True, cast=bool):
     # ไม่ใช้ Channels
     WSGI_APPLICATION = 'myproject.wsgi.application'

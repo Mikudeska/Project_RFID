@@ -187,11 +187,11 @@ const filteredLogs = computed(() => logs.value);
 
                         <!-- Overlay Panel -->
                         <OverlayPanel ref="opRef">
-                            <div class="p-2 text-lg space-y-1 w-56">
+                            <div class="w-56 p-2 space-y-1 text-lg">
                                 <div class="text-xl text-center"><strong>Profile</strong></div>
                                 <div><strong>ชื่อ:</strong> {{ user?.name ?? '-' }}</div>
                                 <div><strong>ชื่อเล่น:</strong> {{ user?.nickname ?? '-' }}</div>
-                                <div class="text-right mt-2">
+                                <div class="mt-2 text-right">
                                     <button
                                         @click="logout()"
                                         class="text-red-500 hover:underline"
@@ -216,3 +216,4 @@ const filteredLogs = computed(() => logs.value);
   opacity: 0;
 }
 </style>
+    
