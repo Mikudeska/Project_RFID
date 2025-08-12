@@ -180,7 +180,7 @@ const filteredLogs = computed(() => logs.value);
                         <OverlayPanel ref="opRef">
                             <div class="w-56 p-2 space-y-1 text-lg">
                                 <div class="text-xl text-center"><strong>Profile</strong></div>
-                                <div><strong>ชื่อ:</strong> {{ user?.name ?? '-' }}</div>
+                                <div><strong>ชื่อ:</strong> {{ user?.first_name ?? '-' }} {{ user?.last_name ?? '-' }}</div>
                                 <div><strong>ชื่อเล่น:</strong> {{ user?.nickname ?? '-' }}</div>
                                 <div class="mt-2 text-right">
                                     <button @click="logout()" class="text-red-500 hover:underline">Logout</button>

@@ -14,7 +14,7 @@ import JsonExcel from 'vue-json-excel3';
 import { definePreset } from '@primevue/themes';
 import { createPinia } from 'pinia';
 import Badge from 'primevue/badge';
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth';
 import axios from 'axios';
 
 axios.defaults.withCredentials = true;
@@ -79,8 +79,11 @@ const MyPreset = definePreset(Aura, {
 const pinia = createPinia();
 app.use(pinia);
 
-const auth = useAuthStore()
-auth.loadUser()
+const auth = useAuthStore();
+auth.loadUser();
+if (auth.user) {
+    await auth.fetchUserProfile();
+}
 
 app.use(router);
 app.use(PrimeVue, {
