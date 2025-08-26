@@ -57,7 +57,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-
+SESSION_COOKIE_SAMESITE = None
+SESSION_COOKIE_SECURE = False     # True ถ้าใช้ HTTPS
+CSRF_COOKIE_SAMESITE = None
+CSRF_COOKIE_SECURE = False        # True ถ้าใช้ HTTPS
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
@@ -87,10 +90,6 @@ TEMPLATES = [
         },
     },
 ]
-
-# WSGI_APPLICATION = 'myproject.wsgi.application'
-
-ASGI_APPLICATION = 'myproject.asgi.application'
 
 if not config('USE_CHANNEL', default=True, cast=bool):
     # ไม่ใช้ Channels

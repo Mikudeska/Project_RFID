@@ -1,5 +1,6 @@
 from django.db import models, transaction
 from django.utils import timezone
+from django.contrib.auth.models import User
 import random
 
 class Person(models.Model):
@@ -79,4 +80,11 @@ class Log(models.Model):
 
     def __str__(self):
         return f"{self.timestamp} - {self.action} - {self.model}"
+    
+class Profile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    nickname = models.CharField(max_length=100, blank=True)
+
+    def __str__(self):
+        return self.nickname or self.user.username
     

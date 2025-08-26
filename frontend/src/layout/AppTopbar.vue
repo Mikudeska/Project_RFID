@@ -9,21 +9,21 @@ import { useWebSocketStore } from '@/stores/websocket';
 import { storeToRefs } from 'pinia';
 import OverlayPanel from 'primevue/overlaypanel';
 import Badge from 'primevue/badge';
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth';
 
-const auth = useAuthStore()
-auth.loadUser() // โหลด user จาก localStorage ตอนเริ่ม
-const { user } = storeToRefs(auth)
+const auth = useAuthStore();
+auth.loadUser(); // โหลด user จาก localStorage ตอนเริ่ม
+const { user } = storeToRefs(auth);
 
-const opRef = ref(null)
+const opRef = ref(null);
 
 function toggleOverlay(event) {
-    opRef.value.toggle(event)
+    opRef.value.toggle(event);
 }
 
 function logout() {
-  auth.logout();
-  location.reload()
+    auth.logout();
+    location.reload();
 }
 
 const wsStore = useWebSocketStore();
@@ -119,7 +119,7 @@ const filteredLogs = computed(() => logs.value);
                 <div class="flex items-center gap-2">
                     <Icon :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'" :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'" width="20" height="20" />
                     <span class="text-sm font-semibold">
-                        {{ isConnected ? (viewerCount ?? '-') : '-' }}
+                        {{ isConnected ? viewerCount ?? '-' : '-' }}
                     </span>
                 </div>
             </div>
@@ -163,12 +163,7 @@ const filteredLogs = computed(() => logs.value);
                 <!-- ด้านล่างแทนที่ปุ่ม Profile -->
                 <div>
                     <!-- ถ้ายังไม่ login -->
-                    <button
-                        v-if="!user"
-                        type="button"
-                        class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action"
-                        @click="goToLogin"
-                    >
+                    <button v-if="!user" type="button" class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action" @click="goToLogin">
                         <Icon icon="mingcute:user-4-line" class="text-3xl" />
                         <span class="font-semibold">Login</span>
                     </button>
@@ -176,28 +171,19 @@ const filteredLogs = computed(() => logs.value);
                     <!-- ถ้า login แล้ว -->
                     <div v-else>
                         <!-- ปุ่ม Avatar -->
-                        <button
-                            type="button"
-                            @click="toggleOverlay($event)"
-                            class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action"
-                        >
+                        <button type="button" @click="toggleOverlay($event)" class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action">
                             <Icon icon="mingcute:user-4-fill" class="text-3xl" />
                             <span class="font-semibold">{{ user?.username ?? '-' }}</span>
                         </button>
 
                         <!-- Overlay Panel -->
                         <OverlayPanel ref="opRef">
-                            <div class="p-2 text-lg space-y-1 w-56">
+                            <div class="w-56 p-2 space-y-1 text-lg">
                                 <div class="text-xl text-center"><strong>Profile</strong></div>
-                                <div><strong>ชื่อ:</strong> {{ user?.name ?? '-' }}</div>
+                                <div><strong>ชื่อ:</strong> {{ user?.first_name ?? '-' }} {{ user?.last_name ?? '-' }}</div>
                                 <div><strong>ชื่อเล่น:</strong> {{ user?.nickname ?? '-' }}</div>
-                                <div class="text-right mt-2">
-                                    <button
-                                        @click="logout()"
-                                        class="text-red-500 hover:underline"
-                                    >
-                                        Logout
-                                    </button>
+                                <div class="mt-2 text-right">
+                                    <button @click="logout()" class="text-red-500 hover:underline">Logout</button>
                                 </div>
                             </div>
                         </OverlayPanel>
@@ -209,10 +195,13 @@ const filteredLogs = computed(() => logs.value);
 </template>
 
 <style>
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.3s ease;
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
 }
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 </style>
+    

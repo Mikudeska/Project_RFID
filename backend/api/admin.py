@@ -1,5 +1,8 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.contrib.auth.models import User
 from api.models import Person, Log
+from .models import Profile
 
 # ----- Person Admin -----
 @admin.register(Person)
@@ -46,3 +49,19 @@ class LogAdmin(admin.ModelAdmin):
     def short_details(self, obj):
         return obj.details[:60] + ('...' if len(obj.details) > 60 else '')
     short_details.short_description = 'รายละเอียด'
+
+class ProfileInline(admin.StackedInline):
+    model = Profile
+    can_delete = False
+    verbose_name_plural = 'Profile'
+
+class UserAdmin(BaseUserAdmin):
+    inlines = (ProfileInline, )
+    list_display = ('username', 'email', 'first_name', 'last_name', 'get_nickname', 'is_staff')
+
+    def get_nickname(self, obj):
+        return obj.profile.nickname if hasattr(obj, 'profile') else ''
+    get_nickname.short_description = 'Nickname'
+
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)
