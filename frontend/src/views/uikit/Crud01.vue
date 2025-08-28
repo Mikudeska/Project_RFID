@@ -1,13 +1,11 @@
 <script setup>
 import { FilterMatchMode } from '@primevue/core/api';
 import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
-import axios from 'axios';
+import api from '@/plugins/axios';
 import { Icon } from '@iconify/vue';
 import { createLocalToast } from '@/components/utils/toastUtils';
 
 const toast = createLocalToast();
-
-const API_BASE = import.meta.env.VITE_API_BASE;
 
 function formatId(id) {
     return id.toString().padStart(4, '0');
@@ -26,8 +24,9 @@ const persons = ref([]);
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get(`${API_BASE}/api/person/`);
-        persons.value = response.data.map(addFormattedId); // ใช้ฟังก์ชันจัดรูปแบบ
+        const response = await api.get(`/api/person/`);
+        const data = Array.isArray(response.data) ? response.data : response.data.results ?? [];
+        persons.value = data.map(addFormattedId);
     } catch (error) {
         console.error('Error fetching persons:', error);
     } finally {
@@ -67,8 +66,7 @@ function handleWsMessage(event) {
             product.value = null;
         }
         persons.value = persons.value.filter((p) => p && p.id !== deletedId);
-    }
-    else if (msg.action === 'reset' || msg.action === 'upload') {
+    } else if (msg.action === 'reset' || msg.action === 'upload') {
         fetchPersons();
     }
 }
@@ -120,7 +118,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post(`${API_BASE}/api/reset/`);
+        await api.post(`/api/reset/`);
         await fetchPersons();
     } catch (error) {
         toast.error('รีเซ็ตล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
@@ -133,7 +131,7 @@ const handleResetStep2 = async () => {
 // โหลดข้อมูล
 const exportPDF = async () => {
     try {
-        const response = await axios.get(`${API_BASE}/api/export-pdf/`, {
+        const response = await api.get(`/api/export-pdf/`, {
             responseType: 'blob',
             timeout: 30000
         });
@@ -145,14 +143,14 @@ const exportPDF = async () => {
         // อ่านชื่อไฟล์จาก header
         const disposition = response.headers['content-disposition'];
         let filename = 'รายชื่อ.pdf';
-        
+
         if (disposition) {
             // วิธีที่ 1: แยกด้วย regex
             const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
             if (matches && matches[1]) {
                 filename = matches[1].replace(/['"]/g, '');
             }
-            
+
             // วิธีที่ 2: สำหรับ UTF-8 filename (ทางเลือกเสริม)
             const utf8Filename = disposition.match(/filename\*=UTF-8''(.*)/)?.[1];
             if (utf8Filename) {
@@ -163,14 +161,14 @@ const exportPDF = async () => {
         // สร้างลิงก์ดาวน์โหลด
         const blob = new Blob([response.data], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
-        
+
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-        
+
         // ล้างทรัพยากร
         setTimeout(() => {
             document.body.removeChild(link);
@@ -185,7 +183,7 @@ const exportPDF = async () => {
 // Export ข้อมูล
 const exportData = async (format) => {
     try {
-        const response = await axios.get(`${API_BASE}/api/export/${format}/`, { responseType: 'blob' });
+        const response = await api.get(`/api/export/${format}/`, { responseType: 'blob' });
 
         // สร้างลิงก์ดาวน์โหลด
         const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -225,7 +223,7 @@ const handleFileUpload = async () => {
     formData.append('file', file.value);
 
     try {
-        await axios.post(`${API_BASE}/api/import/`, formData, {
+        await api.post(`/api/import/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -265,7 +263,6 @@ const closeDialog = () => {
     UploadDialog.value = false;
 };
 
-// เพิ่ม Axios สำหรับ CRUD Operations
 const saveProduct = async () => {
     submitted.value = true;
 
@@ -273,11 +270,9 @@ const saveProduct = async () => {
     if (product?.value?.name?.trim()) {
         try {
             if (product.value.id) {
-                await axios.put(`${API_BASE}/api/person/${product.value.id}/`, product.value);
-                toast.success('บันทึกสำเร็จ', 'อัพเดตข้อมูลเรียบร้อย');
+                await api.put(`api/person/${product.value.id}/`, product.value);
             } else {
-                await axios.post(`${API_BASE}/api/person/`, product.value);
-                toast.success('บันทึกสำเร็จ', 'สร้างข้อมูลเรียบร้อย');
+                await api.post('api/person/', product.value);
             }
             // ดึงข้อมูลใหม่หลังบันทึก เพื่ออัพเดตตารางหรือรายการ
             await fetchPersons();
@@ -301,7 +296,7 @@ const deleteProduct = async () => {
     const deletingId = product.value.id;
 
     try {
-        await axios.delete(`${API_BASE}/api/person/${deletingId}/`);
+        await api.delete(`/api/person/${deletingId}/`);
         persons.value = persons.value.filter((val) => val.id !== deletingId);
         deleteProductDialog.value = false;
         toast.success('สำเร็จ', 'ลบข้อมูลเรียบร้อย');
@@ -325,7 +320,7 @@ async function deleteSelectedpersons() {
     const ids = selectedpersons.value.map((person) => person.id).filter((id) => id != null);
 
     try {
-        await axios.delete(`${API_BASE}/api/person/delete/`, {
+        await api.delete(`/api/person/delete/`, {
             data: { ids },
             headers: {
                 'Content-Type': 'application/json'
@@ -379,7 +374,7 @@ async function updateSelectedVerified(status, field = 'verified1') {
     try {
         const ids = selectedpersons.value.map((p) => p.id);
 
-        await axios.put(`${API_BASE}/api/person/`, {
+        await api.put(`/api/person/`, {
             ids,
             verified: status,
             verified_field: field
@@ -578,7 +573,7 @@ function getLatestVerified(data) {
                 </Column> -->
                 <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 8rem"></Column>
                 <Column field="verified" :body="(data) => getLatestVerified(data)" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
-                    <template #body="{ data }"> 
+                    <template #body="{ data }">
                         <Icon
                             class="icon"
                             :icon="data.verified === 1 ? 'rivet-icons:check-circle-solid' : data.verified === 0 ? 'rivet-icons:close-circle-solid' : 'tdesign:certificate-filled'"
@@ -613,11 +608,11 @@ function getLatestVerified(data) {
             <div class="flex flex-col gap-6">
                 <div>
                     <label for="formatted_id" class="block mb-3 font-bold">ลำดับ</label>
-                    <InputText id="formatted_id" v-model.trim="product.formatted_id" autofocus :invalid="submitted && !product.formatted_id" fluid disabled="true" />
+                    <InputText id="formatted_id" v-model.trim="product.formatted_id" autofocus :invalid="submitted && !product.formatted_id" fluid :disabled="true" />
                 </div>
                 <div>
                     <label for="nisit" class="block mb-3 font-bold">รหัสนิสิต</label>
-                    <InputText id="nisit" v-model.trim="product.nisit" autofocus :invalid="submitted && !product.nisit" fluid disabled="true" />
+                    <InputText id="nisit" v-model.trim="product.nisit" autofocus :invalid="submitted && !product.nisit" fluid :disabled="true" />
                 </div>
                 <div>
                     <label for="name" class="block mb-3 font-bold">ชื่อ-นามสกุล</label>
@@ -631,7 +626,7 @@ function getLatestVerified(data) {
                 </div>
                 <div>
                     <label for="seat" class="block mb-3 font-bold">ที่นั่ง</label>
-                    <InputText id="seat" v-model.trim="product.seat" autofocus :invalid="submitted && !product.degree" fluid disabled="true" />
+                    <InputText id="seat" v-model.trim="product.seat" autofocus :invalid="submitted && !product.degree" fluid :disabled="true" />
                 </div>
                 <div>
                     <span class="block mb-4 font-bold">สถานะรายงานตัว</span>

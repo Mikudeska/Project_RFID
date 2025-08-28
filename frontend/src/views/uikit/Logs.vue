@@ -4,8 +4,13 @@ import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
+import { useAuthStore } from '@/stores/auth';
+import { storeToRefs } from 'pinia';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
+
+const auth = useAuthStore();
+const { user } = storeToRefs(auth);
 
 const toast = useToast();
 const logs = ref([]);
@@ -308,7 +313,11 @@ const extractShortenedIDs = (details) => {
                 </template>
             </Column>
 
-            <Column field="" header="ผู้ใช้" style="min-width: 100px"></Column>
+            <Column header="ผู้ใช้" style="min-width: 100px">
+                <template #body>
+                    {{ user?.nickname ?? '-' }}
+                </template>
+            </Column>
 
             <!-- คอลัมน์รายละเอียด -->
             <Column field="details" header="รายละเอียด" style="min-width: 500px">

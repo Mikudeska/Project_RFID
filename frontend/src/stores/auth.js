@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import axios from 'axios';
-
-const API_BASE = import.meta.env.VITE_API_BASE;
+import api from '@/plugins/axios'; // ใช้ไฟล์ axios ที่ทำ CSRF ไว้แล้ว
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);
@@ -17,20 +15,32 @@ export const useAuthStore = defineStore('auth', () => {
         if (saved) user.value = JSON.parse(saved);
     }
 
-    function logout() {
-        user.value = null;
-        localStorage.removeItem('user');
+    async function login(username, password) {
+        try {
+            await api.get('/api/get-csrf-token/'); // ให้ browser ได้ csrftoken
+            const res = await api.post('/api/login/', { username, password });
+            setUser(res.data); // data = { id, username } (จาก backend)
+            await fetchUserProfile(); // โหลดข้อมูลเต็ม ๆ
+        } catch (err) {
+            console.error('Login error:', err);
+            throw err;
+        }
     }
 
     async function fetchUserProfile() {
         try {
-            const res = await axios.get(`${API_BASE}/api/user-profile/`, { withCredentials: true });
+            const res = await api.get('/api/profile/');
             setUser(res.data);
-        } catch (error) {
-            console.error('fetchUserProfile error:', error);
-            // กรณี error อาจ logout หรือจัดการอย่างอื่น
+        } catch (err) {
+            console.error('fetchUserProfile error:', err);
         }
     }
 
-    return { user, setUser, loadUser, logout, fetchUserProfile };
+    async function logout() {
+        user.value = null;
+        localStorage.removeItem('user');
+        await api.post('/api/logout/'); // backend clear session
+    }
+
+    return { user, setUser, loadUser, login, fetchUserProfile, logout };
 });

@@ -5,8 +5,9 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db.models import Q
-from django.contrib.auth import login
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, login, logout
+from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.decorators import login_required
 from tablib import Dataset
 from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
@@ -31,38 +32,45 @@ import urllib.parse
 import os, io
 import logging
 
-logger = logging.getLogger(__name__)
-
+# ✅ แจก CSRF token (frontend ต้องเรียกก่อน)
 @ensure_csrf_cookie
 def get_csrf_token(request):
-    return JsonResponse({'detail': 'CSRF cookie set'})
+    return JsonResponse({"detail": "CSRF cookie set"})
 
-@api_view(['POST'])
+
+# ✅ Login
+@require_POST
 def login_view(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
-    user = authenticate(username=username, password=password)
-    if user:
-        login(request, user)
-        return Response({
-            'username': user.username,
-            'id': user.id,
-        })
-    return Response({'detail': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+    import json
+    data = json.loads(request.body)
+    username = data.get("username")
+    password = data.get("password")
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def user_profile(request):
-    user = request.user
-    data = {
-        'id': user.id,
-        'username': user.username,
-        'first_name': user.first_name,
-        'last_name': user.last_name,
-        'nickname': user.profile.nickname if hasattr(user, 'profile') else '',
-        'email': user.email,
-    }
-    return Response(data)
+    user = authenticate(request, username=username, password=password)
+    if user is not None:
+        login(request, user)  # Django จะสร้าง sessionid ให้
+        return JsonResponse({"detail": "Login success"})
+    else:
+        return JsonResponse({"detail": "Invalid credentials"}, status=400)
+
+
+# ✅ Logout
+@require_POST
+def logout_view(request):
+    logout(request)
+    return JsonResponse({"detail": "Logged out"})
+
+
+# ✅ ดึง user ปัจจุบัน
+@login_required
+def profile_view(request):
+    return JsonResponse({
+        "username": request.user.username,
+        "email": request.user.email,
+        "first_name": request.user.first_name,
+        "last_name": request.user.last_name,
+        "nickname": request.user.profile.nickname if hasattr(request.user, 'profile') else '',
+    })
 
 def file_iterator(buffer, chunk_size=8192):
     buffer.seek(0)

@@ -12,27 +12,22 @@ import Badge from 'primevue/badge';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
-auth.loadUser(); // โหลด user จาก localStorage ตอนเริ่ม
 const { user } = storeToRefs(auth);
-
 const opRef = ref(null);
 
 function toggleOverlay(event) {
     opRef.value.toggle(event);
 }
-
-function logout() {
-    auth.logout();
-    location.reload();
-}
-
-const wsStore = useWebSocketStore();
-const { isConnected, viewerCount } = storeToRefs(wsStore);
-
 const router = useRouter();
 function goToLogin() {
     router.push('/auth/login');
 }
+function logout() {
+    auth.logout();
+}
+
+const wsStore = useWebSocketStore();
+const { isConnected, viewerCount } = storeToRefs(wsStore);
 
 onMounted(async () => {
     await loadIcon('material-symbols:wifi-off-rounded');
@@ -180,6 +175,7 @@ const filteredLogs = computed(() => logs.value);
                         <OverlayPanel ref="opRef">
                             <div class="w-56 p-2 space-y-1 text-lg">
                                 <div class="text-xl text-center"><strong>Profile</strong></div>
+                                <div><strong>ไอดี:</strong> {{ user?.username ?? '-' }}</div>
                                 <div><strong>ชื่อ:</strong> {{ user?.first_name ?? '-' }} {{ user?.last_name ?? '-' }}</div>
                                 <div><strong>ชื่อเล่น:</strong> {{ user?.nickname ?? '-' }}</div>
                                 <div class="mt-2 text-right">
