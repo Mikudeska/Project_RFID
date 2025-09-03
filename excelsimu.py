@@ -1,7 +1,7 @@
 import pandas as pd
 import random
 
-num_records = 20
+num_records = 3500
 first_names = ["สมชาย", "สมหญิง", "ณัฐวุฒิ", "กิตติ", "ปวีณา", "ธนวัฒน์", "วรินทร", "อรทัย", "จิราพร", "สุนทร"]
 last_names = ["วงศ์แก้ว", "สังขกุล", "จันทร์แจ่ม", "ทองดี", "บุญมา", "สายทอง", "คำภีร์", "แสงทอง", "ศรีสุข", "รัตนสุข"]
 
@@ -37,10 +37,13 @@ degree_list = [
     "สารสนเทศศาสตรบัณฑิต",
     "เศรษฐศาสตรบัณฑิต"
 ]
-
+existing_nisits = set()
 def generate_nisit():
-    return ''.join(str(random.randint(0, 9)) for _ in range(11))
-
+ while True:
+        nisit = ''.join(str(random.randint(0, 9)) for _ in range(11))
+        if nisit not in existing_nisits:
+            existing_nisits.add(nisit)
+            return nisit
 
 data = []
 for _ in range(num_records):
@@ -56,6 +59,6 @@ for _ in range(num_records):
     })
 
 df = pd.DataFrame(data)
-output_path = r"C:\Users\Acer\Downloads\RFID\rfid_main\simu_person.xlsx"
+output_path = r"D:\rfid\Test01-master\simu_person1.xlsx"
 df.to_excel(output_path, index=False)
 print("สร้างไฟล์ simu_person.xlsx สำหรับ import เรียบร้อยแล้ว")
