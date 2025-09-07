@@ -174,7 +174,10 @@ const filteredLogs = computed(() => logs.value);
                         <!-- Overlay Panel -->
                         <OverlayPanel ref="opRef">
                             <div class="w-56 p-2 space-y-1 text-lg">
-                                <div class="text-xl text-center"><strong>Profile</strong></div>
+                                <div class="flex items-center justify-around text-xl">
+                                    <strong>Profile</strong>
+                                    <span class="text-gray-500">[ {{ user?.status }} ]</span>
+                                </div>
                                 <div><strong>ไอดี:</strong> {{ user?.username ?? '-' }}</div>
                                 <div><strong>ชื่อ:</strong> {{ user?.first_name ?? '-' }} {{ user?.last_name ?? '-' }}</div>
                                 <div><strong>ชื่อเล่น:</strong> {{ user?.nickname ?? '-' }}</div>
