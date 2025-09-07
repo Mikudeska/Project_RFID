@@ -3,6 +3,9 @@ import { ref, computed, onMounted } from 'vue';
 import api from '@/plugins/axios';
 import { FilterMatchMode } from '@primevue/core/api';
 import { createLocalToast } from '@/components/utils/toastUtils';
+import { useAuthStore } from '@/stores/auth';
+
+const auth = useAuthStore();
 
 const toast = createLocalToast();
 
@@ -200,13 +203,16 @@ onMounted(() => {
 
         <!-- Data Table -->
         <div class="card rounded-3xl">
-            <Toolbar class="mb-6">
-                <template #start> </template>
+            <div class="relative">
+                <Toolbar class="mb-6">
+                    <template #start> </template>
 
-                <template #end>
-                    <Button severity="secondary" class="mr-2" @click="exportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
-                </template>
-            </Toolbar>
+                    <template #end>
+                        <Button severity="secondary" class="mr-2" @click="exportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
+                    </template>
+                </Toolbar>
+                <div v-if="auth.status === 'Locked'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
+            </div>
 
             <DataTable :value="summaryByDegree" scrollable scrollHeight="500px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">
                 <Column field="degree" header="ชื่อปริญญา" style="min-width: 150px" class="text-lg"></Column>

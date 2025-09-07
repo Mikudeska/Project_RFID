@@ -4,6 +4,11 @@ import { onMounted, onBeforeUnmount, ref, computed } from 'vue';
 import api from '@/plugins/axios';
 import { Icon } from '@iconify/vue';
 import { createLocalToast } from '@/components/utils/toastUtils';
+import { useAuthStore } from '@/stores/auth';
+
+const auth = useAuthStore();
+
+console.log(auth.status);
 
 const toast = createLocalToast();
 
@@ -212,6 +217,13 @@ const handleFileSelect = (event) => {
 const handleFileUpload = async () => {
     if (!file.value) {
         alert('กรุณาเลือกไฟล์ก่อน');
+        return;
+    }
+
+    // จำกัดขนาดไฟล์ไม่เกิน 15MB
+    const maxSize = 15 * 1024 * 1024; // 15MB
+    if (file.value.size > maxSize) {
+        alert('ไฟล์มีขนาดเกิน 15MB');
         return;
     }
 
@@ -483,35 +495,35 @@ function getLatestVerified(data) {
 <template>
     <div class="page-wrapper">
         <div class="card">
-            <Toolbar class="mb-6">
-                <template #start>
-                    <Button v-tooltip.top="'เพิ่มรายชื่อ'" severity="secondary" class="mr-2" @click="openNew" rounded raised>
-                        <Icon icon="material-symbols:add-2-rounded" />
-                    </Button>
-                    <Button v-tooltip.top="'ลบรายการที่เลือก'" severity="secondary" class="mr-2" @click="confirmDeleteSelected" :disabled="!selectedpersons || !selectedpersons.length" rounded raised>
-                        <Icon icon="mdi:trash-can-outline" />
-                    </Button>
-                    <Button v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
-                        <Icon icon="lucide:database-backup" />
-                    </Button>
-                    <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="toggleMenu1" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
-                        <Icon icon="mdi:tag" />
-                    </Button>
-                    <Menu ref="menu1" :model="verifiedMenuItems" :popup="true">
-                        <template #item="{ item }">
-                            <div class="flex items-center gap-2 px-2 py-1">
-                                <Icon :icon="item.icon" :class="item.color" />
-                                <span>{{ item.label }}</span>
-                            </div>
-                        </template>
-                    </Menu>
-                </template>
+            <div class="relative">
+                <Toolbar class="mb-6">
+                    <template #start>
+                        <div class="flex items-center gap-2">
+                            <Button v-tooltip.top="'เพิ่มรายชื่อ'" severity="secondary" class="mr-2" @click="openNew" rounded raised>
+                                <Icon icon="material-symbols:add-2-rounded" />
+                            </Button>
+                            <Button v-tooltip.top="'ลบรายการที่เลือก'" severity="secondary" class="mr-2" @click="confirmDeleteSelected" :disabled="!selectedpersons || !selectedpersons.length" rounded raised>
+                                <Icon icon="mdi:trash-can-outline" />
+                            </Button>
+                            <Button v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
+                                <Icon icon="lucide:database-backup" />
+                            </Button>
+                            <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="toggleMenu1" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
+                                <Icon icon="mdi:tag" />
+                            </Button>
+                        </div>
+                    </template>
 
-                <template #end>
-                    <Button :disabled="uploadInProgress" severity="secondary" class="mr-2" @click="confirmUpload" rounded raised> <Icon icon="lets-icons:import" />อัปโหลดไฟล์</Button>
-                    <Button severity="secondary" class="mr-2" @click="choseExport" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์ </Button>
-                </template>
-            </Toolbar>
+                    <template #end>
+                        <Button :disabled="uploadInProgress" severity="secondary" class="mr-2" @click="confirmUpload" rounded raised> <Icon icon="lets-icons:import" />อัปโหลดไฟล์ </Button>
+                        <Button severity="secondary" class="mr-2" @click="choseExport" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์ </Button>
+                    </template>
+                </Toolbar>
+
+                <!-- Overlay ครอบทั้งแท็บ -->
+                <div v-if="auth.status === 'Locked'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
+            </div>
+
             <DataTable
                 ref="dt"
                 v-model:selection="selectedpersons"
@@ -589,7 +601,7 @@ function getLatestVerified(data) {
                         <Checkbox v-model="filterModel.value" :indeterminate="filterModel.value === null" binary inputId="verified-filter" />
                     </template>
                 </Column>
-                <Column :exportable="false" frozen alignFrozen="right" style="min-width: 120px; max-width: 140px; text-align: center">
+                <Column v-if="auth.status !== 'Locked'" :exportable="false" frozen alignFrozen="right" style="min-width: 120px; max-width: 140px; text-align: center">
                     <template #body="slotProps">
                         <div class="flex">
                             <div class="flex justify-center gap-2">
@@ -685,6 +697,7 @@ function getLatestVerified(data) {
                         </Tag>
                     </div>
                 </div>
+                <small class="block mt-2 text-gray-500">[ ไฟล์ไม่เกิน 15 MB ]</small>
 
                 <!-- ปุ่มเลือกไฟล์ -->
                 <div v-if="!uploadInProgress && !processing && !progress">

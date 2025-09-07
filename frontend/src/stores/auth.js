@@ -4,15 +4,21 @@ import api from '@/plugins/axios'; // ใช้ไฟล์ axios ที่ท�
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);
+    const status = ref('Locked');
 
     function setUser(data) {
         user.value = data;
+        if (data.status) status.value = data.status;
         localStorage.setItem('user', JSON.stringify(data));
     }
 
     function loadUser() {
         const saved = localStorage.getItem('user');
-        if (saved) user.value = JSON.parse(saved);
+        if (saved) {
+            const data = JSON.parse(saved);
+            user.value = data;
+            if (data.status) status.value = data.status;
+        }
     }
 
     async function login(username, password) {
@@ -42,5 +48,5 @@ export const useAuthStore = defineStore('auth', () => {
         await api.post('/api/logout/'); // backend clear session
     }
 
-    return { user, setUser, loadUser, login, fetchUserProfile, logout };
+    return { user, setUser, loadUser, login, fetchUserProfile, logout, status };
 });

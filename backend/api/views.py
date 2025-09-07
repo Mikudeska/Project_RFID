@@ -32,6 +32,8 @@ import urllib.parse
 import os, io
 import logging
 
+logger = logging.getLogger(__name__)
+
 # ✅ แจก CSRF token (frontend ต้องเรียกก่อน)
 @ensure_csrf_cookie
 def get_csrf_token(request):
@@ -64,12 +66,20 @@ def logout_view(request):
 # ✅ ดึง user ปัจจุบัน
 @login_required
 def profile_view(request):
+    user = request.user
+    # ตรวจสอบกลุ่ม Locked / Unlocked
+    if user.groups.filter(name='Unlocked').exists():
+        status = 'Unlocked'
+    else:
+        status = 'Locked'
+
     return JsonResponse({
         "username": request.user.username,
         "email": request.user.email,
         "first_name": request.user.first_name,
         "last_name": request.user.last_name,
         "nickname": request.user.profile.nickname if hasattr(request.user, 'profile') else '',
+        "status": status
     })
 
 def file_iterator(buffer, chunk_size=8192):
@@ -715,7 +725,6 @@ class ExportPDFResult(View):
             print(traceback.format_exc())
             return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
 
-
 class ExportData(APIView):
     def get(self, request, format_type):
         resource = PersonResource()
@@ -760,6 +769,15 @@ class ExportData(APIView):
 class ImportData(APIView):
     def post(self, request):
         file = request.FILES['file']
+
+        # ตรวจสอบขนาดไฟล์ (ไม่เกิน 15MB)
+        max_size = 15 * 1024 * 1024  # 15 MB
+        if file.size > max_size:
+            return Response(
+                {'error': 'ไฟล์มีขนาดเกิน 15MB'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
         dataset = Dataset()
         resource = PersonResource()
 
