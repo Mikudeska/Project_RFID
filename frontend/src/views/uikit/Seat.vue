@@ -19,6 +19,7 @@ const selectedPerson = ref({});
 const toast = useToast();
 const showFilterDropdown = ref(false);
 const filterDropdownRef = ref(null);
+const filterButtonRef = ref(null);
 const searchMessage = ref('');
 // เพิ่ม ref สำหรับเก้าอี้ที่ถูก highlight
 const highlightedSeatRef = ref(null);
@@ -26,6 +27,12 @@ const highlightedSeatRef = ref(null);
 
 
 function handleClickOutside(event) {
+    // ตรวจสอบว่าคลิกที่ปุ่มฟิลเตอร์หรือไม่
+    if (filterButtonRef.value && filterButtonRef.value.contains(event.target)) {
+        return; // ไม่ต้องทำอะไรถ้าคลิกที่ปุ่มฟิลเตอร์
+    }
+    
+    // ตรวจสอบว่าคลิกนอก dropdown หรือไม่
     if (filterDropdownRef.value && !filterDropdownRef.value.contains(event.target)) {
         showFilterDropdown.value = false;
     }
@@ -441,6 +448,7 @@ function getMiniMapColor(status) {
         default: return 'bg-gray-400'; // ไม่ทราบสถานะ
     }
 }
+
 </script>
 
 <template>
@@ -448,18 +456,77 @@ function getMiniMapColor(status) {
         <Toast />
         <!-- Filter Icon Button (Right Top) -->
         <div class="fixed z-50 top-20 right-6">
-            <button @click="showFilterDropdown = !showFilterDropdown" class="p-2 transition-all duration-300 bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-600 rounded-full shadow-lg hover:bg-blue-200 dark:hover:bg-blue-800 hover:scale-110 hover:shadow-xl transform">
+            <button ref="filterButtonRef" @click="showFilterDropdown = !showFilterDropdown" class="p-2 transition-all duration-300 bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-600 rounded-full shadow-lg hover:bg-blue-200 dark:hover:bg-blue-800 hover:scale-110 hover:shadow-xl transform">
                 <Icon icon="mdi:filter-variant" class="text-blue-600 dark:text-blue-300 transition-transform duration-300" :class="showFilterDropdown ? 'rotate-180' : ''" width="28" height="28" />
             </button>
             <!-- Dropdown Filter Bar -->
-            <div v-if="showFilterDropdown" ref="filterDropdownRef" class="absolute right-0 mt-2 z-50 bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-xl p-4 w-96 max-w-[95vw] flex flex-col gap-3 border border-blue-100 dark:border-gray-600 animate-slide-in">
+            <div v-if="showFilterDropdown" ref="filterDropdownRef" class="absolute right-0 mt-2 z-50 bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-xl p-4 w-96 sm:w-[800px] max-w-[95vw] flex flex-col sm:flex-row gap-3 border border-blue-100 dark:border-gray-600 animate-slide-in">
                 <!-- Refresh Button at Top Right -->
                 <div class="flex justify-end mb-2">
                     <button @click="resetFilter" class="flex items-center justify-center transition border-none rounded-full h-8 w-8 hover:bg-blue-200 dark:hover:bg-blue-700" title="รีเซ็ตตัวกรอง">
                         <Icon icon="mdi:refresh" class="text-blue-800 dark:text-blue-300 hover:text-blue-600 dark:hover:text-blue-200" width="20" height="20" />
                     </button>
                 </div>
-                <div class="flex flex-col gap-3">
+                <!-- Left Side - Statistics -->
+                <div class="flex-1 order-2 sm:order-1">
+                    <!-- Statistics Section -->
+                    <div class="p-3 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-600 rounded-xl border border-blue-200 dark:border-gray-500">
+                        <!-- Header -->
+                        <div class="flex items-center gap-3 mb-3">
+                            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
+                                <Icon icon="mdi:chart-line" class="text-white" width="16" height="16" />
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-gray-800 dark:text-white">สถิติการรายงานตัว</h3>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">สรุปสถานะที่นั่ง</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Statistics Grid -->
+                        <div class="grid grid-cols-2 gap-2 mb-3">
+                            <!-- Total -->
+                            <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-blue-200 dark:border-gray-600 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                                <div class="text-lg font-bold text-blue-600 dark:text-blue-400 animate-pulse">{{ statistics.total }}</div>
+                                <div class="text-xs text-blue-500 dark:text-blue-300">ทั้งหมด</div>
+                            </div>
+                            <!-- Reported -->
+                            <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-green-200 dark:border-green-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                                <div class="text-lg font-bold text-green-600 dark:text-green-400 animate-pulse">{{ statistics.reported }}</div>
+                                <div class="text-xs text-green-500 dark:text-green-300">รายงานตัวแล้ว</div>
+                                <div class="text-xs text-green-500 dark:text-green-300">({{ statistics.reportedPercentage }}%)</div>
+                            </div>
+                            <!-- In Hall -->
+                            <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-yellow-200 dark:border-yellow-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                                <div class="text-lg font-bold text-yellow-600 dark:text-yellow-400 animate-pulse">{{ statistics.inHall }}</div>
+                                <div class="text-xs text-yellow-500 dark:text-yellow-300">เข้าหอประชุม</div>
+                                <div class="text-xs text-yellow-500 dark:text-yellow-300">({{ statistics.inHallPercentage }}%)</div>
+                            </div>
+                            <!-- Not Reported -->
+                            <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-red-200 dark:border-red-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
+                                <div class="text-lg font-bold text-red-600 dark:text-red-400 animate-pulse">{{ statistics.notReported }}</div>
+                                <div class="text-xs text-red-500 dark:text-red-300">ยังไม่รายงาน</div>
+                                <div class="text-xs text-red-500 dark:text-red-300">({{ statistics.notReportedPercentage }}%)</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="mt-2">
+                            <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                                <span>ความคืบหน้า</span>
+                                <span>{{ statistics.reportedPercentage }}%</span>
+                            </div>
+                            <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                                <div 
+                                    class="bg-gradient-to-r from-green-500 to-blue-500 dark:from-green-400 dark:to-blue-400 h-2 rounded-full transition-all duration-500 ease-out animate-pulse"
+                                    :style="{ width: `${statistics.reportedPercentage}%` }"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Side - Filters -->
+                <div class="flex-1 flex flex-col gap-3 order-1 sm:order-2">
                     <div class="flex items-center min-w-0 gap-3 px-2 py-1 border-b border-blue-100 dark:border-gray-600">
                         <Icon icon="mdi:magnify" class="text-blue-800 dark:text-blue-300" width="40" height="40" />
                         <div class="relative w-full">
@@ -545,9 +612,10 @@ function getMiniMapColor(status) {
                     </div>
                     <!-- ฝั่งซ้าย: 0-34 -->
                     <div class="flex gap-2">
-                        <template v-for="(item, i) in buildSidesWithPillars(row).left" :key="i">
+                        <template v-for="(item, i) in buildSidesWithPillars(row).left">
                             <div
                                 v-if="item.type === 'pillar'"
+                                :key="`left-pillar-${rowIdx}-${i}`"
                                 class="flex items-center justify-center text-xs font-bold text-yellow-800 dark:text-yellow-200 bg-yellow-200 dark:bg-yellow-800 border border-yellow-400 dark:border-yellow-600 rounded"
                                 :style="item.length > 1 ? { gridColumn: `span ${item.length} / span ${item.length}`, width: `calc(1.5rem * ${item.length})` } : { width: '2.25rem' }"
                             >
@@ -555,6 +623,7 @@ function getMiniMapColor(status) {
                             </div>
                             <div
                                 v-else-if="item.type === 'person'"
+                                :key="`left-person-${rowIdx}-${i}`"
                                 class="flex flex-col items-center cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-lg animate-chair-hover"
                                 :title="item.data.name"
                                 @click="showPersonDetail(item.data)"
@@ -564,7 +633,7 @@ function getMiniMapColor(status) {
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
                             </div>
-                            <div v-else class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
+                            <div v-else :key="`left-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold text-gray-400 dark:text-gray-400">ว่าง</span>
                             </div>
@@ -583,9 +652,10 @@ function getMiniMapColor(status) {
 
                     <!-- ฝั่งขวา: 35-69 -->
                     <div class="flex gap-2">
-                        <template v-for="(item, i) in buildSidesWithPillars(row).right" :key="i">
+                        <template v-for="(item, i) in buildSidesWithPillars(row).right">
                             <div
                                 v-if="item.type === 'pillar'"
+                                :key="`right-pillar-${rowIdx}-${i}`"
                                 class="flex items-center justify-center text-xs font-bold text-yellow-800 dark:text-yellow-200 bg-yellow-200 dark:bg-yellow-800 border border-yellow-400 dark:border-yellow-600 rounded"
                                 :style="item.length > 1 ? { gridColumn: `span ${item.length} / span ${item.length}`, width: `calc(1.5rem * ${item.length})` } : { width: '2.35rem' }"
                             >
@@ -593,6 +663,7 @@ function getMiniMapColor(status) {
                             </div>
                             <div
                                 v-else-if="item.type === 'person'"
+                                :key="`right-person-${rowIdx}-${i}`"
                                 class="flex flex-col items-center cursor-pointer transform transition-all duration-200 hover:scale-110 hover:shadow-lg animate-chair-hover"
                                 :title="item.data.name"
                                 @click="showPersonDetail(item.data)"
@@ -602,7 +673,7 @@ function getMiniMapColor(status) {
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
                             </div>
-                            <div v-else class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
+                            <div v-else :key="`right-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
                                 <span class="mt-1 text-xs font-bold text-gray-400 dark:text-gray-400">ว่าง</span>
                             </div>
@@ -615,7 +686,7 @@ function getMiniMapColor(status) {
             </div>
         </div>
         <!-- Person Detail Dialog -->
-        <Dialog v-model:visible="dialogVisible" header="" modal :closable="false" class="p-fluid max-w-lg w-[98vw] rounded-2xl shadow-2xl ring-2 ring-blue-200/60 backdrop-blur-xl animate-zoom-in" :dismissableMask="true" :closeOnEscape="true">
+        <Dialog :visible="dialogVisible" @update:visible="dialogVisible = $event" header="" modal :closable="false" class="p-fluid max-w-lg w-[98vw] rounded-2xl shadow-2xl ring-2 ring-blue-200/60 backdrop-blur-xl animate-zoom-in" :dismissableMask="true" :closeOnEscape="true">
             <div v-if="selectedPerson" class="relative flex flex-col items-center p-0 shadow-xl bg-gradient-to-br from-white via-blue-50 to-indigo-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-2xl md:flex-row overflow-hidden">
                 <!-- ปุ่มปิด -->
                 <button @click="dialogVisible = false" class="absolute flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 transition-all duration-300 rounded-full shadow-lg top-4 right-4 bg-white/90 dark:bg-gray-800/90 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110 transform z-10" aria-label="ปิด">
@@ -695,62 +766,7 @@ function getMiniMapColor(status) {
                 <!-- Mini Map Overview with Statistics from Filter -->
         <div v-if="showMiniMap" class="fixed bottom-6 right-6 z-50">
             <div class="flex gap-4">
-                <!-- Statistics Panel (Left Side) - Moved from Filter -->
-                <div class="bg-white/30 dark:bg-gray-800/30 rounded-2xl shadow-2xl border border-white/50 dark:border-gray-600/50 backdrop-blur-xl p-4 w-64 h-fit">
-                    <!-- Header -->
-                    <div class="flex items-center gap-3 mb-4">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                            <Icon icon="mdi:chart-line" class="text-white" width="20" height="20" />
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">สถิติการรายงานตัว</h3>
-                            <p class="text-xs text-gray-500 dark:text-gray-400">สรุปสถานะที่นั่ง</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Statistics Grid -->
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <!-- Total -->
-                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-blue-200 dark:border-gray-600 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                            <div class="text-xl font-bold text-blue-600 dark:text-blue-400 animate-pulse">{{ statistics.total }}</div>
-                            <div class="text-xs text-blue-500 dark:text-blue-300">ทั้งหมด</div>
-                        </div>
-                        <!-- Reported -->
-                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-green-200 dark:border-green-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                            <div class="text-xl font-bold text-green-600 dark:text-green-400 animate-pulse">{{ statistics.reported }}</div>
-                            <div class="text-xs text-green-500 dark:text-green-300">รายงานตัวแล้ว</div>
-                            <div class="text-xs text-green-500 dark:text-green-300">({{ statistics.reportedPercentage }}%)</div>
-                        </div>
-                        <!-- In Hall -->
-                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-yellow-200 dark:border-yellow-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                            <div class="text-xl font-bold text-yellow-600 dark:text-yellow-400 animate-pulse">{{ statistics.inHall }}</div>
-                            <div class="text-xs text-yellow-500 dark:text-yellow-300">เข้าหอประชุม</div>
-                            <div class="text-xs text-yellow-500 dark:text-yellow-300">({{ statistics.inHallPercentage }}%)</div>
-                        </div>
-                        <!-- Not Reported -->
-                        <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-red-200 dark:border-red-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                            <div class="text-xl font-bold text-red-600 dark:text-red-400 animate-pulse">{{ statistics.notReported }}</div>
-                            <div class="text-xs text-red-500 dark:text-red-300">ยังไม่รายงาน</div>
-                            <div class="text-xs text-red-500 dark:text-red-300">({{ statistics.notReportedPercentage }}%)</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Progress Bar -->
-                    <div class="mt-3">
-                        <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
-                            <span>ความคืบหน้า</span>
-                            <span>{{ statistics.reportedPercentage }}%</span>
-                        </div>
-                        <div class="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                            <div 
-                                class="bg-gradient-to-r from-green-500 to-blue-500 dark:from-green-400 dark:to-blue-400 h-2 rounded-full transition-all duration-500 ease-out animate-pulse"
-                                :style="{ width: `${statistics.reportedPercentage}%` }"
-                            ></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Mini Map Panel (Right Side) -->
+                <!-- Mini Map Panel -->
                 <div class="bg-white/30 dark:bg-gray-800/30 rounded-2xl shadow-2xl border border-white/50 dark:border-gray-600/50 backdrop-blur-xl p-4 max-w-lg">
                     <!-- Header -->
                     <div class="flex items-center justify-between mb-4">
