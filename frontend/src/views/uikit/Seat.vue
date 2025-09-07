@@ -295,6 +295,7 @@ function setHighlightedSeatRef(el) {
     if (el) highlightedSeatRef.value = el;
 }
 
+
 function handleWsMessage(event) {
     const msg = event.detail;
     if (msg.action === 'update') {
@@ -448,6 +449,7 @@ function getMiniMapColor(status) {
         default: return 'bg-gray-400'; // ไม่ทราบสถานะ
     }
 }
+
 
 </script>
 
@@ -687,16 +689,22 @@ function getMiniMapColor(status) {
         </div>
         <!-- Person Detail Dialog -->
         <Dialog :visible="dialogVisible" @update:visible="dialogVisible = $event" header="" modal :closable="false" class="p-fluid max-w-lg w-[98vw] rounded-2xl shadow-2xl ring-2 ring-blue-200/60 backdrop-blur-xl animate-zoom-in" :dismissableMask="true" :closeOnEscape="true">
+            <!-- ปุ่มปิด - ภายนอก selectedPerson div -->
+            <button v-if="selectedPerson" @click="dialogVisible = false" class="absolute flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 transition-all duration-300 rounded-full shadow-lg top-4 right-4 bg-white/90 dark:bg-gray-800/90 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110 transform z-10" aria-label="ปิด">
+                <Icon icon="mdi:close" width="20" height="20" />
+            </button>
+            
             <div v-if="selectedPerson" class="relative flex flex-col items-center p-0 shadow-xl bg-gradient-to-br from-white via-blue-50 to-indigo-100 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-2xl md:flex-row overflow-hidden">
-                <!-- ปุ่มปิด -->
-                <button @click="dialogVisible = false" class="absolute flex items-center justify-center w-10 h-10 text-gray-600 dark:text-gray-300 transition-all duration-300 rounded-full shadow-lg top-4 right-4 bg-white/90 dark:bg-gray-800/90 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:scale-110 transform z-10" aria-label="ปิด">
-                    <Icon icon="mdi:close" width="20" height="20" />
-                </button>
                 
                 <!-- Avatar Section -->
                 <div class="flex flex-col items-center justify-center flex-shrink-0 p-8 bg-gradient-to-br from-blue-100 to-indigo-200 dark:from-blue-900/50 dark:to-indigo-800/50">
                     <div class="relative">
-                        <div class="w-24 h-24 bg-gradient-to-br from-blue-400 to-indigo-500 dark:from-blue-500 dark:to-indigo-600 rounded-full flex items-center justify-center shadow-lg animate-pulse">
+                        <div class="w-24 h-24 rounded-full flex items-center justify-center shadow-lg " :class="{
+                            'bg-gradient-to-br from-green-400 to-green-600 dark:from-green-500 dark:to-green-700': selectedPerson.verified === 1,
+                            'bg-gradient-to-br from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700': selectedPerson.verified === 2,
+                            'bg-gradient-to-br from-red-400 to-red-600 dark:from-red-500 dark:to-red-700': selectedPerson.verified === 0,
+                            'bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-500 dark:to-gray-700': ![0, 1, 2].includes(selectedPerson.verified)
+                        }">
                             <Icon icon="mdi:account-circle" class="text-white" width="60" height="60" />
                         </div>
                         <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg" :class="{
@@ -881,6 +889,8 @@ function getMiniMapColor(status) {
                 <Icon icon="mdi:map" width="20" height="20" />
             </button>
         </div>
+
+
     </div>
 </template>
 
@@ -980,4 +990,6 @@ function getMiniMapColor(status) {
 .animate-marquee {
     animation: marquee 6s linear infinite;
 }
+
+
 </style>
