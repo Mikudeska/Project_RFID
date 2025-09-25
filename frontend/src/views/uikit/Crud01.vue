@@ -544,7 +544,7 @@ function getLatestVerified(data) {
                 <template #header>
                     <div class="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                            <h4 class="m-0">จัดการรายชื่อบัญฑิต</h4>
+                            <h4 class="m-0">จัดการรายชื่อบัณฑิต</h4>
                         </div>
                         <div class="flex items-center gap-2">
                             <Button v-tooltip.top="'เช็คสถานะ'" severity="secondary" @click="toggleMenu2" rounded raised>
