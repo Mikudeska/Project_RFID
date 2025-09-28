@@ -55,7 +55,7 @@ async function fetchStats() {
         const res = await axios.get(`${API_BASE}/api/stats/`);
         const d = res.data;
         features.value = [
-            { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
+            { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
             { title: 'ยังไม่รายงานตัว', description: d.checked_in },
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
