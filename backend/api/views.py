@@ -68,10 +68,10 @@ def logout_view(request):
 def profile_view(request):
     user = request.user
     # ตรวจสอบกลุ่ม Locked / Unlocked
-    if user.groups.filter(name='Unlocked').exists():
-        status = 'Unlocked'
+    if user.groups.filter(name='Dev').exists():
+        status = 'Dev'
     else:
-        status = 'Locked'
+        status = 'Staff'
 
     return JsonResponse({
         "username": request.user.username,

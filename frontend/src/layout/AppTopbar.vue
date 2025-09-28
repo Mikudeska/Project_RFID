@@ -100,7 +100,7 @@ const filteredLogs = computed(() => logs.value);
             </button>
             <router-link to="/" class="layout-topbar-logo">
                 <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <image href="https://ssru.ac.th/datafiles/loadimg/SSRU_LOGO1.png" x="0" y="0" height="300" width="300" />
+                    <image href="@/assets/image/SSRU_LOGO1.png" x="0" y="0" height="300" width="300" />
                 </svg>
                 <span>SSRU_RFID</span>
             </router-link>

@@ -235,7 +235,7 @@ const extractShortenedIDs = (details) => {
                 </template>
             </Toolbar>
 
-            <div v-if="auth.status === 'Locked'" class="absolute top-0 bottom-0 left-0 right-0 z-10 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
+            <div v-if="auth.status === 'Staff'" class="absolute top-0 bottom-0 left-0 right-0 z-10 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
         </div>
         <DataTable
             :value="logs"

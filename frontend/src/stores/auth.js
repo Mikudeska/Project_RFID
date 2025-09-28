@@ -4,7 +4,7 @@ import api from '@/plugins/axios'; // ใช้ไฟล์ axios ที่ท�
 
 export const useAuthStore = defineStore('auth', () => {
     const user = ref(null);
-    const status = ref('Locked');
+    const status = ref('Staff');
 
     function setUser(data) {
         user.value = data;

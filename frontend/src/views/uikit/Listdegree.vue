@@ -211,7 +211,7 @@ onMounted(() => {
                         <Button severity="secondary" class="mr-2" @click="exportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
                     </template>
                 </Toolbar>
-                <div v-if="auth.status === 'Locked'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
+                <div v-if="auth.status === 'Staff'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
             </div>
 
             <DataTable :value="summaryByDegree" scrollable scrollHeight="500px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">

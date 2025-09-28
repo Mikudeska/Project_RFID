@@ -521,7 +521,7 @@ function getLatestVerified(data) {
                 </Toolbar>
 
                 <!-- Overlay ครอบทั้งแท็บ -->
-                <div v-if="auth.status === 'Locked'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
+                <div v-if="auth.status === 'Staff'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
             </div>
 
             <DataTable
@@ -601,7 +601,7 @@ function getLatestVerified(data) {
                         <Checkbox v-model="filterModel.value" :indeterminate="filterModel.value === null" binary inputId="verified-filter" />
                     </template>
                 </Column>
-                <Column v-if="auth.status !== 'Locked'" :exportable="false" frozen alignFrozen="right" style="min-width: 120px; max-width: 140px; text-align: center">
+                <Column v-if="auth.status !== 'Staff'" :exportable="false" frozen alignFrozen="right" style="min-width: 120px; max-width: 140px; text-align: center">
                     <template #body="slotProps">
                         <div class="flex">
                             <div class="flex justify-center gap-2">

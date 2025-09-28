@@ -68,7 +68,7 @@ async function handleLogin() {
                         </div>
                         <div class="mb-8 text-center">
                             <svg viewBox="0 0 100 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <image href="https://ssru.ac.th/datafiles/loadimg/SSRU_LOGO1.png" x="40" y="0" height="30" width="20" />
+                                <image href="@/assets/image/SSRU_LOGO1.png" x="40" y="0" height="30" width="20" />
                             </svg>
                         </div>
 
