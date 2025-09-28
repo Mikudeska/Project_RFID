@@ -185,276 +185,276 @@ class ResetLog(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    class ExportPDF(View):
-        def get(self, request):
-            try:
-                # ตั้งค่า Font ไทย
-                BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
-                pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
-                buffer = io.BytesIO()
-                p = canvas.Canvas(buffer, pagesize=A4)
-                width, height = A4
-                p.setFont('THSarabun', 25)
-                date_str = datetime.now().strftime("%d/%m/%Y")
-                p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
-                p.setFont('THSarabun', 15)
-                time_str = datetime.now().strftime("%H:%M")
-                p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
+class ExportPDF(View):
+    def get(self, request):
+        try:
+            # ตั้งค่า Font ไทย
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
+            pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            p.setFont('THSarabun', 25)
+            date_str = datetime.now().strftime("%d/%m/%Y")
+            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+            p.setFont('THSarabun', 15)
+            time_str = datetime.now().strftime("%H:%M")
+            p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
 
-                p.setFont('THSarabun', 20)
-                p.drawCentredString(width / 2, 780, "รายชื่อผู้รายงานตัว")
+            p.setFont('THSarabun', 20)
+            p.drawCentredString(width / 2, 780, "รายชื่อผู้รายงานตัว")
 
-                # เขียนหัวตาราง
-                p.setFont('THSarabun', 14)
-                p.drawString(50, 750, "ลำดับ")
-                p.drawString(150, 750, "ชื่อ-นามสกุล")
-                p.drawString(300, 750, "รหัสนิสิต")
-                p.drawString(400, 750, "สถานะรายงานตัว")
+            # เขียนหัวตาราง
+            p.setFont('THSarabun', 14)
+            p.drawString(50, 750, "ลำดับ")
+            p.drawString(150, 750, "ชื่อ-นามสกุล")
+            p.drawString(300, 750, "รหัสนิสิต")
+            p.drawString(400, 750, "สถานะรายงานตัว")
 
-                # ดึงข้อมูล
-                persons = Person.objects.all().order_by('seat')
-                y_position = 730  # ตำแหน่งเริ่มต้น
-                def get_verified_status(person):
-                    if 2 in [person.verified1, person.verified2, person.verified3]:
-                        return "อยู่ในห้องพิธี"
-                    elif 1 in [person.verified1, person.verified2, person.verified3]:
-                        return "รายงานตัวแล้ว"
-                    else:
-                        return "ยังไม่รายงานตัว"
-                
-                for i, person in enumerate(persons, start=1):
-                    p.drawString(50, y_position, f"{i:04d}")
-                    p.drawString(150, y_position, person.name)
-                    p.drawString(300, y_position, person.nisit)
-                    p.drawString(400, y_position, get_verified_status(person))
-                    y_position -= 20  # เลื่อนบรรทัด
+            # ดึงข้อมูล
+            persons = Person.objects.all().order_by('seat')
+            y_position = 730  # ตำแหน่งเริ่มต้น
+            def get_verified_status(person):
+                if 2 in [person.verified1, person.verified2, person.verified3]:
+                    return "อยู่ในห้องพิธี"
+                elif 1 in [person.verified1, person.verified2, person.verified3]:
+                    return "รายงานตัวแล้ว"
+                else:
+                    return "ยังไม่รายงานตัว"
+            
+            for i, person in enumerate(persons, start=1):
+                p.drawString(50, y_position, f"{i:04d}")
+                p.drawString(150, y_position, person.name)
+                p.drawString(300, y_position, person.nisit)
+                p.drawString(400, y_position, get_verified_status(person))
+                y_position -= 20  # เลื่อนบรรทัด
 
-                    # ขึ้นหน้าใหม่หากข้อมูลเต็มหน้า
-                    if y_position < 50:
-                        p.showPage()
-                        y_position = 800
-                        p.setFont('THSarabun', 14)
+                # ขึ้นหน้าใหม่หากข้อมูลเต็มหน้า
+                if y_position < 50:
+                    p.showPage()
+                    y_position = 800
+                    p.setFont('THSarabun', 14)
 
-                p.save()
-                buffer.seek(0)
+            p.save()
+            buffer.seek(0)
 
-                date_str = datetime.now().strftime('%Y%m%d')
-                filename = f"รายชื่อ_{date_str}.pdf"
-                quoted_filename = quote(filename)
+            date_str = datetime.now().strftime('%Y%m%d')
+            filename = f"รายชื่อ_{date_str}.pdf"
+            quoted_filename = quote(filename)
 
-                response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
-                response['Cache-Control'] = 'no-store'
-                response['Pragma'] = 'no-cache'
-                response['Expires'] = '0'
-                response['Content-Disposition'] = (
-                    f'attachment; filename="{quoted_filename}"; '
-                    f'filename*=UTF-8\'\'{quoted_filename}'
-                )
-                response["Access-Control-Expose-Headers"] = "Content-Disposition"
-                response['Content-Security-Policy'] = "upgrade-insecure-requests"
-                response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-                Log.objects.create(
-                    action='Export',
-                    model='Person',
-                    details="โหลดไฟล์เป็น PDF",
-                    record_id=None
-                )
-                return response
+            response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
+            response['Cache-Control'] = 'no-store'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            response['Content-Disposition'] = (
+                f'attachment; filename="{quoted_filename}"; '
+                f'filename*=UTF-8\'\'{quoted_filename}'
+            )
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+            response['Content-Security-Policy'] = "upgrade-insecure-requests"
+            response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details="โหลดไฟล์เป็น PDF",
+                record_id=None
+            )
+            return response
 
-            except Exception as e:
-                print('PDF Export Error:', str(e))
-                return JsonResponse({'error': str(e)}, status=500)
+        except Exception as e:
+            print('PDF Export Error:', str(e))
+            return JsonResponse({'error': str(e)}, status=500)
 
-    class ExportPDFResult(View):
-        def get(self, request):
-            try:
-                BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
-                pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
+class ExportPDFResult(View):
+    def get(self, request):
+        try:
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
+            pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
 
-                buffer = io.BytesIO()
-                p = canvas.Canvas(buffer, pagesize=A4)
-                width, height = A4
-                p.setFont('THSarabun', 25)
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            p.setFont('THSarabun', 25)
 
-                def degree_group(name):
-                    if 'ดุษฎีบัณฑิต' in name:
-                        return 'ป.เอก'
-                    elif 'มหาบัณฑิต' in name:
-                        return 'ป.โท'
-                    return 'ป.ตรี'
+            def degree_group(name):
+                if 'ดุษฎีบัณฑิต' in name:
+                    return 'ป.เอก'
+                elif 'มหาบัณฑิต' in name:
+                    return 'ป.โท'
+                return 'ป.ตรี'
 
-                def is_verified(person):
-                    # ถ้ามี verified1,2 หรือ 3 เป็น 1 หรือ 2 ถือว่า มา
-                    return any(getattr(person, f'verified{i}') in [1, 2] for i in range(1, 4))
+            def is_verified(person):
+                # ถ้ามี verified1,2 หรือ 3 เป็น 1 หรือ 2 ถือว่า มา
+                return any(getattr(person, f'verified{i}') in [1, 2] for i in range(1, 4))
 
 
-                persons = Person.objects.all()
+            persons = Person.objects.all()
 
-                degree_summary = {
-                    'ป.ตรี': {'total': 0, 'present': 0},
-                    'ป.โท': {'total': 0, 'present': 0},
-                    'ป.เอก': {'total': 0, 'present': 0},
-                }
+            degree_summary = {
+                'ป.ตรี': {'total': 0, 'present': 0},
+                'ป.โท': {'total': 0, 'present': 0},
+                'ป.เอก': {'total': 0, 'present': 0},
+            }
 
-                branch_summary = {}
+            branch_summary = {}
 
-                # เก็บ id ที่ยังไม่รายงานตัว
-                missing_ids = []
+            # เก็บ id ที่ยังไม่รายงานตัว
+            missing_ids = []
 
-                for person in persons:
-                    dg = degree_group(person.degree)
-                    degree_summary[dg]['total'] += 1
+            for person in persons:
+                dg = degree_group(person.degree)
+                degree_summary[dg]['total'] += 1
 
-                    if is_verified(person):
-                        degree_summary[dg]['present'] += 1
-                    else:
-                        missing_ids.append(person.id)
+                if is_verified(person):
+                    degree_summary[dg]['present'] += 1
+                else:
+                    missing_ids.append(person.id)
 
-                    branch = person.degree if person.degree else 'ไม่ระบุ'
-                    if branch not in branch_summary:
-                        branch_summary[branch] = {'total': 0, 'present': 0}
-                    branch_summary[branch]['total'] += 1
+                branch = person.degree if person.degree else 'ไม่ระบุ'
+                if branch not in branch_summary:
+                    branch_summary[branch] = {'total': 0, 'present': 0}
+                branch_summary[branch]['total'] += 1
 
-                    if is_verified(person):
-                        branch_summary[branch]['present'] += 1
+                if is_verified(person):
+                    branch_summary[branch]['present'] += 1
 
-                p.setFont('THSarabun', 25)
-                date_str = datetime.now().strftime("%d/%m/%Y")
-                p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
-                p.setFont('THSarabun', 15)
-                time_str = datetime.now().strftime("%H:%M")
-                p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
+            p.setFont('THSarabun', 25)
+            date_str = datetime.now().strftime("%d/%m/%Y")
+            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+            p.setFont('THSarabun', 15)
+            time_str = datetime.now().strftime("%H:%M")
+            p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
 
-                p.setFont('THSarabun', 25)
-                p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
+            p.setFont('THSarabun', 25)
+            p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
 
-                p.setFont('THSarabun', 18)
-                y = height - 140
-                p.drawString(40, y, "ชื่อ")
-                p.drawString(160, y, "จำนวนนศ. ทั้งหมด")
-                p.drawString(320, y, "จำนวนนศ. ที่มา")
-                p.drawString(460, y, "จำนวนนศ. ที่ขาด")
-                y -= 50
+            p.setFont('THSarabun', 18)
+            y = height - 140
+            p.drawString(40, y, "ชื่อ")
+            p.drawString(160, y, "จำนวนนศ. ทั้งหมด")
+            p.drawString(320, y, "จำนวนนศ. ที่มา")
+            p.drawString(460, y, "จำนวนนศ. ที่ขาด")
+            y -= 50
 
-                total_all = present_all = 0
-                for degree in ['ป.ตรี', 'ป.โท', 'ป.เอก']:
-                    total = degree_summary[degree]['total']
-                    present = degree_summary[degree]['present']
-                    absent = total - present
-                    p.drawString(40, y, degree)
-                    p.drawRightString(230, y, f"{total}     คน")
-                    p.drawRightString(380, y, f"{present}   คน")
-                    p.drawRightString(530, y, f"{absent}    คน")
-                    total_all += total
-                    present_all += present
-                    y -= 40
+            total_all = present_all = 0
+            for degree in ['ป.ตรี', 'ป.โท', 'ป.เอก']:
+                total = degree_summary[degree]['total']
+                present = degree_summary[degree]['present']
+                absent = total - present
+                p.drawString(40, y, degree)
+                p.drawRightString(230, y, f"{total}     คน")
+                p.drawRightString(380, y, f"{present}   คน")
+                p.drawRightString(530, y, f"{absent}    คน")
+                total_all += total
+                present_all += present
+                y -= 40
 
-                absent_all = total_all - present_all
-                p.setFont('THSarabun', 18)
-                p.drawString(40, y, "ยอดรวมทั้งหมด")
-                p.drawRightString(230, y, f"{total_all}     คน")
-                p.drawRightString(380, y, f"{present_all}   คน")
-                p.drawRightString(530, y, f"{absent_all}    คน")
-                y -= 50
+            absent_all = total_all - present_all
+            p.setFont('THSarabun', 18)
+            p.drawString(40, y, "ยอดรวมทั้งหมด")
+            p.drawRightString(230, y, f"{total_all}     คน")
+            p.drawRightString(380, y, f"{present_all}   คน")
+            p.drawRightString(530, y, f"{absent_all}    คน")
+            y -= 50
 
-                # --- หน้าใหม่ และส่วนสาขา ---
-                p.showPage()
+            # --- หน้าใหม่ และส่วนสาขา ---
+            p.showPage()
 
-                p.setFont('THSarabun', 25)
-                p.drawCentredString(width / 2, height - 80, "ตารางแต่ละสาขา")
+            p.setFont('THSarabun', 25)
+            p.drawCentredString(width / 2, height - 80, "ตารางแต่ละสาขา")
 
-                p.setFont('THSarabun', 14)
-                y = height - 120
-                p.drawString(40, y, "ชื่อสาขา")
-                p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
-                p.drawString(320, y, "จำนวนนศ. ที่มา")
-                p.drawString(420, y, "จำนวนนศ. ที่ขาด")
-                p.drawString(530, y, "คิดเป็น %")
+            p.setFont('THSarabun', 14)
+            y = height - 120
+            p.drawString(40, y, "ชื่อสาขา")
+            p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
+            p.drawString(320, y, "จำนวนนศ. ที่มา")
+            p.drawString(420, y, "จำนวนนศ. ที่ขาด")
+            p.drawString(530, y, "คิดเป็น %")
 
-                y -= 25
+            y -= 25
 
-                for branch, vals in sorted(branch_summary.items()):
-                    total = vals['total']
-                    present = vals['present']
-                    absent = total - present
-                    percent = (present / total * 100) if total > 0 else 0
+            for branch, vals in sorted(branch_summary.items()):
+                total = vals['total']
+                present = vals['present']
+                absent = total - present
+                percent = (present / total * 100) if total > 0 else 0
 
-                    p.drawString(40, y, branch)
-                    p.drawRightString(260, y, f"{total} คน")
-                    p.drawRightString(360, y, f"{present} คน")
-                    p.drawRightString(470, y, f"{absent} คน")
-                    p.drawRightString(560, y, f"{percent:.2f} %")
+                p.drawString(40, y, branch)
+                p.drawRightString(260, y, f"{total} คน")
+                p.drawRightString(360, y, f"{present} คน")
+                p.drawRightString(470, y, f"{absent} คน")
+                p.drawRightString(560, y, f"{percent:.2f} %")
 
-                    y -= 20
-                    if y < 50:
-                        p.showPage()
-                        y = height - 80
-                        p.setFont('THSarabun', 14)
-                        p.drawString(40, y, "ชื่อสาขา")
-                        p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
-                        p.drawString(320, y, "จำนวนนศ. ที่มา")
-                        p.drawString(420, y, "จำนวนนศ. ที่ขาด")
-                        p.drawString(530, y, "คิดเป็น %")
-                        y -= 25
+                y -= 20
+                if y < 50:
+                    p.showPage()
+                    y = height - 80
+                    p.setFont('THSarabun', 14)
+                    p.drawString(40, y, "ชื่อสาขา")
+                    p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
+                    p.drawString(320, y, "จำนวนนศ. ที่มา")
+                    p.drawString(420, y, "จำนวนนศ. ที่ขาด")
+                    p.drawString(530, y, "คิดเป็น %")
+                    y -= 25
 
-                # --- หน้าใหม่สำหรับ ID ที่ยังไม่รายงานตัว ---
-                p.showPage()
-                p.setFont('THSarabun', 25)
-                p.drawCentredString(width / 2, height - 80, "รายชื่อที่ยังไม่รายงานตัว")
-                p.setFont('THSarabun', 16)
+            # --- หน้าใหม่สำหรับ ID ที่ยังไม่รายงานตัว ---
+            p.showPage()
+            p.setFont('THSarabun', 25)
+            p.drawCentredString(width / 2, height - 80, "รายชื่อที่ยังไม่รายงานตัว")
+            p.setFont('THSarabun', 16)
 
-                # จัดเรียง id ก่อนแสดง
-                missing_persons = Person.objects.filter(
-                    verified1=0,
-                    verified2=0,
-                    verified3=0
-                ).order_by('id')
+            # จัดเรียง id ก่อนแสดง
+            missing_persons = Person.objects.filter(
+                verified1=0,
+                verified2=0,
+                verified3=0
+            ).order_by('id')
 
-                y = height - 120
-                for person in missing_persons:
-                    line = f"[{person.id}]  {person.nisit}  {person.name}   {person.degree}"
-                    p.drawString(40, y, line)
-                    y -= 20
+            y = height - 120
+            for person in missing_persons:
+                line = f"[{person.id}]  {person.nisit}  {person.name}   {person.degree}"
+                p.drawString(40, y, line)
+                y -= 20
 
-                    if y < 50:
-                        p.showPage()
-                        y = height - 80
-                        p.setFont('THSarabun', 16)
+                if y < 50:
+                    p.showPage()
+                    y = height - 80
+                    p.setFont('THSarabun', 16)
 
-                p.save()
-                buffer.seek(0)
+            p.save()
+            buffer.seek(0)
 
-                date_str = datetime.now().strftime('%Y%m%d')
-                quoted_filename = quote(filename)
-                filename = f"ListResuit_{date_str}.pdf"
+            date_str = datetime.now().strftime('%Y%m%d')
+            quoted_filename = quote(filename)
+            filename = f"ListResuit_{date_str}.pdf"
 
-                response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
-                response["Access-Control-Expose-Headers"] = "Content-Disposition"
-                response['Content-Disposition'] = (
-                    f"attachment; "
-                    f"filename=\"{quoted_filename}\"; "
-                    f"filename*=UTF-8''{quoted_filename}"
-                )
-                response['Content-Transfer-Encoding'] = 'binary'
-                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-                response['Pragma'] = 'no-cache'
-                response['Expires'] = '0'
-                Log.objects.create(
-                    action='Export',
-                    model='Person',
-                    details="โหลดไฟล์สรุป PDF",
-                    record_id=None
-                )
+            response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+            response['Content-Disposition'] = (
+                f"attachment; "
+                f"filename=\"{quoted_filename}\"; "
+                f"filename*=UTF-8''{quoted_filename}"
+            )
+            response['Content-Transfer-Encoding'] = 'binary'
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details="โหลดไฟล์สรุป PDF",
+                record_id=None
+            )
 
-                return response
+            return response
 
-            except Exception as e:
-                print("ERROR:", str(e))
-                import traceback
-                print(traceback.format_exc())
-                return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
+        except Exception as e:
+            print("ERROR:", str(e))
+            import traceback
+            print(traceback.format_exc())
+            return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
 
 class ExportPDF(View):
     def get(self, request):
