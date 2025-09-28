@@ -9,6 +9,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
 from tablib import Dataset
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.views import APIView, View
 from rest_framework.parsers import JSONParser
 from rest_framework.response import Response
@@ -26,8 +27,9 @@ from .resources import PersonResource
 from .consumers import broadcast_to_crud01, broadcast_stats_update, broadcast_ws
 from .models import Person, Log
 from .serializers import PersonSerializer, LogSerializer
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import quote
+import json
 import urllib.parse
 import os, io
 import logging
@@ -41,17 +43,31 @@ def get_csrf_token(request):
 
 
 # ✅ Login
-@require_POST
 def login_view(request):
-    import json
     data = json.loads(request.body)
     username = data.get("username")
     password = data.get("password")
+    expires_in = int(data.get("expires_in", 24 * 60 * 60))  # 1 วันเป็นค่า default หากไม่ได้ส่งมา
 
     user = authenticate(request, username=username, password=password)
     if user is not None:
-        login(request, user)  # Django จะสร้าง sessionid ให้
-        return JsonResponse({"detail": "Login success"})
+        # สร้าง refresh token และ access token
+        refresh = RefreshToken.for_user(user)
+        access_token = refresh.access_token
+
+        # กำหนดเวลาหมดอายุของ access token ตาม expires_in ที่ส่งมาจาก frontend
+        access_token.set_exp(lifetime=timedelta(seconds=expires_in))
+
+        # Login ระบบ session ของ Django (จะสร้าง sessionid ให้)
+        login(request, user)
+
+        # ส่ง token กลับไปยัง frontend
+        return JsonResponse({
+            "access": str(access_token),
+            "refresh": str(refresh),
+            "detail": "Login success"
+        })
+
     else:
         return JsonResponse({"detail": "Invalid credentials"}, status=400)
 

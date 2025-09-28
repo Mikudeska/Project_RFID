@@ -31,10 +31,14 @@ async function handleLogin() {
         // 1) ขอ CSRF ก่อน
         await api.get('api/get-csrf-token/');
 
-        // 2) Login
+        // 2) Login - ส่งข้อมูลระยะเวลา expires
+        const rememberMe = checked.value; // ตรวจสอบว่าเลือกจดจำฉันหรือไม่
+        const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 1 เดือน (30 วัน) หรือ 1 วัน
+
         await api.post('api/login/', {
             username: username.value,
-            password: password.value
+            password: password.value,
+            expires_in: expiresIn // ส่งระยะเวลา expires ไปที่ Backend
         });
 
         // 3) ดึง profile

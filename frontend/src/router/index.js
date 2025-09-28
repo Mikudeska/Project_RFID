@@ -1,5 +1,6 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -92,6 +93,19 @@ const router = createRouter({
             component: () => import('@/views/pages/auth/Error.vue')
         }
     ]
+});
+
+// การเพิ่ม navigation guard
+router.beforeEach((to, from, next) => {
+    const authStore = useAuthStore();
+    const isAuthenticated = authStore.isAuthenticated;
+
+    // หากผู้ใช้ไม่ได้ล็อกอินและพยายามไปที่หน้าอื่น ๆ จะถูกนำไปหน้า login
+    if (!isAuthenticated && to.name !== 'login' && to.name !== 'landing' && to.name !== 'error') {
+        next({ name: 'login' });
+    } else {
+        next();
+    }
 });
 
 export default router;
