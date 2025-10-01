@@ -82,7 +82,7 @@ app.use(pinia);
 const auth = useAuthStore();
 auth.loadUser();
 if (auth.user) {
-    await auth.fetchUserProfile();
+    auth.fetchUserProfile();
 }
 
 app.use(router);
