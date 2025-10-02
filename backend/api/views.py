@@ -150,6 +150,8 @@ class ResetDatabase(APIView):
                 model='Database',
                 details=f"รีเซ็ตล้มเหลว: {str(e)}",
                 record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             return Response(
                 {'error': str(e)}, 
@@ -183,7 +185,9 @@ class ResetLog(APIView):
                     action='Reset',
                     model='Database',
                     details=log_details,
-                    record_id=None
+                    record_id=None,
+                    user=request.user,
+                    user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
                 )   
                 
                 return Response(
@@ -197,6 +201,8 @@ class ResetLog(APIView):
                 model='Database',
                 details=f"รีเซ็ตล้มเหลว: {str(e)}",
                 record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             return Response(
                 {'error': str(e)}, 
@@ -276,7 +282,9 @@ class ExportPDF(View):
                 action='Export',
                 model='Person',
                 details="โหลดไฟล์เป็น PDF",
-                record_id=None
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             return response
 
@@ -463,7 +471,9 @@ class ExportPDFResult(View):
                 action='Export',
                 model='Person',
                 details="โหลดไฟล์สรุป PDF",
-                record_id=None
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
 
             return response
@@ -547,7 +557,9 @@ class ExportPDF(View):
                 action='Export',
                 model='Person',
                 details="โหลดไฟล์เป็น PDF",
-                record_id=None
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             return response
 
@@ -732,7 +744,9 @@ class ExportPDFResult(View):
                 action='Export',
                 model='Person',
                 details="โหลดไฟล์สรุป PDF",
-                record_id=None
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
 
             return response
@@ -773,7 +787,9 @@ class ExportData(APIView):
             Log.objects.create(
                 action='Export',
                 model='Person',
-                details=f"โหลดไฟล์เป็น {format_type}"
+                details=f"โหลดไฟล์เป็น {format_type}",
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             return response
 
@@ -824,7 +840,9 @@ class ImportData(APIView):
                 action='Import',
                 model='Person',
                 details=f"นำเข้าฐานข้อมูล {imported_count} รายการ ( ใหม่ {result.totals.get('new', 0)} อัปเดต {result.totals.get('update', 0)} )",
-                record_id=None
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             broadcast_ws("upload")
             broadcast_stats_update()
@@ -838,7 +856,9 @@ class ImportData(APIView):
                 action='Import',
                 model='Person',
                 details=f"นำเข้าข้อมูลล้มเหลว: {str(e)}",
-                record_id=None
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             logger.error(f"Import failed: {str(e)}", exc_info=True)
             return Response(
@@ -898,7 +918,9 @@ class PersonList(APIView):
                 action='Add',
                 model='Person',
                 details=f"เพิ่มข้อมูล: {instance.name}",
-                record_id=instance.id
+                record_id=instance.id,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             if settings.USE_CHANNEL:
                 broadcast_to_crud01({
@@ -963,7 +985,9 @@ class PersonList(APIView):
                 action='Edit',
                 model='Person',
                 details=log_message,
-                record_id=None  # เพราะหลาย id
+                record_id=None,  # เพราะหลาย id
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
 
         if settings.USE_CHANNEL:
@@ -989,7 +1013,9 @@ class PersonList(APIView):
                     action='Delete',
                     model='Person',
                     details=f"[ID: {ids_str}] ลบข้อมูลแบบกลุ่ม",
-                    record_id=None
+                    record_id=None,
+                    user=request.user,
+                    user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
                 )
                 persons.delete()
                 
@@ -1025,7 +1051,9 @@ class PersonDetail(APIView):
                 action='Delete',
                 model='Person',
                 details=f"ลบข้อมูลของ {person.name}",
-                record_id=person.id
+                record_id=person.id,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
             )
             
             person.delete()
@@ -1061,7 +1089,9 @@ class PersonDetail(APIView):
                         action='Edit',
                         model='Person',
                         details=log_message, 
-                        record_id=person.id
+                        record_id=person.id,
+                        user=request.user,
+                         user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
                     )
                 if settings.USE_CHANNEL:
                     fields = person_to_dict(person)
