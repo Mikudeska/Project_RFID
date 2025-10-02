@@ -568,7 +568,7 @@ function getLatestVerified(data) {
                     </div>
                 </template>
 
-                <Column selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
+                <Column v-if="auth.status !== 'Staff'" selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
                 <Column field="formatted_id" header="ลำดับที่" sortable style="min-width: 6rem"></Column>
                 <Column field="nisit" header="รหัสนิสิต" sortable style="min-width: 10rem"></Column>
                 <!-- <Column header="Image">
