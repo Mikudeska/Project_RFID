@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.conf import settings
 import random
 
 class Person(models.Model):
@@ -73,6 +74,18 @@ class Log(models.Model):
     details = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     record_id = models.CharField(max_length=100, blank=True, null=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,  # หรือ CASCADE ตามความเหมาะสม
+        null=True,
+        blank=True,
+        verbose_name='ผู้ใช้งาน'
+    )
+    user_nickname = models.CharField(
+        max_length=100, 
+        blank=True, 
+        verbose_name='Nickname'
+    )
 
     def save(self, *args, **kwargs):
         self.action = self.action.lower()

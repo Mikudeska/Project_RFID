@@ -133,7 +133,9 @@ class ResetDatabase(APIView):
                     action='Reset',
                     model='Database',
                     details=log_details,
-                    record_id=None
+                    record_id=None,
+                    user=request.user,
+                    user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
                 )
                 broadcast_ws("reset")
                 broadcast_stats_update()

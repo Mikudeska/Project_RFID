@@ -34,8 +34,8 @@ class PersonAdmin(admin.ModelAdmin):
 # ----- Log Admin -----
 @admin.register(Log)
 class LogAdmin(admin.ModelAdmin):
-    list_display = ('timestamp', 'action', 'model', 'record_id', 'short_details')
-    list_filter = ('action', 'model', 'timestamp')
+    list_display = ('timestamp', 'action', 'model', 'record_id', 'user', 'user_nickname', 'short_details')
+    list_filter = ('action', 'model', 'timestamp', 'user')
     search_fields = ('details', 'record_id')
     ordering = ('-timestamp',)
     readonly_fields = ('timestamp', 'action', 'model', 'details', 'record_id')

@@ -318,8 +318,8 @@ const extractShortenedIDs = (details) => {
             </Column>
 
             <Column header="ผู้ใช้" style="min-width: 100px">
-                <template #body>
-                    {{ user?.nickname ?? '-' }}
+                <template #body="{ data }">
+                    {{ data.user_nickname ?? '-' }}
                 </template>
             </Column>
 
