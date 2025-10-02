@@ -1,7 +1,7 @@
 <!-- Logs.vue -->
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import api from '@/plugins/axios';
 import { Icon } from '@iconify/vue';
 import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '@/stores/auth';
@@ -42,7 +42,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await axios.post(`${API_BASE}/api/resetlog/`);
+        await api.post(`${API_BASE}/api/resetlog/`);
         await fetchLogs();
         toast.add({
             severity: 'success',
@@ -137,7 +137,7 @@ const fetchLogs = async () => {
         let nextUrl = `${API_BASE}/api/logs/`;
 
         while (nextUrl) {
-            const response = await axios.get(nextUrl);
+            const response = await api.get(nextUrl);
             const data = response.data;
 
             // ตรวจสอบโครงสร้างข้อมูล
