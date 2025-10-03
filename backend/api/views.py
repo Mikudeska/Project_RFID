@@ -245,7 +245,13 @@ class ExportPDF(View):
             
             # ตั้งค่าตำแหน่งคอลัมน์และความกว้าง
             col_positions = [50, 75, 260, 440, 540]
-            col_widths = [25, 185, 180, 100, 0]  # ความกว้างของแต่ละคอลัมน์ (คอลัมน์สุดท้ายเป็น 0 เพราะเป็นขอบขวา)
+            col_widths = [25, 185, 180, 100, 0]  # ความกว้างของแต่ละคอลัมน์
+            
+            # คำนวณตำแหน่งกึ่งกลางของแต่ละคอลัมน์
+            header_positions = []
+            for i in range(len(col_positions) - 1):
+                center_x = col_positions[i] + (col_widths[i] / 2)
+                header_positions.append(center_x)
             
             # ข้อมูลส่วนหัว
             p.setFont('THSarabun', 25)
@@ -261,16 +267,10 @@ class ExportPDF(View):
             # เขียนหัวตาราง - จัดกึ่งกลางแต่ละคอลัมน์
             p.setFont('THSarabun', 14)
             
-            # คำนวณตำแหน่งกึ่งกลางของแต่ละคอลัมน์
-            header_positions = []
-            for i in range(len(col_positions) - 1):
-                center_x = col_positions[i] + (col_widths[i] / 2)
-                header_positions.append(center_x)
-            
             # วาดหัวตารางจัดกึ่งกลาง
             headers = ["ลำดับ", "ชื่อ-นามสกุล", "รหัสนิสิต", "สถานะรายงานตัว"]
             for i, header in enumerate(headers):
-                p.drawCentredString(header_positions[i], 755, header)
+                p.drawCentredString(header_positions[i], 735, header)
 
             # เก็บตำแหน่งแถวสำหรับวาดเส้นตาราง
             rows_y = [750]  # เริ่มจากหัวตาราง
@@ -287,13 +287,16 @@ class ExportPDF(View):
                 else:
                     return "ยังไม่รายงานตัว"
             
-            # เขียนข้อมูล - ชิดซ้ายแต่ห่างจากขอบ 2 points
+            # เขียนข้อมูล - จัดกึ่งกลางทั้งแนวตั้งและแนวนอน
             for i, person in enumerate(persons, start=1):
-                # วาดข้อมูลแต่ละคอลัมน์ โดยห่างจากขอบซ้าย 2 points
-                p.drawString(col_positions[0] + 2, y_position, f"{i:04d}")
-                p.drawString(col_positions[1] + 2, y_position, person.name)
-                p.drawString(col_positions[2] + 2, y_position, person.nisit)
-                p.drawString(col_positions[3] + 2, y_position, get_verified_status(person))
+                # คำนวณตำแหน่งกึ่งกลางแนวตั้งของแถว
+                vertical_center = y_position - 15  # กึ่งกลางของความสูง 20 points
+                
+                # วาดข้อมูลแต่ละคอลัมน์ โดยจัดกึ่งกลางทั้งแนวนอนและแนวตั้ง
+                p.drawCentredString(header_positions[0], vertical_center, f"{i:04d}")
+                p.drawCentredString(header_positions[1], vertical_center, person.name)
+                p.drawCentredString(header_positions[2], vertical_center, person.nisit)
+                p.drawCentredString(header_positions[3], vertical_center, get_verified_status(person))
                 
                 # เก็บตำแหน่ง y ปัจจุบัน
                 rows_y.append(y_position)
@@ -317,7 +320,7 @@ class ExportPDF(View):
                     # วาดหัวตารางจัดกึ่งกลางในหน้าใหม่
                     p.setFont('THSarabun', 14)
                     for i, header in enumerate(headers):
-                        p.drawCentredString(header_positions[i], 755, header)
+                        p.drawCentredString(header_positions[i], 735, header)
                     
                     rows_y = [750]
                     y_position = 730
