@@ -54,7 +54,7 @@ const exportPDFResult = async () => {
 
         // อ่านชื่อไฟล์จาก header
         const disposition = response.headers['content-disposition'];
-        let filename = 'ListResult.pdf';
+        let filename = 'รายชื่อสรุป.pdf';
 
         // ฟังก์ชันช่วยอ่านชื่อไฟล์จาก Content-Disposition
         const getFilenameFromDisposition = (disp) => {

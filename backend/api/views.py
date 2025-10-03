@@ -262,13 +262,13 @@ class ExportPDF(View):
             p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
 
             p.setFont('THSarabun', 20)
-            p.drawCentredString(width / 2, 780, "รายชื่อผู้รายงานตัว")
+            p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต")
 
             # เขียนหัวตาราง - จัดกึ่งกลางแต่ละคอลัมน์
             p.setFont('THSarabun', 14)
             
             # วาดหัวตารางจัดกึ่งกลาง
-            headers = ["ลำดับ", "ชื่อ-นามสกุล", "รหัสนิสิต", "สถานะรายงานตัว"]
+            headers = ["ลำดับ", "ชื่อ-นามสกุล", "รหัสนักศึกษา", "สถานะรายงานตัว"]
             for i, header in enumerate(headers):
                 p.drawCentredString(header_positions[i], 735, header)
 
@@ -315,7 +315,7 @@ class ExportPDF(View):
                     
                     # วาดหัวตารางในหน้าใหม่
                     p.setFont('THSarabun', 20)
-                    p.drawCentredString(width / 2, 780, "รายชื่อผู้รายงานตัว (ต่อ)")
+                    p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต (ต่อ)")
                     
                     # วาดหัวตารางจัดกึ่งกลางในหน้าใหม่
                     p.setFont('THSarabun', 14)
@@ -377,8 +377,18 @@ class ExportPDFResult(View):
             buffer = io.BytesIO()
             p = canvas.Canvas(buffer, pagesize=A4)
             width, height = A4
-            p.setFont('THSarabun', 25)
 
+            # ---------------- ฟังก์ชันวาดเส้นตาราง ----------------
+            def draw_table_grid(canvas, x_list, y_list):
+                canvas.setStrokeColorRGB(0, 0, 0)
+                canvas.setLineWidth(1)
+                for x in x_list:  # เส้นตั้ง
+                    canvas.line(x, min(y_list) - 20, x, max(y_list))
+                for y in y_list:  # เส้นนอน
+                    canvas.line(min(x_list), y, max(x_list), y)
+                canvas.line(min(x_list), min(y_list) - 20, max(x_list), min(y_list) - 20)
+
+            # ---------------- Helper ----------------
             def degree_group(name):
                 if 'ดุษฎีบัณฑิต' in name:
                     return 'ป.เอก'
@@ -387,40 +397,28 @@ class ExportPDFResult(View):
                 return 'ป.ตรี'
 
             def is_verified(person):
-                # ถ้ามี verified1,2 หรือ 3 เป็น 1 หรือ 2 ถือว่า มา
                 return any(getattr(person, f'verified{i}') in [1, 2] for i in range(1, 4))
 
-
             persons = Person.objects.all()
-
-            degree_summary = {
-                'ป.ตรี': {'total': 0, 'present': 0},
-                'ป.โท': {'total': 0, 'present': 0},
-                'ป.เอก': {'total': 0, 'present': 0},
-            }
-
+            degree_summary = {'ป.ตรี': {'total': 0, 'present': 0},
+                              'ป.โท': {'total': 0, 'present': 0},
+                              'ป.เอก': {'total': 0, 'present': 0}}
             branch_summary = {}
-
-            # เก็บ id ที่ยังไม่รายงานตัว
-            missing_ids = []
 
             for person in persons:
                 dg = degree_group(person.degree)
                 degree_summary[dg]['total'] += 1
-
                 if is_verified(person):
                     degree_summary[dg]['present'] += 1
-                else:
-                    missing_ids.append(person.id)
 
                 branch = person.degree if person.degree else 'ไม่ระบุ'
                 if branch not in branch_summary:
                     branch_summary[branch] = {'total': 0, 'present': 0}
                 branch_summary[branch]['total'] += 1
-
                 if is_verified(person):
                     branch_summary[branch]['present'] += 1
 
+            # ---------------- HEADER ----------------
             p.setFont('THSarabun', 25)
             date_str = datetime.now().strftime("%d/%m/%Y")
             p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
@@ -428,53 +426,76 @@ class ExportPDFResult(View):
             time_str = datetime.now().strftime("%H:%M")
             p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
 
+            # ---------------- 1. ใบสรุปผล ----------------
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "ใบสรุปผล")
 
-            p.setFont('THSarabun', 18)
-            y = height - 140
-            p.drawString(40, y, "ชื่อ")
-            p.drawString(160, y, "จำนวนนศ. ทั้งหมด")
-            p.drawString(320, y, "จำนวนนศ. ที่มา")
-            p.drawString(460, y, "จำนวนนศ. ที่ขาด")
-            y -= 50
+            col_positions = [60, 200, 320, 440, 530]
+            col_widths = [140, 120, 120, 90]
+            header_positions = [col_positions[i] + (col_widths[i] / 2) for i in range(len(col_widths))]
+
+            headers = ["ระดับ", "ทั้งหมด", "มา", "ขาด"]
+            p.setFont('THSarabun', 20)
+
+            # --- ควบคุมความสูงของแต่ละแถว ---
+            row_height = 30
+            rows = ['header', 'ป.ตรี', 'ป.โท', 'ป.เอก', 'รวมทั้งหมด']
+
+            # คำนวณตำแหน่ง y ของเส้นตาราง (บน → ล่าง)
+            y_start = height - 110
+            rows_y = [y_start - (i * row_height) for i in range(len(rows) + 1)]
+
+            # --- วาดหัวตาราง ---
+            for i, h in enumerate(headers):
+                p.drawCentredString(header_positions[i], rows_y[0] - row_height/2 - 5, h)
 
             total_all = present_all = 0
-            for degree in ['ป.ตรี', 'ป.โท', 'ป.เอก']:
+
+            # --- วาดแถวข้อมูล ---
+            for idx, degree in enumerate(['ป.ตรี', 'ป.โท', 'ป.เอก']):
                 total = degree_summary[degree]['total']
                 present = degree_summary[degree]['present']
                 absent = total - present
-                p.drawString(40, y, degree)
-                p.drawRightString(230, y, f"{total}     คน")
-                p.drawRightString(380, y, f"{present}   คน")
-                p.drawRightString(530, y, f"{absent}    คน")
+                vertical_center = rows_y[idx+1] - row_height/2 - 5
+
+                p.drawCentredString(header_positions[0], vertical_center, degree)
+                p.drawCentredString(header_positions[1], vertical_center, str(total))
+                p.drawCentredString(header_positions[2], vertical_center, str(present))
+                p.drawCentredString(header_positions[3], vertical_center, str(absent))
+
                 total_all += total
                 present_all += present
-                y -= 40
 
+            # --- รวมทั้งหมด ---
             absent_all = total_all - present_all
-            p.setFont('THSarabun', 18)
-            p.drawString(40, y, "ยอดรวมทั้งหมด")
-            p.drawRightString(230, y, f"{total_all}     คน")
-            p.drawRightString(380, y, f"{present_all}   คน")
-            p.drawRightString(530, y, f"{absent_all}    คน")
-            y -= 50
+            vertical_center = rows_y[4] - row_height/2 - 5
+            p.drawCentredString(header_positions[0], vertical_center, "รวมทั้งหมด")
+            p.drawCentredString(header_positions[1], vertical_center, str(total_all))
+            p.drawCentredString(header_positions[2], vertical_center, str(present_all))
+            p.drawCentredString(header_positions[3], vertical_center, str(absent_all))
 
-            # --- หน้าใหม่ และส่วนสาขา ---
+            # --- วาดเส้นตาราง ---
+            draw_table_grid(p, col_positions, rows_y)
+
+
+            # ---------------- 2. ตารางแต่ละสาขา ----------------
             p.showPage()
-
             p.setFont('THSarabun', 25)
-            p.drawCentredString(width / 2, height - 80, "ตารางแต่ละสาขา")
+            p.drawCentredString(width / 2, height - 80, "ตารางพระราชทานปริญญาบัตร 2568")
 
-            p.setFont('THSarabun', 14)
-            y = height - 120
-            p.drawString(40, y, "ชื่อสาขา")
-            p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
-            p.drawString(320, y, "จำนวนนศ. ที่มา")
-            p.drawString(420, y, "จำนวนนศ. ที่ขาด")
-            p.drawString(530, y, "คิดเป็น %")
+            col_positions = [40, 240, 320, 400, 480, 560]
+            col_widths = [200, 80, 80, 80, 80]
+            header_positions = [col_positions[i] + (col_widths[i] / 2) for i in range(len(col_widths))]
+            headers = ["ชื่อหลักสูตร", "ทั้งหมด", "มา", "ขาด", "ร้อยละ"]
 
-            y -= 25
+            def draw_branch_header():
+                p.setFont('THSarabun', 14)
+                for i, h in enumerate(headers):
+                    p.drawCentredString(header_positions[i], height - 130, h)
+
+            draw_branch_header()
+            y_position = height - 140
+            rows_y = [height - 110]
 
             for branch, vals in sorted(branch_summary.items()):
                 total = vals['total']
@@ -482,80 +503,99 @@ class ExportPDFResult(View):
                 absent = total - present
                 percent = (present / total * 100) if total > 0 else 0
 
-                p.drawString(40, y, branch)
-                p.drawRightString(260, y, f"{total} คน")
-                p.drawRightString(360, y, f"{present} คน")
-                p.drawRightString(470, y, f"{absent} คน")
-                p.drawRightString(560, y, f"{percent:.2f} %")
+                vertical_center = y_position - 15
+                p.drawCentredString(header_positions[0], vertical_center, branch)
+                p.drawCentredString(header_positions[1], vertical_center, str(total))
+                p.drawCentredString(header_positions[2], vertical_center, str(present))
+                p.drawCentredString(header_positions[3], vertical_center, str(absent))
+                p.drawCentredString(header_positions[4], vertical_center, f"{int(percent)}%")
 
-                y -= 20
-                if y < 50:
+                rows_y.append(y_position)
+                y_position -= 20
+
+                if y_position < 50:
+                    draw_table_grid(p, col_positions, rows_y)
                     p.showPage()
-                    y = height - 80
-                    p.setFont('THSarabun', 14)
-                    p.drawString(40, y, "ชื่อสาขา")
-                    p.drawString(210, y, "จำนวนนศ. ทั้งหมด")
-                    p.drawString(320, y, "จำนวนนศ. ที่มา")
-                    p.drawString(420, y, "จำนวนนศ. ที่ขาด")
-                    p.drawString(530, y, "คิดเป็น %")
-                    y -= 25
+                    draw_branch_header()
+                    rows_y = [height - 110]
+                    y_position = height - 140
 
-            # --- หน้าใหม่สำหรับ ID ที่ยังไม่รายงานตัว ---
+            if rows_y:
+                draw_table_grid(p, col_positions, rows_y)
+
+            # ---------------- 3. รายชื่อที่ยังไม่รายงานตัว ----------------
             p.showPage()
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "รายชื่อที่ยังไม่รายงานตัว")
-            p.setFont('THSarabun', 16)
 
-            # จัดเรียง id ก่อนแสดง
+            col_positions = [40, 100, 200, 380, 560]
+            col_widths = [60, 100, 180, 180]
+            header_positions = [col_positions[i] + (col_widths[i] / 2) for i in range(len(col_widths))]
+            headers = ["ID", "รหัสนักศึกษา", "ชื่อ-นามสกุล", "ชื่อหลักสูตร"]
+
+            def draw_missing_header():
+                p.setFont('THSarabun', 14)
+                for i, h in enumerate(headers):
+                    p.drawCentredString(header_positions[i], height - 130, h)
+
+            draw_missing_header()
+            y_position = height - 140
+            rows_y = [height - 110]
+
             missing_persons = Person.objects.filter(
-                verified1=0,
-                verified2=0,
-                verified3=0
+                verified1=0, verified2=0, verified3=0
             ).order_by('id')
 
-            y = height - 120
             for person in missing_persons:
-                line = f"[{person.id}]  {person.nisit}  {person.name}   {person.degree}"
-                p.drawString(40, y, line)
-                y -= 20
+                vertical_center = y_position - 15
+                p.drawCentredString(header_positions[0], vertical_center, str(person.id))
+                p.drawCentredString(header_positions[1], vertical_center, str(person.nisit))
+                p.drawCentredString(header_positions[2], vertical_center, person.name)
+                p.drawCentredString(header_positions[3], vertical_center, person.degree or "-")
 
-                if y < 50:
+                rows_y.append(y_position)
+                y_position -= 20
+
+                if y_position < 50:
+                    draw_table_grid(p, col_positions, rows_y)
                     p.showPage()
-                    y = height - 80
-                    p.setFont('THSarabun', 16)
+                    draw_missing_header()
+                    rows_y = [height - 110]
+                    y_position = height - 140
 
+            if rows_y:
+                draw_table_grid(p, col_positions, rows_y)
+
+            # ---------------- SAVE ----------------
             p.save()
             buffer.seek(0)
 
             date_str = datetime.now().strftime('%Y%m%d')
+            filename = f"รายชื่อสรุป_{date_str}.pdf"
             quoted_filename = quote(filename)
-            filename = f"ListResuit_{date_str}.pdf"
 
             response = StreamingHttpResponse(file_iterator(buffer), content_type='application/pdf')
-            response["Access-Control-Expose-Headers"] = "Content-Disposition"
             response['Content-Disposition'] = (
-                f"attachment; "
-                f"filename=\"{quoted_filename}\"; "
+                f'attachment; filename="{quoted_filename}"; '
                 f"filename*=UTF-8''{quoted_filename}"
             )
-            response['Content-Transfer-Encoding'] = 'binary'
-            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response['Cache-Control'] = 'no-store'
             response['Pragma'] = 'no-cache'
             response['Expires'] = '0'
+
             Log.objects.create(
                 action='Export',
                 model='Person',
                 details="โหลดไฟล์สรุป PDF",
                 record_id=None,
                 user=request.user,
-                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
+                user_nickname=getattr(getattr(request.user, "profile", None), "nickname", "")
             )
-
             return response
 
         except Exception as e:
-            print("ERROR:", str(e))
             import traceback
+            print("PDF Export Error:", str(e))
             print(traceback.format_exc())
             return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
 
