@@ -52,11 +52,12 @@ USE_CHANNEL=false
 - รันคำสั่ง SQL:
 CREATE DATABASE ssru_student_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-5. Run Django Migrations
+5. Manager Backend
 ------------------------
 cd backend
 python manage.py makemigrations
 python manage.py migrate
+python manage.py create_groups.py
 
 6. Start Servers
 ----------------
