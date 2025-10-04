@@ -562,7 +562,7 @@ function getLatestVerified(data) {
                                 <InputIcon>
                                     <i class="pi pi-search" />
                                 </InputIcon>
-                                <InputText v-model="filters['global'].value" placeholder="ค้นหาข้อมูลบัญฑิต" />
+                                <InputText v-model="filters['global'].value" placeholder="ค้นหาข้อมูลบัณฑิต" />
                             </IconField>
                         </div>
                     </div>
@@ -570,7 +570,7 @@ function getLatestVerified(data) {
 
                 <Column v-if="auth.status !== 'Staff'" selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
                 <Column field="formatted_id" header="ลำดับที่" sortable style="min-width: 6rem"></Column>
-                <Column field="nisit" header="รหัสนิสิต" sortable style="min-width: 10rem"></Column>
+                <Column field="nisit" header="รหัสนักศึกษา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column header="Image">
                     <template #body="slotProps">
                         <img :src="`https://primefaces.org/cdn/primevue/images/product/${slotProps.data.image}`" :alt="slotProps.data.image" class="rounded" style="width: 64px" />
@@ -616,14 +616,14 @@ function getLatestVerified(data) {
             </DataTable>
         </div>
 
-        <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="รายละเอียดบัญฑิต" :modal="true">
+        <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="รายละเอียดบัณฑิต" :modal="true">
             <div class="flex flex-col gap-6">
                 <div>
                     <label for="formatted_id" class="block mb-3 font-bold">ลำดับ</label>
                     <InputText id="formatted_id" v-model.trim="product.formatted_id" autofocus :invalid="submitted && !product.formatted_id" fluid :disabled="true" />
                 </div>
                 <div>
-                    <label for="nisit" class="block mb-3 font-bold">รหัสนิสิต</label>
+                    <label for="nisit" class="block mb-3 font-bold">รหัสนักศึกษา</label>
                     <InputText id="nisit" v-model.trim="product.nisit" autofocus :invalid="submitted && !product.nisit" fluid :disabled="true" />
                 </div>
                 <div>
