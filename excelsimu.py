@@ -1,7 +1,7 @@
 import pandas as pd
 import random
 
-num_records = 3500
+num_records = 100
 first_names = ["สมชาย", "สมหญิง", "ณัฐวุฒิ", "กิตติ", "ปวีณา", "ธนวัฒน์", "วรินทร", "อรทัย", "จิราพร", "สุนทร"]
 last_names = ["วงศ์แก้ว", "สังขกุล", "จันทร์แจ่ม", "ทองดี", "บุญมา", "สายทอง", "คำภีร์", "แสงทอง", "ศรีสุข", "รัตนสุข"]
 
@@ -52,13 +52,13 @@ for _ in range(num_records):
     verified1 = random.choice([0, 1, 2])
     nisit = generate_nisit()
     data.append({
-        "รหัสนิสิต": nisit,
-        "ชื่อ-นามสกุล": name,
-        "ชื่อปริญญา": degree,
+        "รหัสนักศึกษา": nisit,
+        "ชื่อ - สกุล": name,
+        "ชื่อหลักสูตร": degree,
         "สถานะรายงานตัว": verified1,
     })
 
 df = pd.DataFrame(data)
-output_path = r"D:\rfid\Test01-master\simu_person1.xlsx"
+output_path = r"D:\C O D E\RFID\simu_person2.xlsx"
 df.to_excel(output_path, index=False)
 print("สร้างไฟล์ simu_person.xlsx สำหรับ import เรียบร้อยแล้ว")
