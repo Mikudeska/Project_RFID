@@ -109,7 +109,7 @@ const deleteProductDialog = ref(false);
 const deletepersonsDialog = ref(false);
 
 const product = ref({});
-const selectedpersons = ref();
+const selectedpersons = ref([]);
 const filters = ref({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS }
 });
@@ -564,8 +564,9 @@ function getLatestVerified(data) {
             >
                 <template #header>
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div>
-                            <h4 class="m-0">จัดการรายชื่อบัณฑิต</h4>
+                        <div class="flex">
+                            <h4>จัดการรายชื่อบัณฑิต</h4>
+                            <span v-if="selectedpersons.length > 0" class="ml-5 text-white/70">[ จำนวนที่เลือก {{ selectedpersons.length }} คน ]</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <Button v-tooltip.top="'เช็คสถานะ'" severity="secondary" @click="toggleMenu2" rounded raised>
