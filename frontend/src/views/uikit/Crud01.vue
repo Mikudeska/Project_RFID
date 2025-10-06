@@ -73,6 +73,21 @@ function handleWsMessage(event) {
         persons.value = persons.value.filter((p) => p && p.id !== deletedId);
     } else if (msg.action === 'reset' || msg.action === 'upload') {
         fetchPersons();
+    } else if (msg.action === 'bulk_update') {
+        msg.ids.forEach((id) => {
+            const index = persons.value.findIndex((p) => p.id === id);
+            if (index !== -1) {
+                const updated = {
+                    ...persons.value[index],
+                    ...msg.fields
+                };
+
+                // ✅ ใช้ฟังก์ชันนี้หาค่า verified ล่าสุด
+                updated.verified = getLatestVerified(updated);
+
+                persons.value.splice(index, 1, updated);
+            }
+        });
     }
 }
 
@@ -392,9 +407,7 @@ async function updateSelectedVerified(status, field = 'verified1') {
             verified_field: field
         });
 
-        // อัปเดตแสดงผลเฉพาะ field ที่ถูกเปลี่ยน
         persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, [field]: status } : p));
-
         selectedpersons.value = null;
         toast.success('สำเร็จ', `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`);
     } catch (error) {
@@ -511,6 +524,14 @@ function getLatestVerified(data) {
                             <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="toggleMenu1" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
                                 <Icon icon="mdi:tag" />
                             </Button>
+                            <Menu ref="menu1" :model="verifiedMenuItems" :popup="true">
+                                <template #item="{ item }">
+                                    <div class="flex items-center gap-2 px-2 py-1">
+                                        <Icon :icon="item.icon" :class="item.color" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </template>
+                            </Menu>
                         </div>
                     </template>
 
@@ -569,15 +590,15 @@ function getLatestVerified(data) {
                 </template>
 
                 <Column v-if="auth.status !== 'Staff'" selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-                <Column field="formatted_id" header="ลำดับที่" sortable style="min-width: 6rem"></Column>
+                <Column field="formatted_id" header="เลขที่บัณฑิต" sortable style="min-width: 6rem"></Column>
                 <Column field="nisit" header="รหัสนักศึกษา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column header="Image">
                     <template #body="slotProps">
                         <img :src="`https://primefaces.org/cdn/primevue/images/product/${slotProps.data.image}`" :alt="slotProps.data.image" class="rounded" style="width: 64px" />
                     </template>
                 </Column> -->
-                <Column field="name" header="ชื่อ-นามสกุล" sortable style="min-width: 12rem"></Column>
-                <Column field="degree" header="ชื่อปริญญา" sortable style="min-width: 10rem"></Column>
+                <Column field="name" header="ชื่อ - สกุล" sortable style="min-width: 12rem"></Column>
+                <Column field="degree" header="ชื่อหลักสูตร" sortable style="min-width: 10rem"></Column>
                 <!-- <Column field="rating" header="Reviews" sortable style="min-width: 12rem">
                     <template #body="slotProps">
                         <Rating :modelValue="slotProps.data.rating" :readonly="true" />

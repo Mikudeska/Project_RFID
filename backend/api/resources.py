@@ -2,7 +2,8 @@ from import_export import resources, fields
 from .models import Person
 
 class PersonResource(resources.ModelResource):
-    formatted_id = fields.Field(column_name='ลำดับ')
+    id = fields.Field(attribute='id', column_name='เลขที่บัณฑิต')  # ✅ เพิ่ม
+    formatted_id = fields.Field(column_name='เลขที่บัณฑิต (แสดง)')
     name = fields.Field(attribute='name', column_name='ชื่อ - สกุล')
     nisit = fields.Field(attribute='nisit', column_name='รหัสนักศึกษา')
     degree = fields.Field(attribute='degree', column_name='ชื่อหลักสูตร')
@@ -13,6 +14,7 @@ class PersonResource(resources.ModelResource):
     class Meta:
         model = Person
         fields = (
+            'id',
             'formatted_id',
             'nisit',
             'name',
@@ -22,6 +24,7 @@ class PersonResource(resources.ModelResource):
             'rfid',
         )
         export_order = [
+            'id',
             'formatted_id',
             'nisit',
             'name',
@@ -30,7 +33,7 @@ class PersonResource(resources.ModelResource):
             'verified1',
             'rfid'
         ]
-        import_id_fields = ['nisit']
+        import_id_fields = ['id']
 
     def dehydrate_formatted_id(self, person):
         return str(person.id).zfill(4)
@@ -39,20 +42,20 @@ class PersonResource(resources.ModelResource):
         return person.verified1
 
     def before_import_row(self, row, **kwargs):
-        # ตรวจสอบว่ามีคอลัมน์ 'สถานะรายงานตัว' หรือไม่
+        # ถ้ามีเลขที่บัณฑิตในไฟล์ จะใช้ค่านั้นเป็น id
+        id_value = row.get('เลขที่บัณฑิต')
+        if id_value:
+            try:
+                row['id'] = int(id_value)
+            except ValueError:
+                pass  # ถ้าไม่ใช่ตัวเลขข้ามไป
+
+        # เดิมที่ตรวจ verified1
         value = row.get('สถานะรายงานตัว', None)
-
         try:
-            if value is None or value == '':
-                val = 0  # หากไม่มีให้ใช้ค่า default เป็น 0
-            else:
-                val = int(value)
-                if val not in [0, 1, 2]:
-                    raise ValueError("ค่าสถานะต้องเป็น 0, 1 หรือ 2 เท่านั้น")
+            val = int(value) if value in ['0', '1', '2'] else 0
         except (ValueError, TypeError):
-            val = 0  # ถ้าแปลงไม่ได้ให้ใช้ค่า default เป็น 0
-
-        # บันทึกค่าที่แปลงแล้วกลับไป
+            val = 0
         row['สถานะรายงานตัว'] = val
         row['verified1'] = val
 

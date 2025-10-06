@@ -54,7 +54,7 @@ function handleWsInbox(event) {
     if (['upload', 'comment', 'reset'].includes(msg.action)) {
         logs.value.unshift({
             id: Date.now(),
-            user: msg.fields?.user || 'ผู้ใช้',
+            user: auth.user?.nickname || 'ผู้ใช้',
             action: msg.action,
             timestamp: msg.fields?.timestamp || new Date().toISOString()
         });
@@ -67,7 +67,7 @@ onMounted(() => {
         if (['upload', 'comment', 'reset'].includes(msg.action)) {
             logs.value.unshift({
                 id: Date.now(),
-                user: msg.fields?.user || 'ผู้ใช้',
+                user: auth.user?.nickname || 'ผู้ใช้',
                 action: msg.action,
                 timestamp: msg.fields?.timestamp || new Date().toISOString()
             });

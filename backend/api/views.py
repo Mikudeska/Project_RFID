@@ -791,53 +791,43 @@ class PersonList(APIView):
         if not ids or not verified_field:
             return Response({'error': 'ข้อมูลไม่ครบ'}, status=400)
 
-        persons = Person.objects.filter(id__in=ids)
         now = timezone.localtime(timezone.now())
+        new_val = int(verified)
 
-        updated_ids = []
-        updated_values = set()  # เก็บค่าใหม่ที่อัปเดต (เช่น 0,1,2)
-        
-        for person in persons:
-            original_val = getattr(person, verified_field)
-            new_val = int(verified)
-            if original_val != new_val:
-                setattr(person, verified_field, new_val)
-                updated_field = verified_field.replace('verified', 'verified_updated_at')
-                setattr(person, updated_field, now)
-                person.save()
+        updated_field = verified_field.replace('verified', 'verified_updated_at')
 
-                updated_ids.append(str(person.id))   # เก็บเป็น string เพื่อ join ทีหลัง
-                updated_values.add(str(new_val))     # เก็บค่าใหม่ (ไม่ซ้ำ)
-                if settings.USE_CHANNEL: 
-                    fields = person_to_dict(person)
-                    fields = convert_datetime_fields(fields, [
-                        'verified_updated_at1', 'verified_updated_at2', 'verified_updated_at3'
-                    ])
-                    broadcast_to_crud01({
-                        'action': 'update',
-                        'id': person.id,
-                        'fields': fields,
-                    })
+        # --- อัปเดตครั้งเดียว ---
+        updated_count = Person.objects.filter(id__in=ids).exclude(**{verified_field: new_val}).update(
+            **{
+                verified_field: new_val,
+                updated_field: now
+            }
+        )
 
-        if updated_ids:
-            # สร้างข้อความ log แบบที่ต้องการ
-            log_message = f"[ID: {','.join(updated_ids)}] อัปเดตเป็น {','.join(sorted(updated_values))}"
+        # --- ส่ง broadcast ทีเดียว ---
+        if updated_count > 0 and settings.USE_CHANNEL:
+            broadcast_to_crud01({
+                'action': 'bulk_update',
+                'ids': ids,
+                'fields': {
+                    verified_field: new_val,
+                    updated_field: now.isoformat(),
+                }
+            })
 
             Log.objects.create(
                 action='Edit',
                 model='Person',
-                details=log_message,
-                record_id=None,  # เพราะหลาย id
+                details=f"[ID: {','.join(map(str, ids))}] อัปเดตเป็น {new_val}",
                 user=request.user,
-                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
+                user_nickname=getattr(getattr(request.user, 'profile', None), 'nickname', '')
             )
 
-        if settings.USE_CHANNEL:
             broadcast_stats_update()
 
         return Response({
-            'updated_count': len(updated_ids),
-            'updated_ids': updated_ids,
+            'updated_count': updated_count,
+            'updated_ids': ids,
         }, status=200)
 
     def delete(self, request):
