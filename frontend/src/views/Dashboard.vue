@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
-import axios from 'axios';
+import api from '@/plugins/axios';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -52,7 +52,7 @@ function handleWsMessage(event) {
 
 async function fetchStats() {
     try {
-        const res = await axios.get(`${API_BASE}/api/stats/`);
+        const res = await api.get(`${API_BASE}/api/stats/`);
         const d = res.data;
         features.value = [
             { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
@@ -81,7 +81,7 @@ const comments = ref([]);
 const addComment = async () => {
     if (newComment.value.trim()) {
         try {
-            await axios.post(`${API_BASE}/api/logs/new/`, {
+            await api.post(`${API_BASE}/api/logs/new/`, {
                 action: 'comment',
                 model: 'Comment',
                 details: newComment.value
@@ -103,7 +103,7 @@ const scrollToBottom = () => {
     }
 };
 const loadComments = async () => {
-    const res = await axios.get(`${API_BASE}/api/logs/`);
+    const res = await api.get(`${API_BASE}/api/logs/`);
     const logs = res.data.results; // ดึง array จาก 'results'
 
     comments.value = logs
