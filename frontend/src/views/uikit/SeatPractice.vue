@@ -46,15 +46,7 @@ onBeforeUnmount(() => {
 
 // ระบบเสาแบบใหม่: กำหนดเสาเป็น array ของ object
 const pillars = [
-    // เพิ่ม/ลบ/ย้ายเสาได้ที่นี่
-    { row: 3, side: 'left', index: 6, length: 3 }, // แถว 4, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 3, side: 'right', index: 16, length: 3 }, // แถว 4, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 16, side: 'left', index: 6, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 16, side: 'left', index: 32, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
-    { row: 16, side: 'right', index: 16, length: 3 }, // แถว 17, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 29, side: 'left', index: 6, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 29, side: 'left', index: 32, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
-    { row: 29, side: 'right', index: 16, length: 3 } // แถว 30, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    // ไม่มีเสา - ลบเสาทั้งหมด
 ];
 
 onMounted(async () => {
@@ -130,8 +122,8 @@ function resetFilter() {
 }
 
 const filteredPersons = computed(() => {
-    // คืนค่าทุกคน ไม่กรองคณะ
-    return persons.value.sort((a, b) => a.seat - b.seat);
+    // อิงจาก id แทน seat - เรียงตาม id จากน้อยไปมาก
+    return persons.value.sort((a, b) => a.id - b.id);
 });
 
 // เพิ่มฟังก์ชันกำหนดสีเก้าอี้ตามสถานะที่เลือก
@@ -633,7 +625,7 @@ function getMiniMapColor(status) {
                                 :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
                             >
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
-                                <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
+                                <span class="mt-1 text-xs font-bold">{{ item.data.id }}</span>
                             </div>
                             <div v-else :key="`left-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
@@ -673,7 +665,7 @@ function getMiniMapColor(status) {
                                 :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
                             >
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
-                                <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
+                                <span class="mt-1 text-xs font-bold">{{ item.data.id }}</span>
                             </div>
                             <div v-else :key="`right-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />

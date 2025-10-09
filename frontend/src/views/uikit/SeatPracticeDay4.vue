@@ -6,8 +6,9 @@ import { useToast } from 'primevue/usetoast';
 import { Icon } from '@iconify/vue';
 
 const NUM_ROWS = 70;
-const SEATS_PER_ROW = 70;
-const SEATS_PER_SIDE = 35;
+const SEATS_PER_ROW = 59;  // 32 + 27 = 59
+const SEATS_PER_SIDE_A = 32;  // ฝั่ง A
+const SEATS_PER_SIDE_B = 27;  // ฝั่ง B
 const API_BASE = import.meta.env.VITE_API_BASE;
 const persons = ref([]);
 const loading = ref(false);
@@ -46,15 +47,7 @@ onBeforeUnmount(() => {
 
 // ระบบเสาแบบใหม่: กำหนดเสาเป็น array ของ object
 const pillars = [
-    // เพิ่ม/ลบ/ย้ายเสาได้ที่นี่
-    { row: 3, side: 'left', index: 6, length: 3 }, // แถว 4, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 3, side: 'right', index: 16, length: 3 }, // แถว 4, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 16, side: 'left', index: 6, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 16, side: 'left', index: 32, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
-    { row: 16, side: 'right', index: 16, length: 3 }, // แถว 17, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 29, side: 'left', index: 6, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
-    { row: 29, side: 'left', index: 32, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
-    { row: 29, side: 'right', index: 16, length: 3 } // แถว 30, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
+    // ไม่มีเสา - ลบเสาทั้งหมด
 ];
 
 onMounted(async () => {
@@ -130,8 +123,8 @@ function resetFilter() {
 }
 
 const filteredPersons = computed(() => {
-    // คืนค่าทุกคน ไม่กรองคณะ
-    return persons.value.sort((a, b) => a.seat - b.seat);
+    // อิงจาก id แทน seat - เรียงตาม id จากน้อยไปมาก
+    return persons.value.sort((a, b) => a.id - b.id);
 });
 
 // เพิ่มฟังก์ชันกำหนดสีเก้าอี้ตามสถานะที่เลือก
@@ -236,14 +229,14 @@ function isHighlighted(person) {
 // ปรับ buildSidesWithPillars ให้รองรับ row ที่เป็น array ของ object (type: 'person'/'pillar'/'empty')
 function buildSidesWithPillars(row) {
     // ใช้ข้อมูลจาก row โดยตรง
-    const left = row.slice(0, SEATS_PER_SIDE);
-    const right = row.slice(SEATS_PER_SIDE, SEATS_PER_ROW);
+    const left = row.slice(0, SEATS_PER_SIDE_A);  // ฝั่ง A: 0-31 (32 ตัว)
+    const right = row.slice(SEATS_PER_SIDE_A, SEATS_PER_ROW);  // ฝั่ง B: 32-58 (27 ตัว)
     
     // ถ้าข้อมูลไม่ครบ ให้เติม empty
-    while (left.length < SEATS_PER_SIDE) {
+    while (left.length < SEATS_PER_SIDE_A) {
         left.push({ type: 'empty' });
     }
-    while (right.length < SEATS_PER_SIDE) {
+    while (right.length < SEATS_PER_SIDE_B) {
         right.push({ type: 'empty' });
     }
     
@@ -269,7 +262,7 @@ watch([searchQuery, searchType], async () => {
             row.forEach((item, i) => {
                 if (item.type === 'person' && item.data.seat === found.seat) {
                     foundRow = rowIdx + 1;
-                    foundSide = i < SEATS_PER_SIDE ? 'A' : 'B';
+                    foundSide = i < SEATS_PER_SIDE_A ? 'A' : 'B';
                 }
             });
         });
@@ -412,11 +405,11 @@ function clickMiniMapSimple(row, col, side) {
     let item;
     
     if (side === 'A') {
-        // ฝั่งซ้าย (0-34)
+        // ฝั่งซ้าย (0-31)
         item = seatRowsData[col];
     } else {
-        // ฝั่งขวา (35-69)
-        item = seatRowsData[col + 35];
+        // ฝั่งขวา (32-58)
+        item = seatRowsData[col + SEATS_PER_SIDE_A];
     }
     
     if (item && item.type === 'person') {
@@ -633,7 +626,7 @@ function getMiniMapColor(status) {
                                 :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
                             >
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
-                                <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
+                                <span class="mt-1 text-xs font-bold">{{ item.data.id }}</span>
                             </div>
                             <div v-else :key="`left-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
@@ -673,7 +666,7 @@ function getMiniMapColor(status) {
                                 :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
                             >
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
-                                <span class="mt-1 text-xs font-bold">{{ item.data.seat }}</span>
+                                <span class="mt-1 text-xs font-bold">{{ item.data.id }}</span>
                             </div>
                             <div v-else :key="`right-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
@@ -819,7 +812,7 @@ function getMiniMapColor(status) {
                                     <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
                                         <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
                                             <div
-                                                v-for="(item, colIdx) in row.slice(0, 35)"
+                                                v-for="(item, colIdx) in row.slice(0, SEATS_PER_SIDE_A)"
                                                 :key="colIdx"
                                                 :class="[
                                                     'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
@@ -842,7 +835,7 @@ function getMiniMapColor(status) {
                                     <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
                                         <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
                                             <div
-                                                v-for="(item, colIdx) in row.slice(35, 70)"
+                                                v-for="(item, colIdx) in row.slice(SEATS_PER_SIDE_A, SEATS_PER_ROW)"
                                                 :key="colIdx + 35"
                                                 :class="[
                                                     'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
