@@ -5,7 +5,7 @@ from django.conf import settings
 import random
 
 class Person(models.Model):
-    id = models.IntegerField(primary_key=True)
+    id = models.CharField(primary_key=True, max_length=6)
     name = models.CharField(max_length=100)
     nisit = models.CharField(max_length=11, unique=True, blank=True)
     degree = models.CharField(max_length=100)

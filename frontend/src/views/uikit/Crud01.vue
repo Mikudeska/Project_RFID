@@ -12,18 +12,6 @@ console.log(auth.status);
 
 const toast = createLocalToast();
 
-function formatId(id) {
-    return id.toString().padStart(4, '0');
-}
-
-// ฟังก์ชันเพิ่ม formatted_id ให้กับข้อมูล
-function addFormattedId(person) {
-    return {
-        ...person,
-        formatted_id: formatId(person.id)
-    };
-}
-
 const persons = ref([]);
 
 async function fetchPersons() {
@@ -31,7 +19,7 @@ async function fetchPersons() {
     try {
         const response = await api.get(`/api/person/`);
         const data = Array.isArray(response.data) ? response.data : response.data.results ?? [];
-        persons.value = data.map(addFormattedId);
+        persons.value = data;
     } catch (error) {
         console.error('Error fetching persons:', error);
     } finally {
@@ -90,7 +78,6 @@ function handleWsMessage(event) {
         });
     }
 }
-
 onMounted(() => {
     window.addEventListener('ws-message', handleWsMessage);
 });
@@ -292,7 +279,6 @@ const closeDialog = () => {
 
 const saveProduct = async () => {
     submitted.value = true;
-
     // ตรวจสอบว่ามีชื่อหรือไม่ (name.trim)
     if (product?.value?.name?.trim()) {
         try {
@@ -408,7 +394,8 @@ async function updateSelectedVerified(status, field = 'verified1') {
         });
 
         persons.value = persons.value.map((p) => (ids.includes(p.id) ? { ...p, [field]: status } : p));
-        selectedpersons.value = null;
+        selectedpersons.value = [];
+        await fetchPersons();
         toast.success('สำเร็จ', `เปลี่ยนสถานะเป็น ${status} เรียบร้อย`);
     } catch (error) {
         toast.error('เกิดข้อผิดพลาด', error.response?.data?.error || 'ไม่สามารถเปลี่ยนสถานะได้');
@@ -506,7 +493,7 @@ function getLatestVerified(data) {
 
 const multiSortMeta = ref([
     { field: 'degree_level', order: -1 },
-    { field: 'formatted_id', order: 1 }
+    { field: 'id', order: 1 }
 ]);
 
 const tableData = computed(() => {
@@ -615,7 +602,7 @@ const tableData = computed(() => {
 
                 <Column v-if="auth.status !== 'Staff'" selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
                 <Column field="degree_level" header="วุฒิ" sortable></Column>
-                <Column field="formatted_id" header="เลขที่บัณฑิต" sortable style="min-width: 5rem"></Column>
+                <Column field="id" header="เลขที่บัณฑิต" sortable style="min-width: 5rem"></Column>
                 <Column field="nisit" header="รหัสนักศึกษา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column header="Image">
                     <template #body="slotProps">
@@ -665,15 +652,15 @@ const tableData = computed(() => {
         <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="รายละเอียดบัณฑิต" :modal="true">
             <div class="flex flex-col gap-6">
                 <div>
-                    <label for="formatted_id" class="block mb-3 font-bold">ลำดับ</label>
-                    <InputText id="formatted_id" v-model.trim="product.formatted_id" autofocus :invalid="submitted && !product.formatted_id" fluid :disabled="true" />
+                    <label for="id" class="block mb-3 font-bold">ลำดับ</label>
+                    <InputText id="id" v-model.trim="product.id" autofocus :invalid="submitted && !product.id" fluid :disabled="true" />
                 </div>
                 <div>
                     <label for="nisit" class="block mb-3 font-bold">รหัสนักศึกษา</label>
                     <InputText id="nisit" v-model.trim="product.nisit" autofocus :invalid="submitted && !product.nisit" fluid :disabled="true" />
                 </div>
                 <div>
-                    <label for="name" class="block mb-3 font-bold">ชื่อ-นามสกุล</label>
+                    <label for="name" class="block mb-3 font-bold">ชื่อ - สกุล</label>
                     <InputText id="name" v-model.trim="product.name" required="true" autofocus :invalid="submitted && !product.name" fluid />
                     <small v-if="submitted && !product.name" class="text-red-500">จำเป็นต้องใส่</small>
                 </div>
@@ -728,8 +715,8 @@ const tableData = computed(() => {
             </div>
 
             <template #footer>
-                <Button label="Cancel" icon="pi pi-times" text @click="hideDialog" severity="danger" />
-                <Button label="Save" icon="pi pi-check" text @click="saveProduct" />
+                <Button label="ยกเลิก" icon="pi pi-times" text @click="hideDialog" severity="danger" />
+                <Button label="บันทึก" icon="pi pi-check" text @click="saveProduct" />
             </template>
         </Dialog>
 
@@ -845,7 +832,7 @@ const tableData = computed(() => {
             <div class="flex items-center gap-4">
                 <i class="pi pi-exclamation-triangle !text-3xl" />
                 <span v-if="product"
-                    >คุณแน่ใจหรือไม่ที่จะลบลำดับที่ <b>{{ product.formatted_id }}</b> <b>{{ product.name }}</b>
+                    >คุณแน่ใจหรือไม่ที่จะลบลำดับที่ <b>{{ product.id }}</b> <b>{{ product.name }}</b>
                     ?
                 </span>
             </div>
