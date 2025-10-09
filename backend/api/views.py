@@ -528,10 +528,10 @@ class ExportPDFResult(View):
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "รายชื่อที่ยังไม่รายงานตัว")
 
-            col_positions = [40, 100, 200, 380, 560]
-            col_widths = [60, 100, 180, 180]
+            col_positions = [100, 175, 325, 500]
+            col_widths = [75, 150, 175]
             header_positions = [col_positions[i] + (col_widths[i] / 2) for i in range(len(col_widths))]
-            headers = ["ID", "รหัสนักศึกษา", "ชื่อ-นามสกุล", "ชื่อหลักสูตร"]
+            headers = ["เลขที่บัณฑิต", "ชื่อ - สกุล", "ชื่อหลักสูตร"]
 
             def draw_missing_header():
                 p.setFont('THSarabun', 14)
@@ -549,9 +549,8 @@ class ExportPDFResult(View):
             for person in missing_persons:
                 vertical_center = y_position - 15
                 p.drawCentredString(header_positions[0], vertical_center, str(person.id))
-                p.drawCentredString(header_positions[1], vertical_center, str(person.nisit))
-                p.drawCentredString(header_positions[2], vertical_center, person.name)
-                p.drawCentredString(header_positions[3], vertical_center, person.degree or "-")
+                p.drawCentredString(header_positions[1], vertical_center, person.name)
+                p.drawCentredString(header_positions[2], vertical_center, person.degree or "-")
 
                 rows_y.append(y_position)
                 y_position -= 20

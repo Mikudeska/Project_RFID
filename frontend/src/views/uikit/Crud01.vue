@@ -503,6 +503,29 @@ function getLatestVerified(data) {
     const latest = Object.entries(updatedAts).sort((a, b) => new Date(b[1]) - new Date(a[1]))[0]?.[0];
     return data[`verified${latest}`];
 }
+
+const multiSortMeta = ref([
+    { field: 'degree_level', order: -1 },
+    { field: 'formatted_id', order: 1 }
+]);
+
+const tableData = computed(() => {
+    if (!filteredPersons.value) return [];
+
+    return filteredPersons.value.map((person) => {
+        let degree_level = 'ป.ตรี';
+        if (person.degree?.includes('ดุษฎีบัณฑิต')) {
+            degree_level = 'ป.เอก';
+        } else if (person.degree?.includes('มหาบัณฑิต')) {
+            degree_level = 'ป.โท';
+        }
+
+        return {
+            ...person,
+            degree_level: degree_level
+        };
+    });
+});
 </script>
 
 <template>
@@ -548,7 +571,7 @@ function getLatestVerified(data) {
             <DataTable
                 ref="dt"
                 v-model:selection="selectedpersons"
-                :value="filteredPersons"
+                :value="tableData"
                 dataKey="id"
                 :paginator="true"
                 :rows="10"
@@ -558,9 +581,9 @@ function getLatestVerified(data) {
                 currentPageReportTemplate="จาก   {first} ถึง {last} ของทั้งหมด {totalRecords} คน"
                 scrollable
                 scrollHeight="600"
-                :sortField="'formatted_id'"
-                :sortOrder="1"
                 :loading="loading"
+                sortMode="multiple"
+                v-model:multiSortMeta="multiSortMeta"
             >
                 <template #header>
                     <div class="flex flex-wrap items-center justify-between gap-2">
@@ -591,7 +614,8 @@ function getLatestVerified(data) {
                 </template>
 
                 <Column v-if="auth.status !== 'Staff'" selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-                <Column field="formatted_id" header="เลขที่บัณฑิต" sortable style="min-width: 6rem"></Column>
+                <Column field="degree_level" header="วุฒิ" sortable></Column>
+                <Column field="formatted_id" header="เลขที่บัณฑิต" sortable style="min-width: 5rem"></Column>
                 <Column field="nisit" header="รหัสนักศึกษา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column header="Image">
                     <template #body="slotProps">
