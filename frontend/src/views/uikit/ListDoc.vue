@@ -132,7 +132,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     <span class="flex items-center gap-2 font-mono text-sm md:text-base">
                         <!-- <span class="text-gray-600 dark:text-gray-200">xxxxxx</span> -->
                         <span class="inline-block rounded px-2 ml-2 tracking-widest font-bold flex-shrink-0 min-w-[44px] md:min-w-[56px] text-center" :class="idx === 0 ? 'bg-green-600 text-white' : idx === 1 ? 'bg-yellow-400 text-gray-900' : ''">
-                            {{ person.nisit.slice(-4) }}
+                            {{ person.id }}
                         </span>
                     </span>
                     <span class="text-gray-700 dark:text-gray-200 font-semibold truncate max-w-[60px] md:max-w-[120px] flex-1 text-xs md:text-base">{{ person.name }}</span>
@@ -164,7 +164,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     <span class="flex items-center gap-2 font-mono text-sm md:text-base">
                         <!-- <span class="text-gray-600 dark:text-gray-200">xxxxxx</span> -->
                         <span class="inline-block rounded px-2 ml-2 tracking-widest font-bold flex-shrink-0 min-w-[44px] md:min-w-[56px] text-center" :class="idx === 0 ? 'bg-green-600 text-white' : idx === 1 ? 'bg-yellow-400 text-gray-900' : ''">
-                            {{ person.nisit.slice(-4) }}
+                            {{ person.id }}
                         </span>
                     </span>
                     <span class="text-gray-700 dark:text-gray-200 font-semibold truncate max-w-[60px] md:max-w-[120px] flex-1 text-xs md:text-base">{{ person.name }}</span>
@@ -196,7 +196,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     <span class="flex items-center gap-2 font-mono text-sm md:text-base">
                         <!-- <span class="text-gray-600 dark:text-gray-200">xxxxxx</span> -->
                         <span class="inline-block rounded px-2 ml-2 tracking-widest font-bold flex-shrink-0 min-w-[44px] md:min-w-[56px] text-center" :class="idx === 0 ? 'bg-green-600 text-white' : idx === 1 ? 'bg-yellow-400 text-gray-900' : ''">
-                            {{ person.nisit.slice(-4) }}
+                            {{ person.id }}
                         </span>
                     </span>
                     <span class="text-gray-700 dark:text-gray-200 font-semibold truncate max-w-[60px] md:max-w-[120px] flex-1 text-xs md:text-base">{{ person.name }}</span>

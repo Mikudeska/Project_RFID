@@ -30,6 +30,31 @@ const router = createRouter({
                     component: () => import('@/views/uikit/Seat.vue')
                 },
                 {
+                    path: '/uikit/SeatPractice',
+                    name: 'SeatPractice',
+                    component: () => import('@/views/uikit/SeatPractice.vue')
+                },
+                {
+                    path: '/uikit/SeatPracticeDay1',
+                    name: 'SeatPracticeDay1',
+                    component: () => import('@/views/uikit/SeatPracticeDay1.vue')
+                },
+                {
+                    path: '/uikit/SeatPracticeDay2',
+                    name: 'SeatPracticeDay2',
+                    component: () => import('@/views/uikit/SeatPracticeDay2.vue')
+                },
+                {
+                    path: '/uikit/SeatPracticeDay3',
+                    name: 'SeatPracticeDay3',
+                    component: () => import('@/views/uikit/SeatPracticeDay3.vue')
+                },
+                {
+                    path: '/uikit/SeatPracticeDay4',
+                    name: 'SeatPracticeDay4',
+                    component: () => import('@/views/uikit/SeatPracticeDay4.vue')
+                },
+                {
                     path: '/uikit/theme',
                     name: 'theme',
                     component: () => import('@/views/uikit/Theme.vue')
