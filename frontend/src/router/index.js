@@ -35,24 +35,14 @@ const router = createRouter({
                     component: () => import('@/views/uikit/SeatPractice.vue')
                 },
                 {
-                    path: '/uikit/SeatPracticeDay1',
-                    name: 'SeatPracticeDay1',
-                    component: () => import('@/views/uikit/SeatPracticeDay1.vue')
+                    path: '/uikit/SeatPracticefor4Day',
+                    name: 'SeatPractice4Day',
+                    component: () => import('@/views/uikit/SeatPractice4Day.vue')
                 },
                 {
-                    path: '/uikit/SeatPracticeDay2',
-                    name: 'SeatPracticeDay2',
-                    component: () => import('@/views/uikit/SeatPracticeDay2.vue')
-                },
-                {
-                    path: '/uikit/SeatPracticeDay3',
-                    name: 'SeatPracticeDay3',
-                    component: () => import('@/views/uikit/SeatPracticeDay3.vue')
-                },
-                {
-                    path: '/uikit/SeatPracticeDay4',
-                    name: 'SeatPracticeDay4',
-                    component: () => import('@/views/uikit/SeatPracticeDay4.vue')
+                    path: '/uikit/SeatPracticefor4Daypillar',
+                    name: 'SeatPractice4Daypillar',
+                    component: () => import('@/views/uikit/SeatPractice4Daypillar.vue')
                 },
                 {
                     path: '/uikit/theme',

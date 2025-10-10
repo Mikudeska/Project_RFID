@@ -13,7 +13,7 @@ const API_BASE = import.meta.env.VITE_API_BASE;
 const persons = ref([]);
 const loading = ref(false);
 const searchQuery = ref('');
-const searchType = ref('nisit4'); // เพิ่มตัวแปรประเภทการค้นหา
+const searchType = ref('id'); // เพิ่มตัวแปรประเภทการค้นหา
 const verifiedFilter = ref('all');
 const dialogVisible = ref(false);
 const selectedPerson = ref({});
@@ -47,7 +47,19 @@ onBeforeUnmount(() => {
 
 // ระบบเสาแบบใหม่: กำหนดเสาเป็น array ของ object
 const pillars = [
-    // ไม่มีเสา - ลบเสาทั้งหมด
+    // แถว 4 (row 3) - เสา 3 ช่อง
+    { row: 3, side: 'left', index: 6, length: 3 }, // ฝั่งซ้าย ตำแหน่ง 6-8
+    { row: 3, side: 'right', index: 6, length: 3 }, // ฝั่งขวา ตำแหน่ง 38-40 (32+6)
+    
+    // แถว 17 (row 16) - เสา 3 ช่อง
+    { row: 16, side: 'left', index: 6, length: 3 }, // ฝั่งซ้าย ตำแหน่ง 6-8
+    { row: 16, side: 'left', index: 20, length: 3 }, // ฝั่งซ้าย ตำแหน่ง 20-22
+    { row: 16, side: 'right', index: 6, length: 3 }, // ฝั่งขวา ตำแหน่ง 38-40 (32+6)
+    
+    // แถว 30 (row 29) - เสา 3 ช่อง
+    { row: 29, side: 'left', index: 6, length: 3 }, // ฝั่งซ้าย ตำแหน่ง 6-8
+    { row: 29, side: 'left', index: 20, length: 3 }, // ฝั่งซ้าย ตำแหน่ง 20-22
+    { row: 29, side: 'right', index: 6, length: 3 } // ฝั่งขวา ตำแหน่ง 38-40 (32+6)
 ];
 
 onMounted(async () => {
@@ -69,6 +81,9 @@ const degreeList = computed(() => {
 });
 const selectedDegree = ref('');
 
+// เพิ่มตัวแปรสำหรับกรองปริญญา
+const degreeTypeFilter = ref('all'); // all, bachelor, master, doctoral
+
 const statusLabels = {
     0: 'ยังไม่รายงานตัว',
     1: 'รายงานตัวแล้ว',
@@ -88,6 +103,14 @@ const activeFilters = computed(() => {
     }
     if (selectedDegree.value) {
         filters.push({ key: 'degree', label: selectedDegree.value, type: 'degree' });
+    }
+    if (degreeTypeFilter.value !== 'all') {
+        const degreeTypeLabels = {
+            bachelor: 'ปริญญาตรี',
+            master: 'ปริญญาโท', 
+            doctoral: 'ปริญญาเอก'
+        };
+        filters.push({ key: 'degreeType', label: degreeTypeLabels[degreeTypeFilter.value], type: 'degreeType' });
     }
     return filters;
 });
@@ -114,24 +137,73 @@ const statistics = computed(() => {
 function removeFilter(key) {
     if (key === 'verified') verifiedFilter.value = 'all';
     if (key === 'degree') selectedDegree.value = '';
+    if (key === 'degreeType') degreeTypeFilter.value = 'all';
 }
 
 function resetFilter() {
     searchQuery.value = '';
     verifiedFilter.value = 'all';
     selectedDegree.value = '';
+    degreeTypeFilter.value = 'all';
 }
 
 const filteredPersons = computed(() => {
-    // อิงจาก id แทน seat - เรียงตาม id จากน้อยไปมาก
-    return persons.value.sort((a, b) => a.id - b.id);
+    // เรียงตามประเภทปริญญาก่อน แล้วค่อยเรียงตาม id
+    return persons.value.sort((a, b) => {
+        // 1. เรียงตามประเภทปริญญาก่อน
+        const degreeOrder = { 'doctoral': 1, 'master': 2, 'bachelor': 3 };
+        const aDegreeType = getDegreeType(a.degree);
+        const bDegreeType = getDegreeType(b.degree);
+        
+        if (degreeOrder[aDegreeType] !== degreeOrder[bDegreeType]) {
+            return degreeOrder[aDegreeType] - degreeOrder[bDegreeType];
+        }
+        
+        // 2. ถ้าปริญญาเดียวกัน ให้เรียงตาม id (numerical)
+        return parseInt(a.id) - parseInt(b.id);
+    });
 });
+
+// เพิ่มฟังก์ชันตรวจสอบประเภทปริญญา
+function getDegreeType(degree) {
+    if (!degree) return 'unknown';
+    const degreeStr = degree.toLowerCase();
+    if (degreeStr.includes('ดุษฎีบัณฑิต') || degreeStr.includes('ปริญญาเอก')) {
+        return 'doctoral';
+    } else if (degreeStr.includes('มหาบัณฑิต') || degreeStr.includes('ปริญญาโท')) {
+        return 'master';
+    } else if (degreeStr.includes('บัณฑิต') || degreeStr.includes('ปริญญาตรี')) {
+        return 'bachelor';
+    }
+    return 'unknown';
+}
+
+// เพิ่มฟังก์ชันตัดรหัส ID
+function formatId(id) {
+    if (!id) return '';
+    
+    // ถ้าเริ่มต้นด้วย "ปท" ให้ตัด "ป" ออก เหลือ "ท497"
+    if (id.startsWith('ปท')) {
+        return id.substring(1); // ตัด "ป" ออก เหลือ "ท497"
+    }
+    
+    // ถ้าเป็น "ป" ธรรมดา หรือตัวเลขล้วน ให้แสดงตามเดิม
+    return id;
+}
 
 // เพิ่มฟังก์ชันกำหนดสีเก้าอี้ตามสถานะที่เลือก
 function getChairColor(person) {
     // ถ้าเลือกคณะ และไม่ตรงกับคนนี้ ให้สีจาง
     if (selectedDegree.value && person.degree !== selectedDegree.value) {
         return 'text-gray-400 opacity-30';
+    }
+
+    // ถ้าเลือกประเภทปริญญา และไม่ตรงกับคนนี้ ให้สีจาง
+    if (degreeTypeFilter.value !== 'all') {
+        const personDegreeType = getDegreeType(person.degree);
+        if (personDegreeType !== degreeTypeFilter.value) {
+            return 'text-gray-400 opacity-30';
+        }
     }
 
     const filter = verifiedFilter.value;
@@ -165,8 +237,10 @@ for (let rowIdx = 0; rowIdx < NUM_ROWS; rowIdx++) {
     pillars
         .filter((p) => p.row === rowIdx)
         .forEach((p) => {
-            let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE + p.index;
-            layout.splice(insertIdx, 0, 'pillar');
+            let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE_A + p.index;
+            for (let i = 0; i < (p.length || 1); i++) {
+                layout[insertIdx + i] = 'pillar';
+            }
         });
     layoutMatrix.push(layout);
 }
@@ -180,7 +254,7 @@ function getRowLayout(rowIdx) {
     const rowPillars = pillars.filter((p) => p.row === rowIdx);
     // แทรกเสาตามความยาว (length)
     rowPillars.forEach((p) => {
-        let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE + p.index;
+        let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE_A + p.index;
         for (let i = 0; i < (p.length || 1); i++) {
             layout[insertIdx + i] = 'pillar';
         }
@@ -193,7 +267,7 @@ const seatRows = computed(() => {
     const personsList = [...filteredPersons.value];
     let rowIdx = 0;
     while (personsList.length > 0) {
-        const layout = getRowLayout(rowIdx);
+        const layout = layoutMatrix[rowIdx] || getRowLayout(rowIdx);
         const row = [];
         for (const slot of layout) {
             if (slot === 'pillar') {
@@ -222,6 +296,8 @@ function isHighlighted(person) {
         return person.seat?.toString() === q;
     } else if (searchType.value === 'nisit4') {
         return person.nisit && person.nisit.slice(-4).includes(q);
+    } else if (searchType.value === 'id') {
+        return person.id && person.id.toLowerCase().includes(q);
     }
     return false;
 }
@@ -253,6 +329,8 @@ watch([searchQuery, searchType], async () => {
         found = persons.value.find((p) => p.seat?.toString() === searchQuery.value);
     } else if (searchType.value === 'nisit4') {
         found = persons.value.find((p) => p.nisit && p.nisit.slice(-4) === searchQuery.value);
+    } else if (searchType.value === 'id') {
+        found = persons.value.find((p) => p.id && p.id.toLowerCase().includes(searchQuery.value.toLowerCase()));
     }
     if (found) {
         // หาแถวและฝั่งจาก seatRows layout จริง
@@ -267,7 +345,11 @@ watch([searchQuery, searchType], async () => {
             });
         });
         if (foundRow && foundSide) {
+            if (searchType.value === 'id') {
+                searchMessage.value = `พบเลขที่บัณฑิต ${found.id} อยู่แถว ${foundSide}${foundRow}`;
+            } else {
             searchMessage.value = `พบที่นั่งเลข ${found.seat} อยู่แถว ${foundSide}${foundRow}`;
+            }
         } else {
             searchMessage.value = 'ไม่พบที่นั่งที่ค้นหา';
         }
@@ -530,10 +612,11 @@ function getMiniMapColor(status) {
                                 <button type="submit" style="display: none"></button>
                             </form>
                             <div v-if="!searchQuery" class="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none w-[calc(100%-2.5rem)] overflow-hidden">
-                                <span class="block text-sm text-gray-400 dark:text-gray-200 animate-marquee whitespace-nowrap"> ค้นหาเลขนิสิต 4 ตัวท้าย หรือ เลขที่นั่ง... </span>
+                                <span class="block text-sm text-gray-400 dark:text-gray-200 animate-marquee whitespace-nowrap"> ค้นหาเลขที่บัณฑิต, เลขนิสิต 4 ตัวท้าย หรือ เลขที่นั่ง... </span>
                             </div>
                         </div>
                         <select v-model="searchType" class="h-9 bg-white/80 dark:bg-gray-700/80 border border-blue-400 dark:border-blue-500 rounded-lg shadow focus:ring-0 focus:outline-none text-gray-900 dark:text-gray-100 font-semibold px-2 w-auto max-w-[120px]">
+                            <option value="id">เลขที่บัณฑิต</option>
                             <option value="nisit4">เลขนิสิต 4 ตัวท้าย</option>
                             <option value="seat">เลขที่นั่ง</option>
                         </select>
@@ -575,6 +658,23 @@ function getMiniMapColor(status) {
                             >
                                 <option value="">ทุกคณะ</option>
                                 <option v-for="d in degreeList" :key="d" :value="d">{{ d }}</option>
+                            </select>
+                            <span class="absolute text-blue-400 dark:text-blue-300 -translate-y-1/2 pointer-events-none right-3 top-1/2">
+                                <Icon icon="mdi:chevron-down" width="20" height="20" />
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 px-2 py-1 border-b border-blue-100 dark:border-gray-600">
+                        <Icon icon="mdi:school-outline" class="text-blue-800 dark:text-blue-300" width="20" height="20" />
+                        <div class="relative w-full">
+                            <select
+                                v-model="degreeTypeFilter"
+                                class="w-full h-10 pl-4 pr-10 font-semibold text-blue-700 dark:text-blue-300 transition border border-blue-200 dark:border-gray-600 rounded-lg shadow appearance-none bg-white/80 dark:bg-gray-700/80 focus:ring-2 focus:ring-blue-400 dark:focus:ring-blue-500 focus:outline-none"
+                            >
+                                <option value="all">ทุกประเภทปริญญา</option>
+                                <option value="doctoral">ปริญญาเอก</option>
+                                <option value="master">ปริญญาโท</option>
+                                <option value="bachelor">ปริญญาตรี</option>
                             </select>
                             <span class="absolute text-blue-400 dark:text-blue-300 -translate-y-1/2 pointer-events-none right-3 top-1/2">
                                 <Icon icon="mdi:chevron-down" width="20" height="20" />
@@ -626,7 +726,7 @@ function getMiniMapColor(status) {
                                 :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
                             >
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
-                                <span class="mt-1 text-xs font-bold">{{ item.data.id }}</span>
+                                <span class="mt-1 text-xs font-bold">{{ formatId(item.data.id) }}</span>
                             </div>
                             <div v-else :key="`left-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
@@ -666,7 +766,7 @@ function getMiniMapColor(status) {
                                 :ref="isHighlighted(item.data) ? setHighlightedSeatRef : null"
                             >
                                 <Icon icon="mdi:chair" :class="getChairColor(item.data)" width="32" height="32" />
-                                <span class="mt-1 text-xs font-bold">{{ item.data.id }}</span>
+                                <span class="mt-1 text-xs font-bold">{{ formatId(item.data.id) }}</span>
                             </div>
                             <div v-else :key="`right-empty-${rowIdx}-${i}`" class="flex flex-col items-center rounded opacity-80 bg-gray-100/60 dark:bg-gray-700/30">
                                 <Icon icon="mdi:chair" class="text-gray-400 dark:text-gray-400" width="32" height="32" />
@@ -810,7 +910,7 @@ function getMiniMapColor(status) {
                                 <div class="flex justify-center gap-3">
                                     <!-- ฝั่งซ้าย (A) -->
                                     <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
-                                        <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
+                                        <div class="flex gap-0.5 flex-wrap" style="width: 100px;">
                                             <div
                                                 v-for="(item, colIdx) in row.slice(0, SEATS_PER_SIDE_A)"
                                                 :key="colIdx"
@@ -833,10 +933,10 @@ function getMiniMapColor(status) {
                                     
                                     <!-- ฝั่งขวา (B) -->
                                     <div class="bg-gray-50/70 dark:bg-gray-700/70 rounded-lg p-1 border border-white/30 dark:border-gray-600/30 backdrop-blur-sm">
-                                        <div class="flex gap-0.5 flex-wrap" style="width: 120px;">
+                                        <div class="flex gap-0.5 flex-wrap" style="width: 100px;">
                                             <div
                                                 v-for="(item, colIdx) in row.slice(SEATS_PER_SIDE_A, SEATS_PER_ROW)"
-                                                :key="colIdx + 35"
+                                                :key="colIdx + 32"
                                                 :class="[
                                                     'w-2 h-2 rounded-sm cursor-pointer transition-all duration-300 hover:scale-125 hover:shadow-md border border-gray-200 dark:border-gray-600',
                                                     item.type === 'person' ? getMiniMapColor(item.data.verified) : 

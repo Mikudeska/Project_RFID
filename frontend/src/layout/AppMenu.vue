@@ -19,20 +19,18 @@ const model = ref([
                         label: 'แผนที่นั่ง 35x35',
                         icon: 'material-symbols:event-seat',
                         items: [
-                            { label: 'แผนที่นั่ง', icon: 'material-symbols:airline-seat-recline-normal', to: '/uikit/Seat' },
-                            { label: 'แผนที่นั่งวันซ้อม', icon: 'material-symbols:event-seat', to: '/uikit/SeatPractice' }
+                            { label: 'แผนที่นั่งมีเสา', icon: 'material-symbols:airline-seat-recline-normal', to: '/uikit/Seat' },
+                            { label: 'แผนที่นั่งไม่มีเสา', icon: 'material-symbols:event-seat', to: '/uikit/SeatPractice' }
                         ]
                     },
                     {
                         label: 'แผนที่นั่ง 32x27',
                         icon: 'material-symbols:backup-table',
                         items: [
-                            { label: 'แผนที่นั่งวันซ้อมย่อย วันที่1', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticeDay1' },
-                            { label: 'แผนที่นั่งวันซ้อมย่อย วันที่2', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticeDay2' },
-                            { label: 'แผนที่นั่งวันซ้อมย่อย วันที่3', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticeDay3' },
-                            { label: 'แผนที่นั่งวันซ้อมย่อย วันที่4', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticeDay4' }
+                            { label: 'แผนที่นั่งซ้อมย่อยมีเสา', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticefor4Daypillar' },
+                            { label: 'แผนที่นั่งซ้อมย่อยไม่มีเสา', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticefor4Day' },
                         ]
-                    }
+                    },
                 ]
             },
             { label: 'รายชื่อบัณฑิต', icon: 'material-symbols:patient-list-outline', to: '/uikit/crud01' },
