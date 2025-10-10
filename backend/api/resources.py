@@ -2,8 +2,7 @@ from import_export import resources, fields
 from .models import Person
 
 class PersonResource(resources.ModelResource):
-    id = fields.Field(attribute='id', column_name='เลขที่บัณฑิต')  # ✅ เพิ่ม
-    formatted_id = fields.Field(column_name='เลขที่บัณฑิต (แสดง)')
+    id = fields.Field(attribute='id', column_name='เลขที่บัณฑิต')
     name = fields.Field(attribute='name', column_name='ชื่อ - สกุล')
     nisit = fields.Field(attribute='nisit', column_name='รหัสนักศึกษา')
     degree = fields.Field(attribute='degree', column_name='ชื่อหลักสูตร')
@@ -15,7 +14,6 @@ class PersonResource(resources.ModelResource):
         model = Person
         fields = (
             'id',
-            'formatted_id',
             'nisit',
             'name',
             'degree',
@@ -25,7 +23,6 @@ class PersonResource(resources.ModelResource):
         )
         export_order = [
             'id',
-            'formatted_id',
             'nisit',
             'name',
             'degree',

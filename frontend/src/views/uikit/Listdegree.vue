@@ -103,12 +103,20 @@ const exportPDFResult = async () => {
     }
 };
 
-// ฟังก์ชันช่วยจัดกลุ่มประเภทปริญญา
+// ฟังก์ชันช่วยจัดกลุ่มประเภทปริญญา (สำหรับเรียงลำดับ)
 function getDegreeType(degreeName) {
     if (degreeName.includes('ดุษฎีบัณฑิต')) return 'ดุษฎีบัณฑิต';
     if (degreeName.includes('มหาบัณฑิต')) return 'มหาบัณฑิต';
     return 'บัณฑิต';
 }
+
+// ⭐ เพิ่ม: ฟังก์ชันช่วยจัดกลุ่มระดับปริญญา (ป.ตรี, ป.โท, ป.เอก)
+function getDegreeLevel(degreeName) {
+    if (degreeName.includes('ดุษฎีบัณฑิต')) return 'ปริญญาเอก';
+    if (degreeName.includes('มหาบัณฑิต')) return 'ปริญญาโท';
+    return 'ปริญญาตรี';
+}
+
 
 // สรุปข้อมูลตามชื่อปริญญา และเรียงลำดับประเภท
 const summaryByDegree = computed(() => {
@@ -117,7 +125,13 @@ const summaryByDegree = computed(() => {
     persons.value.forEach((person) => {
         const degree = person.degree || 'ไม่ระบุ';
         if (!summary[degree]) {
-            summary[degree] = { degree, total: 0, reported: 0, absent: 0 };
+            summary[degree] = { 
+                degree, 
+                level: getDegreeLevel(degree),
+                total: 0, 
+                reported: 0, 
+                absent: 0 
+            };
         }
         summary[degree].total += 1;
 
@@ -138,6 +152,24 @@ const summaryByDegree = computed(() => {
     return Object.values(summary).sort((a, b) => {
         return degreeOrder.indexOf(getDegreeType(a.degree)) - degreeOrder.indexOf(getDegreeType(b.degree));
     });
+});
+
+// ⭐ เพิ่ม: สรุปยอดรวมตามระดับปริญญา (สำหรับแสดงในการ์ด)
+const totalByLevel = computed(() => {
+    const totals = {
+        'ปริญญาเอก': 0,
+        'ปริญญาโท': 0,
+        'ปริญญาตรี': 0,
+    };
+
+    persons.value.forEach(person => {
+        const level = getDegreeLevel(person.degree || 'ไม่ระบุ');
+        if (totals.hasOwnProperty(level)) {
+            totals[level]++;
+        }
+    });
+
+    return totals;
 });
 
 // รวมสรุปทั้งหมด
@@ -166,7 +198,6 @@ onMounted(() => {
             <h1 class="text-2xl font-bold text-center">รายงานสถานะบัณฑิตตามชื่อปริญญา</h1>
         </div>
 
-        <!-- Summary Grid -->
         <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
             <div class="flex items-center justify-between px-4 py-2 border-b-8 border-blue-500 rounded-3xl card">
                 <div>
@@ -201,12 +232,22 @@ onMounted(() => {
             </div>
         </div>
 
-        <!-- Data Table -->
         <div class="card rounded-3xl">
             <div class="relative">
                 <Toolbar class="mb-6">
-                    <template #start> </template>
-
+                    <template #start>
+                        <div class="gap-2 flex">
+                            <Tag severity="info" class="py-1 text-5xl font-bold">
+                                <span class="text-lg font-bold">ปริญญาตรี : {{ totalByLevel['ปริญญาตรี'] }}</span>
+                            </Tag>
+                            <Tag severity="info" class="py-1 text-5xl font-bold">
+                                <span class="text-lg font-bold">ปริญญาโท : {{ totalByLevel['ปริญญาโท'] }}</span>
+                            </Tag>
+                            <Tag severity="info" class="py-1 text-5xl font-bold">
+                                <span class="text-lg font-bold">ปริญญาเอก : {{ totalByLevel['ปริญญาเอก'] }}</span>
+                            </Tag>
+                        </div>
+                    </template>
                     <template #end>
                         <Button severity="secondary" class="mr-2" @click="exportPDFResult" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์เป็น pdf</Button>
                     </template>
@@ -215,7 +256,10 @@ onMounted(() => {
             </div>
 
             <DataTable :value="summaryByDegree" scrollable scrollHeight="500px" class="text-sm" :filters="filters" :loading="loading" filterDisplay="menu">
+                <Column field="level" header="วุฒิ" style="min-width: 100px" class="text-lg"></Column>
+                
                 <Column field="degree" header="ชื่อปริญญา" style="min-width: 150px" class="text-lg"></Column>
+                
                 <Column field="total" header="จำนวนทั้งหมด" style="min-width: 100px" class="text-lg">
                     <template #body="{ data }">
                         <Tag :value="data.total" severity="info" class="px-3 py-1 text-5xl font-bold">
