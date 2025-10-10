@@ -188,15 +188,15 @@ onMounted(() => {
                 <h2 class="mb-2 text-lg xl:text-xl font-bold text-center">ปริญญาเอก</h2>
                 <div class="grid grid-cols-3 gap-1 text-center">
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">ทั้งหมด</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">ทั้งหมด</div>
                         <div class="text-2xl xl:text-4xl font-bold">{{ summaryByLevel['ป.เอก'].total }}</div>
                     </div>
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">รายงานตัว</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">รายงานตัว</div>
                         <div class="text-2xl xl:text-4xl font-bold text-green-600">{{ summaryByLevel['ป.เอก'].reported }}</div>
                     </div>
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">ขาด</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">ขาด</div>
                         <div class="text-2xl xl:text-4xl font-bold text-red-600">{{ summaryByLevel['ป.เอก'].absent }}</div>
                     </div>
                 </div>
@@ -206,15 +206,15 @@ onMounted(() => {
                 <h2 class="mb-2 text-lg xl:text-xl font-bold text-center">ปริญญาโท</h2>
                 <div class="grid grid-cols-3 gap-1 text-center">
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">ทั้งหมด</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">ทั้งหมด</div>
                         <div class="text-2xl xl:text-4xl font-bold">{{ summaryByLevel['ป.โท'].total }}</div>
                     </div>
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">รายงานตัว</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">รายงานตัว</div>
                         <div class="text-2xl xl:text-4xl font-bold text-green-600">{{ summaryByLevel['ป.โท'].reported }}</div>
                     </div>
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">ขาด</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">ขาด</div>
                         <div class="text-2xl xl:text-4xl font-bold text-red-600">{{ summaryByLevel['ป.โท'].absent }}</div>
                     </div>
                 </div>
@@ -224,15 +224,15 @@ onMounted(() => {
                 <h2 class="mb-2 text-lg xl:text-xl font-bold text-center">ปริญญาตรี</h2>
                 <div class="grid grid-cols-3 gap-1 text-center">
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">ทั้งหมด</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">ทั้งหมด</div>
                         <div class="text-2xl xl:text-4xl font-bold">{{ summaryByLevel['ป.ตรี'].total }}</div>
                     </div>
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">รายงานตัว</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">รายงานตัว</div>
                         <div class="text-2xl xl:text-4xl font-bold text-green-600">{{ summaryByLevel['ป.ตรี'].reported }}</div>
                     </div>
                     <div>
-                        <div class="text-sm xl:text-lg font-semibold text-gray-600">ขาด</div>
+                        <div class="text-base xl:text-lg font-semibold dark:text-white/70">ขาด</div>
                         <div class="text-2xl xl:text-4xl font-bold text-red-600">{{ summaryByLevel['ป.ตรี'].absent }}</div>
                     </div>
                 </div>
