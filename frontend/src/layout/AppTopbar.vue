@@ -1,6 +1,5 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import AppConfigurator from './AppConfigurator.vue';
 import { useOnline } from '@vueuse/core';
 import { computed, onMounted, ref, onBeforeUnmount } from 'vue';
 import { Icon, loadIcon } from '@iconify/vue';
@@ -103,15 +102,15 @@ const filteredLogs = computed(() => logs.value);
                     <image href="@/assets/image/SSRU_LOGO1.png" x="0" y="0" height="300" width="300" />
                 </svg>
             </router-link>
-            <span class="hidden sm:inline">SSRU RFID</span>
+            <span class="hidden text-3xl sm:inline">SSRU RFID</span>
         </div>
 
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
                 <b class="flex items-center gap-2 text-2xl" :class="clazz">
-                <Icon :icon="wifistatus" />
-                <span class="hidden sm:inline">{{ text }}</span>
-            </b>
+                    <Icon :icon="wifistatus" />
+                    <span class="hidden sm:inline">{{ text }}</span>
+                </b>
             </div>
             <div class="layout-config-menu">
                 <div class="flex items-center gap-2">

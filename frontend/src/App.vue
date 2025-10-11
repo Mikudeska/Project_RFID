@@ -2,13 +2,13 @@
 import { onMounted, onBeforeUnmount } from 'vue';
 import { useWebSocketStore } from '@/stores/websocket';
 import { useGlobalToast } from '@/components/utils/toastUtils';
-import { useAuthStore } from '@/stores/auth'; // นำเข้า auth store
+import { useAuthStore } from '@/stores/auth';
 import { useRoute } from 'vue-router';
-import Dialog from '@/layout/composables/Dialog.vue'; // นำเข้า Dialog component
+import Dialog from '@/layout/composables/Dialog.vue';
 
 const toastStore = useGlobalToast();
-const authStore = useAuthStore(); // ใช้ auth store
-const route = useRoute(); // ดึงเส้นทางปัจจุบัน
+const authStore = useAuthStore();
+const route = useRoute();
 
 function globalWsHandler(msg) {
     toastStore.show(msg.action);
@@ -20,7 +20,6 @@ onMounted(() => {
     wsStore.connect();
     wsStore.registerHandler(globalWsHandler);
 
-    // โหลดข้อมูลผู้ใช้
     authStore.loadUser();
 });
 
