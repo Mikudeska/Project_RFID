@@ -102,13 +102,16 @@ const filteredLogs = computed(() => logs.value);
                 <svg viewBox="0 0 300 300" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <image href="@/assets/image/SSRU_LOGO1.png" x="0" y="0" height="300" width="300" />
                 </svg>
-                <span>SSRU_RFID</span>
             </router-link>
+            <span class="hidden sm:inline">SSRU RFID</span>
         </div>
 
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
-                <b class="flex items-center gap-2 text-2xl" :class="clazz"><Icon :icon="wifistatus" />{{ text }}</b>
+                <b class="flex items-center gap-2 text-2xl" :class="clazz">
+                <Icon :icon="wifistatus" />
+                <span class="hidden sm:inline">{{ text }}</span>
+            </b>
             </div>
             <div class="layout-config-menu">
                 <div class="flex items-center gap-2">
@@ -123,7 +126,7 @@ const filteredLogs = computed(() => logs.value);
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
 
-                <div class="relative">
+                <!-- <div class="relative">
                     <Button
                         icon="pi pi-palette"
                         v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
@@ -131,7 +134,7 @@ const filteredLogs = computed(() => logs.value);
                         rounded
                     />
                     <AppConfigurator />
-                </div>
+                </div> -->
 
                 <!-- Inbox -->
                 <div>
