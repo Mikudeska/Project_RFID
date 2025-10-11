@@ -8,12 +8,15 @@ const API_BASE = import.meta.env.VITE_API_BASE;
 // สร้างตัวแปรต่างๆ
 const persons = ref([]);
 const loading = ref(false);
-const filterMachine = ref('all'); // 'all', 'A', 'B', 'C'
+const filterMachine = ref('AB'); // 'AB', 'A', 'B', 'C', 'ABC'
 const machineOptions = [
-    { label: 'ทั้งหมด', value: 'all' },
-    { label: 'เครื่อง A', value: 'A' },
-    { label: 'เครื่อง B', value: 'B' },
-    { label: 'เครื่อง C', value: 'C' }
+    { label: 'เสา A', value: 'A' },
+    { label: 'เสา B', value: 'B' },
+    { label: 'เสา C', value: 'C' },
+    { label: 'เสา A - B', value: 'AB' },
+    { label: 'เสา A - C', value: 'AC' },
+    { label: 'เสา B - C', value: 'BC' },
+    { label: 'เสา A - B - C', value: 'ABC' }
 ];
 
 // ดึงข้อมูลจาก API
@@ -114,13 +117,13 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                 </select>
             </div>
         </div>
-        <div class="flex flex-col flex-wrap justify-center w-full max-w-full max-w-screen-xl min-w-0 gap-4 px-1 mx-auto overflow-x-auto md:flex-row md:gap-8 flex-machine-container">
+        <div class="flex flex-col flex-wrap justify-center w-full max-w-full min-w-0 gap-4 px-1 mx-auto overflow-x-auto md:flex-row md:gap-4 lg:gap-6 xl:gap-8 flex-machine-container">
             <!-- เครื่อง A -->
             <div
-                v-if="filterMachine === 'all' || filterMachine === 'A'"
-                class="flex-1 bg-blue-100/80 dark:bg-blue-900/60 rounded-2xl p-2 md:p-4 shadow-lg border border-blue-200 dark:border-blue-700 min-w-0 w-full max-w-full md:min-w-[260px] md:max-w-md mx-auto transition-all duration-200 mb-4 md:mb-0"
+                v-if="filterMachine === 'AB' || filterMachine === 'A' || filterMachine === 'AC' || filterMachine === 'ABC'"
+                class="flex-1 bg-blue-100/80 dark:bg-blue-900/60 rounded-2xl p-2 md:p-4 shadow-lg border border-blue-200 dark:border-blue-700 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
             >
-                <div class="mb-2 text-base font-bold text-center text-blue-800 dark:text-blue-200 md:mb-3 md:text-lg">เครื่อง A</div>
+                <div class="mb-2 text-base font-bold text-center text-blue-800 dark:text-blue-200 md:mb-3 md:text-lg">เสา A</div>
                 <div v-if="personsA.length === 0" class="text-center text-gray-400">ยังไม่มีข้อมูล</div>
                 <div
                     v-for="(person, idx) in personsA"
@@ -135,7 +138,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                             {{ person.id }}
                         </span>
                     </span>
-                    <span class="text-gray-700 dark:text-gray-200 font-semibold truncate max-w-[60px] md:max-w-[120px] flex-1 text-xs md:text-base">{{ person.name }}</span>
+                    <span class="text-gray-700 dark:text-gray-200 font-semibold flex-1 text-xs md:text-base">{{ person.name }}</span>
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
@@ -149,10 +152,10 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
             </div>
             <!-- เครื่อง B -->
             <div
-                v-if="filterMachine === 'all' || filterMachine === 'B'"
-                class="flex-1 bg-purple-100/80 dark:bg-purple-900/60 rounded-2xl p-2 md:p-4 shadow-lg border border-purple-200 dark:border-purple-700 min-w-0 w-full max-w-full md:min-w-[260px] md:max-w-md mx-auto transition-all duration-200 mb-4 md:mb-0"
+                v-if="filterMachine === 'AB' || filterMachine === 'B' || filterMachine === 'BC' || filterMachine === 'ABC'"
+                class="flex-1 bg-purple-100/80 dark:bg-purple-900/60 rounded-2xl p-2 md:p-4 shadow-lg border border-purple-200 dark:border-purple-700 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
             >
-                <div class="mb-2 text-base font-bold text-center text-purple-800 dark:text-purple-200 md:mb-3 md:text-lg">เครื่อง B</div>
+                <div class="mb-2 text-base font-bold text-center text-purple-800 dark:text-purple-200 md:mb-3 md:text-lg">เสา B</div>
                 <div v-if="personsB.length === 0" class="text-center text-gray-400">ยังไม่มีข้อมูล</div>
                 <div
                     v-for="(person, idx) in personsB"
@@ -167,7 +170,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                             {{ person.id }}
                         </span>
                     </span>
-                    <span class="text-gray-700 dark:text-gray-200 font-semibold truncate max-w-[60px] md:max-w-[120px] flex-1 text-xs md:text-base">{{ person.name }}</span>
+                    <span class="text-gray-700 dark:text-gray-200 font-semibold flex-1 text-xs md:text-base">{{ person.name }}</span>
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
@@ -181,10 +184,10 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
             </div>
             <!-- เครื่อง C -->
             <div
-                v-if="filterMachine === 'all' || filterMachine === 'C'"
-                class="flex-1 bg-yellow-100/80 dark:bg-yellow-700/60 rounded-2xl p-2 md:p-4 shadow-lg border border-yellow-200 dark:border-yellow-600 min-w-0 w-full max-w-full md:min-w-[260px] md:max-w-md mx-auto transition-all duration-200 mb-4 md:mb-0"
+                v-if="filterMachine === 'C' || filterMachine === 'AC' || filterMachine === 'BC' || filterMachine === 'ABC'"
+                class="flex-1 bg-yellow-100/80 dark:bg-yellow-700/60 rounded-2xl p-2 md:p-4 shadow-lg border border-yellow-200 dark:border-yellow-600 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
             >
-                <div class="mb-2 text-base font-bold text-center text-yellow-800 dark:text-yellow-200 md:mb-3 md:text-lg">เครื่อง C</div>
+                <div class="mb-2 text-base font-bold text-center text-yellow-800 dark:text-yellow-200 md:mb-3 md:text-lg">เสา C</div>
                 <div v-if="personsC.length === 0" class="text-center text-gray-400">ยังไม่มีข้อมูล</div>
                 <div
                     v-for="(person, idx) in personsC"
@@ -199,7 +202,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                             {{ person.id }}
                         </span>
                     </span>
-                    <span class="text-gray-700 dark:text-gray-200 font-semibold truncate max-w-[60px] md:max-w-[120px] flex-1 text-xs md:text-base">{{ person.name }}</span>
+                    <span class="text-gray-700 dark:text-gray-200 font-semibold flex-1 text-xs md:text-base">{{ person.name }}</span>
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
@@ -263,12 +266,39 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
     gap: 2rem;
     justify-content: center;
 }
+
+/* Responsive adjustments for different screen sizes */
+@media (max-width: 1536px) {
+    .flex-machine-container {
+        gap: 1.5rem;
+    }
+}
+
+@media (max-width: 1280px) {
+    .flex-machine-container {
+        gap: 1rem;
+    }
+}
+
 @media (max-width: 1200px) {
     .flex-machine-container {
         flex-direction: column;
         min-width: 0;
         padding-left: 0;
         gap: 1rem;
+    }
+}
+
+/* Additional responsive breakpoints for sidebar compatibility */
+@media (max-width: 1024px) {
+    .flex-machine-container {
+        gap: 0.75rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .flex-machine-container {
+        gap: 0.5rem;
     }
 }
 </style>
