@@ -89,6 +89,8 @@ function formatDate(datetimeStr) {
 }
 
 const filteredLogs = computed(() => logs.value);
+
+const themeIcon = computed(() => (isDarkTheme.value ? 'oi:moon' : 'oi:sun'));
 </script>
 
 <template>
@@ -114,15 +116,15 @@ const filteredLogs = computed(() => logs.value);
             </div>
             <div class="layout-config-menu">
                 <div class="flex items-center gap-2">
-                    <Icon :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'" :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'" width="20" height="20" />
-                    <span class="text-sm font-semibold">
+                    <Icon :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'" :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'" width="25" height="25" />
+                    <span class="text-lg font-semibold">
                         {{ isConnected ? viewerCount ?? '-' : '-' }}
                     </span>
                 </div>
             </div>
             <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
-                    <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
+                    <Icon :icon="themeIcon" width="20" height="20" />
                 </button>
 
                 <!-- <div class="relative">
@@ -205,4 +207,3 @@ const filteredLogs = computed(() => logs.value);
     opacity: 0;
 }
 </style>
-    
