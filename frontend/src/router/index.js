@@ -1,6 +1,7 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import Error from '@/views/pages/auth/Error.vue';
 
 const router = createRouter({
     history: createWebHistory(),
@@ -106,6 +107,11 @@ const router = createRouter({
             path: '/auth/error',
             name: 'error',
             component: () => import('@/views/pages/auth/Error.vue')
+        },
+        {
+            path: '/:pathMatch(.*)*', // Regex ที่หมายถึง "ทุกอย่างที่ยังไม่ตรงกับ path ไหนเลย"
+            name: 'NotFound',
+            component: Error // กำหนดให้แสดงหน้า ErrorPage ของเรา
         }
     ]
 });
