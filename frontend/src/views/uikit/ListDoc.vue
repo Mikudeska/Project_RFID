@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import axios from 'axios';
 import { Icon } from '@iconify/vue';
+import { useWebSocketStore } from '@/stores/websocket';
 
 const API_BASE = import.meta.env.VITE_API_BASE;
 
@@ -35,11 +36,11 @@ async function fetchPersons() {
     }
 }
 
-function handleWsMessage(event) {
-    const msg = event.detail;
+const wsStore = useWebSocketStore(); // ✅ 2. สร้าง instance ของ store
+let unregisterWsHandler = null; // ✅ 3. สร้างตัวแปรไว้เก็บฟังก์ชันยกเลิก
 
+function handleWsMessage(msg) {
     if (!msg || !msg.action) {
-        // ไม่ใช่ action-based message เช่น viewer_count
         return;
     }
 
@@ -71,11 +72,13 @@ function handleWsMessage(event) {
 
 onMounted(async () => {
     await fetchPersons();
-    window.addEventListener('ws-message', handleWsMessage);
+    unregisterWsHandler = wsStore.registerHandler(handleWsMessage);
 });
 
 onBeforeUnmount(() => {
-    window.removeEventListener('ws-message', handleWsMessage);
+    if (unregisterWsHandler) {
+        unregisterWsHandler();
+    }
 });
 
 const statusLabels = {
@@ -138,7 +141,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                             {{ person.id }}
                         </span>
                     </span>
-                    <span class="text-gray-700 dark:text-gray-200 font-semibold flex-1 text-xs md:text-base">{{ person.name }}</span>
+                    <span class="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-200 md:text-base">{{ person.name }}</span>
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
@@ -170,7 +173,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                             {{ person.id }}
                         </span>
                     </span>
-                    <span class="text-gray-700 dark:text-gray-200 font-semibold flex-1 text-xs md:text-base">{{ person.name }}</span>
+                    <span class="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-200 md:text-base">{{ person.name }}</span>
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
@@ -202,7 +205,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                             {{ person.id }}
                         </span>
                     </span>
-                    <span class="text-gray-700 dark:text-gray-200 font-semibold flex-1 text-xs md:text-base">{{ person.name }}</span>
+                    <span class="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-200 md:text-base">{{ person.name }}</span>
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{

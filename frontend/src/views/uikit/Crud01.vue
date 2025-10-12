@@ -5,6 +5,7 @@ import api from '@/plugins/axios';
 import { Icon } from '@iconify/vue';
 import { createLocalToast } from '@/components/utils/toastUtils';
 import { useAuthStore } from '@/stores/auth';
+import { useWebSocketStore } from '@/stores/websocket';
 
 const auth = useAuthStore();
 
@@ -28,8 +29,10 @@ async function fetchPersons() {
 }
 onMounted(fetchPersons);
 
-function handleWsMessage(event) {
-    const msg = event.detail;
+const wsStore = useWebSocketStore(); // ✅ 2. สร้าง instance
+let unregisterWsHandler = null; // ✅ 3. สร้างตัวแปรไว้เก็บฟังก์ชันยกเลิก
+
+function handleWsMessage(msg) {
     if (msg.action === 'update') {
         const index = persons.value.findIndex((p) => p.id === msg.id);
         if (index !== -1) {
@@ -79,10 +82,14 @@ function handleWsMessage(event) {
     }
 }
 onMounted(() => {
-    window.addEventListener('ws-message', handleWsMessage);
+    fetchPersons();
+    unregisterWsHandler = wsStore.registerHandler(handleWsMessage);
 });
 
 onBeforeUnmount(() => {
+    if (unregisterWsHandler) {
+        unregisterWsHandler();
+    }
     window.removeEventListener('ws-message', handleWsMessage);
 });
 
@@ -422,7 +429,7 @@ const filteredPersons = computed(() => {
     if (filteredVerified.value === null) {
         return persons.value; // แสดงทั้งหมด
     }
-    return persons.value.filter((person) => person.verified1 === filteredVerified.value);
+    return persons.value.filter((person) => getLatestVerified(person) === filteredVerified.value);
 });
 
 const verifiedMenuItems = [
@@ -677,19 +684,19 @@ const tableData = computed(() => {
                     <span class="block mb-4 font-bold">สถานะรายงานตัว</span>
                     <div class="grid grid-cols-12 gap-4">
                         <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified1" v-model="product.verified1" name="verified" :value="1" />
-                            <label for="verified1">
-                                <Icon icon="rivet-icons:check-circle-solid" class="text-green-500" />
-                            </label>
-                        </div>
-                        <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified0" v-model="product.verified1" name="verified" :value="0" />
+                            <RadioButton id="verified0" v-model="product.verified" name="verified" :value="0" />
                             <label for="verified0">
                                 <Icon icon="rivet-icons:close-circle-solid" class="text-red-500" />
                             </label>
                         </div>
                         <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified2" v-model="product.verified1" name="verified" :value="2" />
+                            <RadioButton id="verified1" v-model="product.verified" name="verified" :value="1" />
+                            <label for="verified1">
+                                <Icon icon="rivet-icons:check-circle-solid" class="text-green-500" />
+                            </label>
+                        </div>
+                        <div class="flex items-center col-span-4 gap-2">
+                            <RadioButton id="verified2" v-model="product.verified" name="verified" :value="2" />
                             <label for="verified2">
                                 <Icon icon="tdesign:certificate-filled" class="text-yellow-300" />
                             </label>

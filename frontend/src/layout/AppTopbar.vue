@@ -1,6 +1,5 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import AppConfigurator from './AppConfigurator.vue';
 import { useOnline } from '@vueuse/core';
 import { computed, onMounted, ref, onBeforeUnmount } from 'vue';
 import { Icon, loadIcon } from '@iconify/vue';
@@ -90,6 +89,8 @@ function formatDate(datetimeStr) {
 }
 
 const filteredLogs = computed(() => logs.value);
+
+const themeIcon = computed(() => (isDarkTheme.value ? 'oi:moon' : 'oi:sun'));
 </script>
 
 <template>
@@ -103,27 +104,27 @@ const filteredLogs = computed(() => logs.value);
                     <image href="@/assets/image/SSRU_LOGO1.png" x="0" y="0" height="300" width="300" />
                 </svg>
             </router-link>
-            <span class="hidden sm:inline">SSRU RFID</span>
+            <span class="hidden text-3xl sm:inline">SSRU RFID</span>
         </div>
 
         <div class="layout-topbar-actions">
             <div class="layout-config-menu">
                 <b class="flex items-center gap-2 text-2xl" :class="clazz">
-                <Icon :icon="wifistatus" />
-                <span class="hidden sm:inline">{{ text }}</span>
-            </b>
+                    <Icon :icon="wifistatus" />
+                    <span class="hidden sm:inline">{{ text }}</span>
+                </b>
             </div>
             <div class="layout-config-menu">
                 <div class="flex items-center gap-2">
-                    <Icon :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'" :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'" width="20" height="20" />
-                    <span class="text-sm font-semibold">
+                    <Icon :icon="isConnected ? 'material-symbols:person' : 'material-symbols:person-off'" :class="isConnected ? 'text-green-500' : 'text-red-400 line-through'" width="25" height="25" />
+                    <span class="text-lg font-semibold">
                         {{ isConnected ? viewerCount ?? '-' : '-' }}
                     </span>
                 </div>
             </div>
             <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
-                    <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
+                    <Icon :icon="themeIcon" width="20" height="20" />
                 </button>
 
                 <!-- <div class="relative">
@@ -206,4 +207,3 @@ const filteredLogs = computed(() => logs.value);
     opacity: 0;
 }
 </style>
-    

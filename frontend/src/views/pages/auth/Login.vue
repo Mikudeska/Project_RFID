@@ -6,11 +6,8 @@ import api from '@/plugins/axios';
 
 import bg1 from '@/assets/image/background/bg1.jpg';
 import bg2 from '@/assets/image/background/bg2.jpg';
-import { createLocalToast } from '@/components/utils/toastUtils';
 import { useAuthStore } from '@/stores/auth';
 const auth = useAuthStore();
-
-const toast = createLocalToast();
 
 const backgrounds = [bg1, bg2];
 const imageSrc = ref(backgrounds[Math.floor(Math.random() * backgrounds.length)]);

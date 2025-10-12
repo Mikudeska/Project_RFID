@@ -8,41 +8,40 @@ export const useWebSocketStore = defineStore('websocket', () => {
     const socket = ref(null);
     const isConnected = ref(false);
     const viewerCount = ref(0);
-    const handlers = [];
+
+    // ✨ เปลี่ยนจาก Array ธรรมดาเป็น Map เพื่อให้ลบ handler ออกได้ง่าย
+    const handlers = new Map();
+    let handlerId = 0;
 
     function connect() {
         if (!useWebSocket) {
-            console.log('🛑 WebSocket disabled by .env');
+            console.log('WebSocket disabled by .env');
             return;
         }
 
         if (socket.value) return;
-
         socket.value = new WebSocket(wsBase);
 
         socket.value.onopen = () => {
-            console.log('🌐 WebSocket connected');
+            console.log('WebSocket connected');
             isConnected.value = true;
         };
 
         socket.value.onmessage = (event) => {
             const data = JSON.parse(event.data);
 
-            // ✅ แยกกรณี viewer count
             if (data.type === 'viewer_count') {
                 viewerCount.value = data.count;
             }
 
-            handlers.forEach((fn) => fn(data));
+            // ✨ เรียกใช้ handler ทุกตัวที่ลงทะเบียนไว้
+            handlers.forEach((handler) => handler(data));
 
-            // ✅ ไม่กระทบระบบเดิม (ยังส่ง customEvent เหมือนเดิม)
+            // ✅ บรรทัดนี้ยังคงไว้ได้ เผื่อมีส่วนอื่นใช้ แต่เราจะเลิกใช้ใน Crud/ListDoc
             window.dispatchEvent(new CustomEvent('ws-message', { detail: data }));
         };
 
-        socket.value.onerror = (error) => {
-            console.error('WebSocket error:', error);
-        };
-
+        socket.value.onerror = (error) => console.error('WebSocket error:', error);
         socket.value.onclose = () => {
             console.log('WebSocket closed');
             isConnected.value = false;
@@ -53,23 +52,17 @@ export const useWebSocketStore = defineStore('websocket', () => {
     function disconnect() {
         if (socket.value) {
             socket.value.close();
-            socket.value = null;
-            isConnected.value = false;
         }
     }
 
+    // ✨ อัปเกรดฟังก์ชันนี้
     function registerHandler(fn) {
-        if (typeof fn === 'function') {
-            handlers.push(fn);
-        }
+        const id = handlerId++;
+        handlers.set(id, fn);
+
+        // ส่งฟังก์ชันสำหรับยกเลิกการลงทะเบียนกลับไป
+        return () => handlers.delete(id);
     }
 
-    return {
-        socket,
-        connect,
-        disconnect,
-        isConnected,
-        viewerCount,
-        registerHandler
-    };
+    return { socket, connect, disconnect, isConnected, viewerCount, registerHandler };
 });
