@@ -5,9 +5,10 @@ import Dialog from 'primevue/dialog';
 import { useToast } from 'primevue/usetoast';
 import { Icon } from '@iconify/vue';
 
-const NUM_ROWS = 70;
-const SEATS_PER_ROW = 70;
-const SEATS_PER_SIDE = 35;
+// ตัวแปรเริ่มต้น
+const NUM_ROWS = ref(70);
+const SEATS_PER_ROW = ref(70);
+const SEATS_PER_SIDE = ref(35);
 const API_BASE = import.meta.env.VITE_API_BASE;
 const persons = ref([]);
 const loading = ref(false);
@@ -45,7 +46,7 @@ onBeforeUnmount(() => {
 });
 
 // ระบบเสาแบบใหม่: กำหนดเสาเป็น array ของ object
-const pillars = [
+const pillars = ref([
     // { row: 3, side: 'left', index: 6, length: 3 }, // แถว 4, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
     // { row: 3, side: 'right', index: 16, length: 3 }, // แถว 4, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
     // { row: 16, side: 'left', index: 6, length: 3 }, // แถว 17, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
@@ -54,17 +55,59 @@ const pillars = [
     // { row: 29, side: 'left', index: 6, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 11, ยาว 3 ช่อง
     // { row: 29, side: 'left', index: 32, length: 3 }, // แถว 30, ฝั่งซ้าย, ตำแหน่งที่ 32, ยาว 3 ช่อง
     // { row: 29, side: 'right', index: 16, length: 3 } // แถว 30, ฝั่งขวา, ตำแหน่งที่ 11, ยาว 3 ช่อง
-];
+]);
+
+// ฟังก์ชันโหลดการตั้งค่าจาก SeatDesigner
+function loadSeatLayoutConfig() {
+    try {
+        const saved = localStorage.getItem('seatLayoutConfig');
+        if (saved) {
+            const config = JSON.parse(saved);
+            
+            // อัปเดตตัวแปร layout
+            NUM_ROWS.value = config.seatLayout.rows;
+            SEATS_PER_SIDE.value = config.seatLayout.seatsPerSideA;
+            
+            // คำนวณ SEATS_PER_ROW ตามข้อมูลจริง
+            const totalPersons = persons.value.length;
+            const seatsPerRowFromData = Math.ceil(totalPersons / NUM_ROWS.value);
+            SEATS_PER_ROW.value = Math.max(seatsPerRowFromData, config.seatLayout.seatsPerSideA + config.seatLayout.seatsPerSideB);
+            
+            // อัปเดตเสา
+            pillars.value = config.pillars || [];
+            
+            console.log('🔄 คำนวณ Layout ใหม่:');
+            console.log('📊 ข้อมูลทั้งหมด:', totalPersons, 'คน');
+            console.log('📏 แถวแนวนอน:', NUM_ROWS.value, 'แถว');
+            console.log('🪑 ที่นั่งต่อแถว (คำนวณ):', SEATS_PER_ROW.value);
+            console.log('👥 ฝั่งซ้าย:', config.seatLayout.seatsPerSideA);
+            console.log('👥 ฝั่งขวา:', config.seatLayout.seatsPerSideB);
+        }
+    } catch (error) {
+        console.warn('ไม่สามารถโหลดการตั้งค่า Layout ได้:', error);
+    }
+}
 
 onMounted(async () => {
+    console.log('🚀 SeatPractice onMounted เริ่มทำงาน');
+    
     loading.value = true;
     try {
+        console.log('📡 กำลังโหลดข้อมูลจาก API:', `${API_BASE}/api/person/`);
         const { data } = await axios.get(`${API_BASE}/api/person/`);
+        console.log('✅ ข้อมูลที่ได้รับจาก API:', data);
         persons.value = data.map((p) => ({ ...p, seat: Number(p.seat) }));
+        console.log('👥 จำนวนคนที่โหลดได้:', persons.value.length);
+        
+        // โหลดการตั้งค่า Layout หลังจากโหลดข้อมูลแล้ว
+        loadSeatLayoutConfig();
+        
     } catch (e) {
+        console.error('❌ API Error:', e);
         toast.add({ severity: 'error', summary: 'โหลดข้อมูลล้มเหลว', detail: e.message, life: 3000 });
     } finally {
         loading.value = false;
+        console.log('🏁 โหลดข้อมูลเสร็จสิ้น');
     }
 });
 
@@ -239,27 +282,57 @@ for (let rowIdx = 0; rowIdx < NUM_ROWS; rowIdx++) {
 
 // 4. สร้างฟังก์ชันสำหรับจัดการข้อความ WebSocket
 
-function getRowLayout(rowIdx) {
-    // เริ่มต้นด้วย array 70 ช่อง
-    const layout = Array(SEATS_PER_ROW).fill('seat');
+function getRowLayout(rowIdx, seatsPerRow = null) {
+    // ใช้ seatsPerRow ที่ส่งมา หรือใช้ค่า default
+    const actualSeatsPerRow = seatsPerRow || SEATS_PER_ROW.value;
+    
+    // เริ่มต้นด้วย array ตามจำนวนที่นั่งต่อแถว
+    const layout = Array(actualSeatsPerRow).fill('seat');
+    
     // หาเสาในแถวนี้
-    const rowPillars = pillars.filter((p) => p.row === rowIdx);
+    const rowPillars = pillars.value.filter((p) => p.row === rowIdx);
+    
     // แทรกเสาตามความยาว (length)
     rowPillars.forEach((p) => {
-        let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE + p.index;
+        let insertIdx = p.side === 'left' ? p.index : SEATS_PER_SIDE.value + p.index;
         for (let i = 0; i < (p.length || 1); i++) {
-            layout[insertIdx + i] = 'pillar';
+            if (insertIdx + i < layout.length) {
+                layout[insertIdx + i] = 'pillar';
+            }
         }
     });
+    
     return layout;
 }
 
 const seatRows = computed(() => {
+    console.log('🔄 Computing seatRows...');
+    console.log('📊 NUM_ROWS:', NUM_ROWS.value, 'SEATS_PER_ROW:', SEATS_PER_ROW.value, 'SEATS_PER_SIDE:', SEATS_PER_SIDE.value);
+    console.log('👥 persons.value.length:', persons.value.length);
+    console.log('🔍 filteredPersons.value.length:', filteredPersons.value.length);
+    console.log('🏗️ pillars:', pillars.value);
+    
     const rows = [];
     const personsList = [...filteredPersons.value];
-    let rowIdx = 0;
-    while (personsList.length > 0) {
-        const layout = getRowLayout(rowIdx);
+    console.log('📋 personsList.length:', personsList.length);
+    
+    // คำนวณจำนวนที่นั่งต่อแถวตามข้อมูลจริง
+    const actualSeatsPerRow = Math.ceil(personsList.length / NUM_ROWS.value);
+    const finalSeatsPerRow = Math.max(actualSeatsPerRow, SEATS_PER_ROW.value);
+    
+    console.log('🪑 ที่นั่งต่อแถว (คำนวณ):', actualSeatsPerRow);
+    console.log('🪑 ที่นั่งต่อแถว (สุดท้าย):', finalSeatsPerRow);
+    
+    // คำนวณจำนวนแถวที่ต้องแสดง (เฉพาะแถวที่มีข้อมูล)
+    const rowsWithData = Math.ceil(personsList.length / finalSeatsPerRow);
+    const displayRows = Math.min(rowsWithData, NUM_ROWS.value);
+    
+    console.log('📏 แถวที่มีข้อมูล:', rowsWithData);
+    console.log('📏 แถวที่จะแสดง:', displayRows);
+    
+    // สร้างแถวเฉพาะที่มีข้อมูล
+    for (let i = 0; i < displayRows; i++) {
+        const layout = getRowLayout(i, finalSeatsPerRow);
         const row = [];
         for (const slot of layout) {
             if (slot === 'pillar') {
@@ -271,8 +344,10 @@ const seatRows = computed(() => {
             }
         }
         rows.push(row);
-        rowIdx++;
     }
+    
+    console.log('✅ Generated rows:', rows.length);
+    console.log('🎯 First row sample:', rows[0]?.slice(0, 5));
     return rows;
 });
 
@@ -296,18 +371,32 @@ function isHighlighted(person) {
 
 // ปรับ buildSidesWithPillars ให้รองรับ row ที่เป็น array ของ object (type: 'person'/'pillar'/'empty')
 function buildSidesWithPillars(row) {
-    // ใช้ข้อมูลจาก row โดยตรง
-    const left = row.slice(0, SEATS_PER_SIDE);
-    const right = row.slice(SEATS_PER_SIDE, SEATS_PER_ROW);
+    console.log('🔧 buildSidesWithPillars called with row:', row);
+    console.log('🔧 SEATS_PER_SIDE:', SEATS_PER_SIDE.value, 'SEATS_PER_ROW:', SEATS_PER_ROW.value);
+    
+    // คำนวณจำนวนที่นั่งต่อแถวตามข้อมูลจริง
+    const actualSeatsPerRow = Math.ceil(persons.value.length / NUM_ROWS.value);
+    const finalSeatsPerRow = Math.max(actualSeatsPerRow, SEATS_PER_ROW.value);
+    
+    // แบ่งซ้าย-ขวาตามการตั้งค่า
+    const leftSeats = SEATS_PER_SIDE.value;
+    const rightSeats = finalSeatsPerRow - leftSeats;
+    
+    const left = row.slice(0, leftSeats);
+    const right = row.slice(leftSeats, finalSeatsPerRow);
+    
+    console.log('🔧 finalSeatsPerRow:', finalSeatsPerRow, 'leftSeats:', leftSeats, 'rightSeats:', rightSeats);
+    console.log('🔧 left length:', left.length, 'right length:', right.length);
     
     // ถ้าข้อมูลไม่ครบ ให้เติม empty
-    while (left.length < SEATS_PER_SIDE) {
+    while (left.length < leftSeats) {
         left.push({ type: 'empty' });
     }
-    while (right.length < SEATS_PER_SIDE) {
+    while (right.length < rightSeats) {
         right.push({ type: 'empty' });
     }
     
+    console.log('🔧 final left length:', left.length, 'final right length:', right.length);
     return { left, right };
 }
 
@@ -520,12 +609,17 @@ function getMiniMapColor(status) {
     <div>
         <Toast />
         <!-- Filter Icon Button (Right Top) -->
-        <div class="fixed z-50 top-20 right-6">
+        <div class="fixed z-50 top-20 right-6 flex flex-row gap-3">
+            <!-- Designer Button -->
+            <button @click="$router.push('/uikit/SeatDesigner')" class="p-2 transition-all duration-300 bg-purple-100 dark:bg-purple-900 border border-purple-300 dark:border-purple-600 rounded-full shadow-lg hover:bg-purple-200 dark:hover:bg-purple-800 hover:scale-110 hover:shadow-xl transform" title="ออกแบบแผนที่นั่ง">
+                <Icon icon="mdi:chair-rolling" class="text-purple-600 dark:text-purple-300" width="28" height="28" />
+            </button>
+            <!-- Filter Button -->
             <button ref="filterButtonRef" @click="showFilterDropdown = !showFilterDropdown" class="p-2 transition-all duration-300 bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-600 rounded-full shadow-lg hover:bg-blue-200 dark:hover:bg-blue-800 hover:scale-110 hover:shadow-xl transform">
                 <Icon icon="mdi:filter-variant" class="text-blue-600 dark:text-blue-300 transition-transform duration-300" :class="showFilterDropdown ? 'rotate-180' : ''" width="28" height="28" />
             </button>
             <!-- Dropdown Filter Bar -->
-            <div v-if="showFilterDropdown" ref="filterDropdownRef" class="absolute right-0 mt-2 z-50 bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-xl p-4 w-96 sm:w-[800px] max-w-[95vw] flex flex-col sm:flex-row gap-3 border border-blue-100 dark:border-gray-600 animate-slide-in">
+            <div v-if="showFilterDropdown" ref="filterDropdownRef" class="absolute right-0 mt-16 z-50 bg-white/90 dark:bg-gray-800/90 rounded-xl shadow-xl p-4 w-96 sm:w-[800px] max-w-[95vw] flex flex-col sm:flex-row gap-3 border border-blue-100 dark:border-gray-600 animate-slide-in">
                 <!-- Refresh Button at Top Right -->
                 <div class="flex justify-end mb-2">
                     <button @click="resetFilter" class="flex items-center justify-center transition border-none rounded-full h-8 w-8 hover:bg-blue-200 dark:hover:bg-blue-700" title="รีเซ็ตตัวกรอง">
@@ -683,6 +777,18 @@ function getMiniMapColor(status) {
                 </div>
             </div>
         </div>
+
+        <!-- Debug Info - ซ่อนแล้ว -->
+        <!-- <div class="fixed top-4 left-4 bg-black bg-opacity-75 text-white p-4 rounded-lg text-xs z-50">
+            <div>🚀 Loading: {{ loading }}</div>
+            <div>👥 Persons: {{ persons.length }}</div>
+            <div>🪑 SeatRows: {{ seatRows.length }}</div>
+            <div>📊 NUM_ROWS: {{ NUM_ROWS }}</div>
+            <div>🪑 SEATS_PER_ROW: {{ SEATS_PER_ROW }}</div>
+            <div>🏗️ Pillars: {{ pillars.length }}</div>
+            <div>🔍 FilteredPersons: {{ filteredPersons.length }}</div>
+        </div> -->
+
         <!-- Seat Layout -->
         <div v-if="loading" class="grid grid-cols-5 gap-4 p-4 animate-pulse">
             <Skeleton v-for="n in 10" :key="n" width="100%" height="4rem" />

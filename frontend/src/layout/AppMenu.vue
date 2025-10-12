@@ -11,28 +11,7 @@ const model = ref([
     {
         label: 'Menu',
         items: [
-            {
-                label: 'รวมแผนที่นั่ง',
-                icon: 'material-symbols:airline-seat-recline-normal',
-                items: [
-                    {
-                        label: 'แผนที่นั่ง 35x35',
-                        icon: 'material-symbols:event-seat',
-                        items: [
-                            { label: 'แผนที่นั่งมีเสา', icon: 'material-symbols:airline-seat-recline-normal', to: '/uikit/Seat' },
-                            { label: 'แผนที่นั่งไม่มีเสา', icon: 'material-symbols:event-seat', to: '/uikit/SeatPractice' }
-                        ]
-                    },
-                    {
-                        label: 'แผนที่นั่ง 32x27',
-                        icon: 'material-symbols:backup-table',
-                        items: [
-                            { label: 'แผนที่นั่งซ้อมย่อยมีเสา', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticefor4Daypillar' },
-                            { label: 'แผนที่นั่งซ้อมย่อยไม่มีเสา', icon: 'material-symbols:backup-table', to: '/uikit/SeatPracticefor4Day' },
-                        ]
-                    },
-                ]
-            },
+            { label: 'แผนที่นั่ง', icon: 'material-symbols:event-seat', to: '/uikit/SeatPractice' },
             { label: 'รายชื่อบัณฑิต', icon: 'material-symbols:patient-list-outline', to: '/uikit/crud01' },
             { label: 'รายชื่อที่ผ่านเข้าประตู', icon: 'material-symbols:person-check-outline-rounded', to: '/uikit/List' },
             { label: 'ตารางสรุป', icon: 'material-symbols:person-check-outline-rounded', to: '/uikit/Listdegree' },
