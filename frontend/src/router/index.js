@@ -76,9 +76,9 @@ const router = createRouter({
                     component: () => import('@/views/uikit/ListDoc.vue')
                 },
                 {
-                    path: '/pages/empty',
-                    name: 'empty',
-                    component: () => import('@/views/pages/Empty.vue')
+                    path: '/pages/myprofile',
+                    name: 'profile',
+                    component: () => import('@/views/pages/Profile.vue')
                 }
             ]
         },

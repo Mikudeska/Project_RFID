@@ -8,10 +8,12 @@ export const useAuthStore = defineStore('auth', () => {
     const isAuthenticated = ref(false); // เพิ่มสถานะการล็อกอิน
 
     function setUser(data) {
-        user.value = data;
+        user.value = { ...(user.value || {}), ...data }; // แก้ไขเล็กน้อยเพื่อ merge ข้อมูลเก่าและใหม่
         if (data.status) status.value = data.status;
-        isAuthenticated.value = true; // ตั้งค่าสถานะให้ล็อกอิน
-        localStorage.setItem('user', JSON.stringify(data));
+        isAuthenticated.value = !!data; // ตั้งค่าสถานะให้ล็อกอิน
+        if (data) {
+            localStorage.setItem('user', JSON.stringify(user.value));
+        }
     }
 
     function loadUser() {
@@ -47,6 +49,28 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    async function updateUserProfile(newProfileData) {
+        try {
+            const response = await api.put('/api/profile/', newProfileData);
+            setUser(response.data);
+
+            console.log('Pinia store updated successfully!', user.value);
+        } catch (error) {
+            console.error('Failed to update profile:', error);
+            // อาจจะมีการแจ้งเตือนผู้ใช้ว่าบันทึกไม่สำเร็จ
+            throw error;
+        }
+    }
+
+    async function changeUserPassword(newPassword) {
+        try {
+            await api.post('/api/change-password/', { new_password: newPassword });
+        } catch (error) {
+            console.error('Failed to change password:', error);
+            throw error; // ส่ง error ต่อไปให้ component จัดการ
+        }
+    }
+
     async function logout() {
         user.value = null;
         isAuthenticated.value = false; // ตั้งค่าการล็อกเอาท์
@@ -54,5 +78,16 @@ export const useAuthStore = defineStore('auth', () => {
         await api.post('/api/logout/'); // backend clear session
     }
 
-    return { user, status, isAuthenticated, setUser, loadUser, login, fetchUserProfile, logout };
+    return {
+        user,
+        status,
+        isAuthenticated,
+        setUser,
+        loadUser,
+        login,
+        fetchUserProfile,
+        logout,
+        updateUserProfile,
+        changeUserPassword
+    };
 });
