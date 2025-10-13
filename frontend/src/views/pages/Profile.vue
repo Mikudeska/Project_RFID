@@ -134,13 +134,15 @@ onMounted(() => {
                     </IconField>
                 </div>
                 <div class="">
-                    <template v-if="!isEditing">
-                        <Button label="แก้ไขโปรไฟล์" icon="pi pi-user-edit" @click="startEditing" />
-                    </template>
-                    <template v-else>
-                        <Button label="ยกเลิก" icon="pi pi-times" @click="cancelEditing" severity="danger" text class="mr-2" />
-                        <Button label="บันทึก" icon="pi pi-check" @click="saveProfile" />
-                    </template>
+                    <div>
+                        <template v-if="!isEditing">
+                            <Button label="แก้ไขโปรไฟล์" icon="pi pi-user-edit" @click="startEditing" />
+                        </template>
+                        <template v-else>
+                            <Button label="ยกเลิก" icon="pi pi-times" @click="cancelEditing" severity="danger" text class="mr-2" />
+                            <Button label="บันทึก" icon="pi pi-check" @click="saveProfile" />
+                        </template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -154,7 +156,7 @@ onMounted(() => {
                     <label for="new_password_custom" class="font-medium">รหัสผ่านใหม่</label>
                     <div class="password-wrapper">
                         <InputText id="new_password_custom" :type="passwordFieldType" v-model="passwordFields.new_password" placeholder="กรอกรหัสผ่านใหม่" class="w-full password-input" />
-                        <Icon :icon="passwordFieldType === 'password' ? 'solar:eye-bold' : 'solar:eye-closed-bold'" class="password-icon" @click="togglePasswordVisibility" />
+                        <Icon :icon="passwordFieldType === 'password' ? 'solar:eye-closed-bold' : 'solar:eye-bold'" class="password-icon" @click="togglePasswordVisibility" />
                     </div>
                     <small v-if="passwordError" class="text-red-500 mt-1">
                         {{ passwordError }}
@@ -165,11 +167,11 @@ onMounted(() => {
                     <label for="confirm_password_custom" class="font-medium">ยืนยันรหัสผ่านใหม่</label>
                     <div class="password-wrapper">
                         <InputText id="confirm_password_custom" :type="confirmPasswordFieldType" v-model="passwordFields.confirm_password" placeholder="ยืนยันรหัสผ่านอีกครั้ง" class="w-full password-input" />
-                        <Icon :icon="confirmPasswordFieldType === 'password' ? 'solar:eye-bold' : 'solar:eye-closed-bold'" class="password-icon" @click="toggleConfirmPasswordVisibility" />
+                        <Icon :icon="confirmPasswordFieldType === 'password' ? 'solar:eye-closed-bold' : 'solar:eye-bold'" class="password-icon" @click="toggleConfirmPasswordVisibility" />
                     </div>
                 </div>
             </div>
-            <div class="mt-6 flex justify-end">
+            <div class="mt-6 flex">
                 <Button label="เปลี่ยนรหัสผ่าน" icon="pi pi-key" @click="changePassword" severity="secondary" />
             </div>
         </div>
