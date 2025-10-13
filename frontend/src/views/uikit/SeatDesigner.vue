@@ -62,7 +62,7 @@ function changeTemplate(template) {
     console.log('changeTemplate called with:', template);
     console.log('template.isCustom:', template.isCustom);
     console.log('showCustomLayout.value:', showCustomLayout.value);
-    
+
     if (template.isCustom) {
         // แสดงฟอร์มกำหนดเอง
         console.log('Opening custom layout dialog...');
@@ -95,7 +95,7 @@ function confirmCustomLayout() {
         });
         return;
     }
-    
+
     if (customLayout.value.seatsPerSideA < 1 || customLayout.value.seatsPerSideB < 1) {
         toast.add({
             severity: 'error',
@@ -105,9 +105,9 @@ function confirmCustomLayout() {
         });
         return;
     }
-    
+
     // ใช้การตั้งค่าที่กำหนดเอง (ไม่ต้องตรวจสอบ seatsPerRow)
-    seatLayout.value = { 
+    seatLayout.value = {
         rows: customLayout.value.rows,
         seatsPerSideA: customLayout.value.seatsPerSideA,
         seatsPerSideB: customLayout.value.seatsPerSideB,
@@ -116,7 +116,7 @@ function confirmCustomLayout() {
     };
     pillars.value = []; // ล้างเสาเก่า
     showCustomLayout.value = false;
-    
+
     toast.add({
         severity: 'success',
         summary: 'กำหนด Layout เอง',
@@ -145,7 +145,7 @@ function addPillar() {
         index: newPillar.value.index,
         length: newPillar.value.length
     };
-    
+
     // ตรวจสอบว่าซ้อนทับกันหรือไม่
     if (checkPillarOverlap(pillar)) {
         toast.add({
@@ -156,11 +156,11 @@ function addPillar() {
         });
         return;
     }
-    
+
     pillars.value.push(pillar);
     showAddPillarDropdown.value = false;
     resetNewPillar();
-    
+
     toast.add({
         severity: 'success',
         summary: 'เพิ่มเสาเรียบร้อย',
@@ -171,7 +171,7 @@ function addPillar() {
 
 // ฟังก์ชันลบเสา
 function removePillar(pillarId) {
-    const index = pillars.value.findIndex(p => p.id === pillarId);
+    const index = pillars.value.findIndex((p) => p.id === pillarId);
     if (index !== -1) {
         pillars.value.splice(index, 1);
         toast.add({
@@ -186,10 +186,8 @@ function removePillar(pillarId) {
 // ฟังก์ชันสลับเสา (เพิ่ม/ลบ) โดยการคลิก
 function togglePillar(row, side, index) {
     // หาเสาที่มีอยู่แล้วในตำแหน่งนี้
-    const existingPillar = pillars.value.find(p => 
-        p.row === row && p.side === side && p.index === index
-    );
-    
+    const existingPillar = pillars.value.find((p) => p.row === row && p.side === side && p.index === index);
+
     if (existingPillar) {
         // ถ้ามีเสาอยู่แล้ว ให้ลบ
         removePillar(existingPillar.id);
@@ -202,7 +200,7 @@ function togglePillar(row, side, index) {
             index: index,
             length: 1
         };
-        
+
         // ตรวจสอบว่าซ้อนทับกันหรือไม่
         if (checkPillarOverlap(pillar)) {
             toast.add({
@@ -213,7 +211,7 @@ function togglePillar(row, side, index) {
             });
             return;
         }
-        
+
         pillars.value.push(pillar);
         toast.add({
             severity: 'success',
@@ -226,15 +224,15 @@ function togglePillar(row, side, index) {
 
 // ฟังก์ชันตรวจสอบเสาซ้อนทับ
 function checkPillarOverlap(newPillar) {
-    return pillars.value.some(pillar => {
+    return pillars.value.some((pillar) => {
         if (pillar.row !== newPillar.row) return false;
         if (pillar.side !== newPillar.side) return false;
-        
+
         const pillarStart = pillar.index;
         const pillarEnd = pillar.index + pillar.length;
         const newStart = newPillar.index;
         const newEnd = newPillar.index + newPillar.length;
-        
+
         return !(newEnd <= pillarStart || newStart >= pillarEnd);
     });
 }
@@ -254,11 +252,11 @@ function createLayoutMatrix() {
     const matrix = [];
     for (let rowIdx = 0; rowIdx < seatLayout.value.rows; rowIdx++) {
         const layout = Array(seatLayout.value.seatsPerRow).fill('seat');
-        
+
         // แทรกเสา
         pillars.value
-            .filter(p => p.row === rowIdx)
-            .forEach(p => {
+            .filter((p) => p.row === rowIdx)
+            .forEach((p) => {
                 let insertIdx = p.side === 'left' ? p.index : seatLayout.value.seatsPerSideA + p.index;
                 for (let i = 0; i < p.length; i++) {
                     if (insertIdx + i < layout.length) {
@@ -266,7 +264,7 @@ function createLayoutMatrix() {
                     }
                 }
             });
-        
+
         matrix.push(layout);
     }
     return matrix;
@@ -279,10 +277,10 @@ function saveLayout() {
         pillars: pillars.value,
         timestamp: new Date().toISOString()
     };
-    
+
     // บันทึกลง localStorage
     localStorage.setItem('seatLayoutConfig', JSON.stringify(layoutConfig));
-    
+
     toast.add({
         severity: 'success',
         summary: 'บันทึกเรียบร้อย',
@@ -313,17 +311,17 @@ function applyToSeatPractice() {
         seatLayout: seatLayout.value,
         pillars: pillars.value
     };
-    
+
     // บันทึกลง localStorage เพื่อให้หน้า SeatPractice อ่านได้
     localStorage.setItem('seatLayoutConfig', JSON.stringify(layoutConfig));
-    
+
     toast.add({
         severity: 'success',
         summary: 'นำไปใช้',
         detail: 'การตั้งค่าถูกส่งไปยังหน้า SeatPractice',
         life: 3000
     });
-    
+
     // ไปยังหน้า SeatPractice
     router.push('/uikit/SeatPractice');
 }
@@ -346,18 +344,18 @@ function exportLayout() {
         pillars: pillars.value,
         timestamp: new Date().toISOString()
     };
-    
+
     const dataStr = JSON.stringify(layoutConfig, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(dataBlob);
-    
+
     const link = document.createElement('a');
     link.href = url;
     link.download = `seat-layout-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
-    
+
     URL.revokeObjectURL(url);
-    
+
     toast.add({
         severity: 'success',
         summary: 'ส่งออกเรียบร้อย',
@@ -370,14 +368,14 @@ function exportLayout() {
 function importLayout(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
             const config = JSON.parse(e.target.result);
             seatLayout.value = config.seatLayout;
             pillars.value = config.pillars;
-            
+
             toast.add({
                 severity: 'success',
                 summary: 'นำเข้าเรียบร้อย',
@@ -396,7 +394,6 @@ function importLayout(event) {
     reader.readAsText(file);
 }
 
-
 // ตัวแปรสำหรับจำนวนแถวที่แสดงใน preview
 const previewRows = ref(30);
 
@@ -404,7 +401,7 @@ const previewRows = ref(30);
 const layoutPreview = computed(() => {
     const matrix = createLayoutMatrix();
     const preview = matrix.slice(0, previewRows.value); // แสดงตาม previewRows
-    
+
     return preview;
 });
 
@@ -427,7 +424,7 @@ const statistics = computed(() => {
     const totalSeats = seatLayout.value.rows * seatLayout.value.seatsPerRow;
     const pillarSeats = pillars.value.reduce((sum, p) => sum + p.length, 0);
     const availableSeats = totalSeats - pillarSeats;
-    
+
     return {
         totalSeats,
         pillarSeats,
@@ -444,7 +441,7 @@ onMounted(() => {
 <template>
     <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
         <Toast />
-        
+
         <!-- Header -->
         <div class="bg-white dark:bg-gray-800 shadow-lg">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -464,7 +461,6 @@ onMounted(() => {
         </div>
 
         <div class="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-
             <!-- Main Content Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 sm:gap-3">
                 <!-- Left Sidebar - Controls -->
@@ -496,9 +492,7 @@ onMounted(() => {
                                     </div>
                                 </div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                    <template v-if="!template.isCustom">
-                                        {{ template.rows }} แถว × {{ template.seatsPerRow }} ที่นั่ง
-                                    </template>
+                                    <template v-if="!template.isCustom"> {{ template.rows }} แถว × {{ template.seatsPerRow }} ที่นั่ง </template>
                                     <template v-else>
                                         <span class="text-blue-600 font-medium">กำหนดขนาดเอง</span>
                                         <div class="text-xs text-gray-400">คลิกเพื่อเปิดฟอร์มกำหนดเอง</div>
@@ -516,7 +510,7 @@ onMounted(() => {
                             </div>
                             ข้อมูล Layout ปัจจุบัน
                         </h2>
-                        
+
                         <div class="space-y-1">
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded p-1.5">
                                 <div class="text-center">
@@ -524,7 +518,7 @@ onMounted(() => {
                                     <div class="text-xs text-gray-600 dark:text-gray-400">ที่นั่งต่อแถว</div>
                                 </div>
                             </div>
-                            
+
                             <div class="grid grid-cols-2 gap-1">
                                 <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-1 text-center">
                                     <div class="text-xs font-bold text-gray-900 dark:text-white">{{ seatLayout.seatsPerSideA }}</div>
@@ -546,7 +540,7 @@ onMounted(() => {
                             </div>
                             เพิ่มเสา
                         </h2>
-                        
+
                         <!-- Sub Menu Content -->
                         <div v-if="showAddPillarDropdown" class="space-y-3 mt-2">
                             <div class="grid grid-cols-2 gap-2">
@@ -562,10 +556,7 @@ onMounted(() => {
                                 </div>
                                 <div>
                                     <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">ฝั่ง</label>
-                                    <select
-                                        v-model="newPillar.side"
-                                        class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                                    >
+                                    <select v-model="newPillar.side" class="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                                         <option value="left">ซ้าย</option>
                                         <option value="right">ขวา</option>
                                     </select>
@@ -601,14 +592,15 @@ onMounted(() => {
                                 เพิ่มเสา
                             </button>
                         </div>
-                        
+
                         <!-- Toggle Button -->
-                        <button @click="showAddPillarDropdown = !showAddPillarDropdown" 
-                                class="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-1 sm:py-1.5 px-2 rounded transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center text-xs mt-2">
+                        <button
+                            @click="showAddPillarDropdown = !showAddPillarDropdown"
+                            class="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-semibold py-1 sm:py-1.5 px-2 rounded transition-all duration-200 shadow-sm hover:shadow-md flex items-center justify-center text-xs mt-2"
+                        >
                             <Icon :icon="showAddPillarDropdown ? 'mdi:minus' : 'mdi:plus'" class="mr-1" width="10" height="10" />
                             {{ showAddPillarDropdown ? 'ซ่อนฟอร์ม' : 'เพิ่มเสา' }}
-                            <Icon icon="mdi:chevron-down" class="ml-1 transition-transform duration-200" 
-                                  :class="showAddPillarDropdown ? 'rotate-180' : ''" width="8" height="8" />
+                            <Icon icon="mdi:chevron-down" class="ml-1 transition-transform duration-200" :class="showAddPillarDropdown ? 'rotate-180' : ''" width="8" height="8" />
                         </button>
                     </div>
 
@@ -626,24 +618,15 @@ onMounted(() => {
                             <p class="text-xs text-gray-400 mt-1">กรุณากดปุ่ม "เพิ่มเสา หรือ กดตรงที่นั่ง" เพื่อเริ่มต้นวางเสา</p>
                         </div>
                         <div v-else class="space-y-2 max-h-48 overflow-y-auto">
-                            <div
-                                v-for="pillar in pillars"
-                                :key="pillar.id"
-                                class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                            >
+                            <div v-for="pillar in pillars" :key="pillar.id" class="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
                                 <div class="flex items-center space-x-2">
                                     <Icon icon="mdi:pillar" class="text-orange-600" width="16" height="16" />
                                     <div>
-                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            แถว {{ pillar.row + 1 }}, ฝั่ง {{ pillar.side === 'left' ? 'ซ้าย' : 'ขวา' }}
-                                        </div>
-                                        <div class="text-xs text-gray-600 dark:text-gray-400">
-                                            ตำแหน่ง {{ pillar.index }}, ยาว {{ pillar.length }} ช่อง
-                                        </div>
+                                        <div class="text-sm font-medium text-gray-900 dark:text-white">แถว {{ pillar.row + 1 }}, ฝั่ง {{ pillar.side === 'left' ? 'ซ้าย' : 'ขวา' }}</div>
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">ตำแหน่ง {{ pillar.index }}, ยาว {{ pillar.length }} ช่อง</div>
                                     </div>
                                 </div>
-                                <button @click="removePillar(pillar.id)" 
-                                        class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
+                                <button @click="removePillar(pillar.id)" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300">
                                     <Icon icon="mdi:delete" width="16" height="16" />
                                 </button>
                             </div>
@@ -680,15 +663,19 @@ onMounted(() => {
                                 ตัวอย่าง Layout ({{ previewRows }} แถวแรก)
                             </h2>
                             <div class="flex items-center gap-1">
-                                <button @click="decreasePreviewRows" 
-                                        :disabled="previewRows <= 5"
-                                        class="p-1 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <button
+                                    @click="decreasePreviewRows"
+                                    :disabled="previewRows <= 5"
+                                    class="p-1 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
                                     <Icon icon="mdi:minus" class="text-gray-600 dark:text-gray-400" width="12" height="12" />
                                 </button>
                                 <span class="text-xs text-gray-600 dark:text-gray-400 px-2">{{ previewRows }}</span>
-                                <button @click="increasePreviewRows" 
-                                        :disabled="previewRows >= 100"
-                                        class="p-1 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                                <button
+                                    @click="increasePreviewRows"
+                                    :disabled="previewRows >= 100"
+                                    class="p-1 bg-gray-100 dark:bg-gray-700 rounded hover:bg-gray-200 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
                                     <Icon icon="mdi:plus" class="text-gray-600 dark:text-gray-400" width="12" height="12" />
                                 </button>
                             </div>
@@ -697,9 +684,7 @@ onMounted(() => {
                             <div class="overflow-x-auto">
                                 <div class="inline-block min-w-full">
                                     <div v-for="(row, rowIdx) in layoutPreview" :key="rowIdx" class="flex items-center mb-0.5">
-                                        <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">
-                                            แถว A{{ rowIdx + 1 }}
-                                        </div>
+                                        <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">แถว A{{ rowIdx + 1 }}</div>
                                         <div class="flex gap-0.5 items-center">
                                             <!-- ฝั่งซ้าย -->
                                             <div class="flex gap-1">
@@ -709,24 +694,18 @@ onMounted(() => {
                                                     @click="togglePillar(rowIdx, 'left', seatIdx)"
                                                     :class="[
                                                         'w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 rounded-sm border transition-all duration-200 cursor-pointer',
-                                                        seat === 'pillar' 
-                                                            ? 'bg-yellow-400 border-yellow-600 hover:bg-yellow-500' 
-                                                            : 'bg-blue-200 border-blue-400 hover:bg-blue-300'
+                                                        seat === 'pillar' ? 'bg-yellow-400 border-yellow-600 hover:bg-yellow-500' : 'bg-blue-200 border-blue-400 hover:bg-blue-300'
                                                     ]"
                                                     :title="seat === 'pillar' ? `คลิกเพื่อลบเสา (ตำแหน่ง ${seatIdx + 1})` : `คลิกเพื่อเพิ่มเสา (ตำแหน่ง ${seatIdx + 1})`"
                                                 ></div>
                                             </div>
-                                            <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">
-                                            แถว A{{ rowIdx + 1 }}
+                                            <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">แถว A{{ rowIdx + 1 }}</div>
+                                            <!-- ช่องว่างตรงกลาง -->
+                                            <div class="w-5 h-5 sm:w-5.5 sm:h-5.5 lg:w-10 lg:h-5 bg-green-100 border border-dashed border-green-300 dark:border-green-600 rounded-sm mx-0.5 flex items-center justify-center">
+                                                <Icon icon="mdi:walk" class="text-green-500" width="10" height="10" />
                                             </div>
-                                              <!-- ช่องว่างตรงกลาง -->
-                                              <div class="w-5 h-5 sm:w-5.5 sm:h-5.5 lg:w-10 lg:h-5 bg-green-100 border border-dashed border-green-300 dark:border-green-600 rounded-sm mx-0.5 flex items-center justify-center">
-                                                  <Icon icon="mdi:walk" class="text-green-500" width="10" height="10" />
-                                              </div>
-                                              
-                                            <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">
-                                            แถว B{{ rowIdx + 1 }}
-                                            </div>
+
+                                            <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">แถว B{{ rowIdx + 1 }}</div>
                                             <!-- ฝั่งขวา -->
                                             <div class="flex gap-1">
                                                 <div
@@ -735,16 +714,12 @@ onMounted(() => {
                                                     @click="togglePillar(rowIdx, 'right', seatIdx)"
                                                     :class="[
                                                         'w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 rounded-sm border transition-all duration-200 cursor-pointer',
-                                                        seat === 'pillar' 
-                                                            ? 'bg-yellow-400 border-yellow-600 hover:bg-yellow-500' 
-                                                            : 'bg-pink-200 border-pink-400 hover:bg-pink-300'
+                                                        seat === 'pillar' ? 'bg-yellow-400 border-yellow-600 hover:bg-yellow-500' : 'bg-pink-200 border-pink-400 hover:bg-pink-300'
                                                     ]"
                                                     :title="seat === 'pillar' ? `คลิกเพื่อลบเสา (ตำแหน่ง ${seatIdx + 1})` : `คลิกเพื่อเพิ่มเสา (ตำแหน่ง ${seatIdx + 1})`"
                                                 ></div>
                                             </div>
-                                            <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">
-                                            แถว B{{ rowIdx + 1 }}
-                                            </div>
+                                            <div class="w-12 text-xs font-medium text-gray-600 dark:text-gray-400 mr-1 text-center">แถว B{{ rowIdx + 1 }}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -770,7 +745,6 @@ onMounted(() => {
                                 <span class="text-gray-600 dark:text-gray-400">ทางเดิน</span>
                             </div>
                         </div>
-                        
                     </div>
                 </div>
             </div>
@@ -786,83 +760,71 @@ onMounted(() => {
                     </button>
                 </div>
                 <!-- Debug Info - ซ่อนแล้ว -->
-            <div class="space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">จำนวนแถว</label>
-                        <input 
-                            v-model.number="customLayout.rows" 
-                            type="number" 
-                            min="1" 
-                            max="200" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">จำนวนที่นั่งต่อแถว (คำนวณอัตโนมัติ)</label>
-                        <input 
-                            :value="customLayout.seatsPerSideA + customLayout.seatsPerSideB" 
-                            type="number" 
-                            readonly
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
-                        />
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">จำนวนที่นั่งฝั่งซ้าย</label>
-                        <input 
-                            v-model.number="customLayout.seatsPerSideA" 
-                            type="number" 
-                            min="1" 
-                            max="100" 
-                            @input="autoCalculateSeatsPerRow"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">จำนวนที่นั่งฝั่งขวา</label>
-                        <input 
-                            v-model.number="customLayout.seatsPerSideB" 
-                            type="number" 
-                            min="1" 
-                            max="100" 
-                            @input="autoCalculateSeatsPerRow"
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    </div>
-                </div>
-                
-                <div class="bg-blue-50 p-4 rounded-lg">
-                    <h4 class="font-semibold text-blue-800 mb-2">📊 ข้อมูล Layout</h4>
-                    <div class="text-sm text-blue-700">
-                        <div>แถว: {{ customLayout.rows }} แถว</div>
-                        <div>ที่นั่งต่อแถว: {{ customLayout.seatsPerRow }} ที่นั่ง ({{ customLayout.seatsPerSideA }} + {{ customLayout.seatsPerSideB }})</div>
-                        <div>ฝั่งซ้าย: {{ customLayout.seatsPerSideA }} ที่นั่ง</div>
-                        <div>ฝั่งขวา: {{ customLayout.seatsPerSideB }} ที่นั่ง</div>
-                        <div class="mt-2 text-xs" :class="customLayout.seatsPerSideA + customLayout.seatsPerSideB === customLayout.seatsPerRow ? 'text-green-600' : 'text-red-600'">
-                            <Icon :icon="customLayout.seatsPerSideA + customLayout.seatsPerSideB === customLayout.seatsPerRow ? 'mdi:check-circle' : 'mdi:alert-circle'" class="mr-1" width="16" height="16" />
-                            {{ customLayout.seatsPerSideA + customLayout.seatsPerSideB === customLayout.seatsPerRow ? 'ข้อมูลถูกต้อง' : 'จำนวนที่นั่งไม่ตรงกัน' }}
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">จำนวนแถว</label>
+                            <input v-model.number="customLayout.rows" type="number" min="1" max="200" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">จำนวนที่นั่งต่อแถว (คำนวณอัตโนมัติ)</label>
+                            <input
+                                :value="customLayout.seatsPerSideA + customLayout.seatsPerSideB"
+                                type="number"
+                                readonly
+                                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300"
+                            />
                         </div>
                     </div>
-                </div>
-                
-                <div class="flex justify-end gap-2">
-                    <button @click="cancelCustomLayout" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
-                        ยกเลิก
-                    </button>
-                    <button 
-                        @click="confirmCustomLayout" 
-                        :disabled="customLayout.seatsPerSideA + customLayout.seatsPerSideB !== customLayout.seatsPerRow"
-                        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
-                    >
-                        ยืนยัน
-                    </button>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">จำนวนที่นั่งฝั่งซ้าย</label>
+                            <input
+                                v-model.number="customLayout.seatsPerSideA"
+                                type="number"
+                                min="1"
+                                max="100"
+                                @input="autoCalculateSeatsPerRow"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">จำนวนที่นั่งฝั่งขวา</label>
+                            <input
+                                v-model.number="customLayout.seatsPerSideB"
+                                type="number"
+                                min="1"
+                                max="100"
+                                @input="autoCalculateSeatsPerRow"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="card p-4 rounded-lg">
+                        <h4 class="text-base font-semibold mb-2">📊 ข้อมูล Layout</h4>
+                        <div class="text-base grid grid-cols-2 gap-x-4 gap-y-2">
+                            <div>แถว -> {{ customLayout.rows }} แถว</div>
+                            <div>ที่นั่งต่อแถว -> {{ customLayout.seatsPerRow }} ที่นั่ง</div>
+                            <div>ฝั่งซ้าย -> {{ customLayout.seatsPerSideA }} ที่นั่ง</div>
+                            <div>ฝั่งขวา -> {{ customLayout.seatsPerSideB }} ที่นั่ง</div>
+                            <div class="mt-2 text-sm flex" :class="customLayout.seatsPerSideA + customLayout.seatsPerSideB === customLayout.seatsPerRow ? 'text-green-600' : 'text-red-600'">
+                                <Icon :icon="customLayout.seatsPerSideA + customLayout.seatsPerSideB === customLayout.seatsPerRow ? 'mdi:check-circle' : 'mdi:alert-circle'" class="mr-1" width="16" height="16" />
+                                {{ customLayout.seatsPerSideA + customLayout.seatsPerSideB === customLayout.seatsPerRow ? 'ข้อมูลถูกต้อง' : 'จำนวนที่นั่งไม่ตรงกัน' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-2">
+                        <button @click="cancelCustomLayout" class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">ยกเลิก</button>
+                        <button @click="confirmCustomLayout" :disabled="customLayout.seatsPerSideA + customLayout.seatsPerSideB !== customLayout.seatsPerRow" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400">
+                            ยืนยัน
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
     </div>
 </template>
 
