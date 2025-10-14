@@ -844,7 +844,7 @@ class PersonList(APIView):
         if not ids or not verified_field:
             return Response({'error': 'ข้อมูลไม่ครบ'}, status=400)
 
-        now = timezone.localtime(timezone.now())
+        now = timezone.now()
         new_val = int(verified)
 
         updated_field = verified_field.replace('verified', 'verified_updated_at')

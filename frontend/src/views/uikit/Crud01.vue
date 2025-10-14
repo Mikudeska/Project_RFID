@@ -286,17 +286,17 @@ const closeDialog = () => {
 
 const saveProduct = async () => {
     submitted.value = true;
-    // ตรวจสอบว่ามีชื่อหรือไม่ (name.trim)
     if (product?.value?.name?.trim()) {
         try {
-            if (product.value.id) {
-                await api.put(`api/person/${product.value.id}/`, product.value);
+            const payload = { ...product.value };
+            payload.verified1 = payload.verified;
+            delete payload.verified;
+            if (payload.id) {
+                await api.put(`api/person/${payload.id}/`, payload);
             } else {
-                await api.post('api/person/', product.value);
+                await api.post('api/person/', payload);
             }
-            // ดึงข้อมูลใหม่หลังบันทึก เพื่ออัพเดตตารางหรือรายการ
             await fetchPersons();
-            // ปิด dialog
             productDialog.value = false;
         } catch (error) {
             console.error('Error saving data:', error);
@@ -386,7 +386,9 @@ function hideDialog() {
 }
 
 function editProduct(prod) {
-    product.value = { ...prod };
+    const editedProduct = { ...prod };
+    editedProduct.verified = getLatestVerified(prod);
+    product.value = editedProduct;
     productDialog.value = true;
 }
 
@@ -628,11 +630,11 @@ const tableData = computed(() => {
                     <template #body="{ data }">
                         <Icon
                             class="icon"
-                            :icon="data.verified === 1 ? 'rivet-icons:check-circle-solid' : data.verified === 0 ? 'rivet-icons:close-circle-solid' : 'tdesign:certificate-filled'"
+                            :icon="getLatestVerified(data) === 1 ? 'rivet-icons:check-circle-solid' : getLatestVerified(data) === 0 ? 'rivet-icons:close-circle-solid' : 'tdesign:certificate-filled'"
                             :class="{
-                                'text-green-500': data.verified === 1,
-                                'text-red-500': data.verified === 0,
-                                'text-yellow-300': data.verified === 2
+                                'text-green-500': getLatestVerified(data) === 1,
+                                'text-red-500': getLatestVerified(data) === 0,
+                                'text-yellow-300': getLatestVerified(data) === 2
                             }"
                         />
                     </template>
