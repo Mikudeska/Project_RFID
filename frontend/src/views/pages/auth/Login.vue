@@ -1,7 +1,8 @@
 <script setup>
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 import router from '@/router';
-import { ref } from 'vue';
+// V V V 1. Import nextTick เข้ามาใช้งาน V V V
+import { ref, nextTick } from 'vue';
 import api from '@/plugins/axios';
 
 import bg1 from '@/assets/image/background/bg1.jpg';
@@ -29,13 +30,13 @@ async function handleLogin() {
         await api.get('api/get-csrf-token/');
 
         // 2) Login - ส่งข้อมูลระยะเวลา expires
-        const rememberMe = checked.value; // ตรวจสอบว่าเลือกจดจำฉันหรือไม่
-        const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 1 เดือน (30 วัน) หรือ 1 วัน
+        const rememberMe = checked.value;
+        const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
 
         await api.post('api/login/', {
             username: username.value,
             password: password.value,
-            expires_in: expiresIn // ส่งระยะเวลา expires ไปที่ Backend
+            expires_in: expiresIn
         });
 
         // 3) ดึง profile
@@ -43,7 +44,9 @@ async function handleLogin() {
         auth.setUser(res.data);
         console.log('Profile:', res.data);
 
-        router.push('/');
+        // V V V 2. แก้ไขตรงนี้: ใช้ nextTick ครอบ router.push V V V
+        await nextTick(); // รอให้การอัปเดต state ของ Vue เสร็จสิ้น
+        router.push('/'); // จากนั้นค่อยเปลี่ยนหน้า
     } catch (err) {
         console.error(err);
         errorMsg.value = 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';
@@ -75,12 +78,11 @@ async function handleLogin() {
 
                         <div>
                             <label for="username" class="block mb-2 text-xl font-medium">ชื่อผู้ใช้งาน</label>
-                            <InputText id="username" type="text" placeholder="ใส่ชื่อผู้ใช้งานที่ตั้งไว้" class="w-full md:w-[30rem] mb-4" v-model="username" />
-                            <!-- ข้อความ error สีแดงใต้ช่อง username -->
-                            <p v-if="errorMsg" class="mb-4 text-red-600">{{ errorMsg }}</p>
+                            <InputText id="username" type="text" placeholder="ใส่ชื่อผู้ใช้งานที่ตั้งไว้" class="w-full md:w-[30rem] mb-4" v-model="username" @keyup.enter="handleLogin" />
 
                             <label for="password" class="block mb-2 text-xl font-medium">รหัสผ่าน</label>
-                            <Password id="password" v-model="password" placeholder="ใส่รหัสผ่านที่ตั้งไว้" :toggleMask="true" class="mb-4" fluid :feedback="false" />
+                            <Password id="password" v-model="password" placeholder="ใส่รหัสผ่านที่ตั้งไว้" :toggleMask="true" class="mb-4" fluid :feedback="false" @keyup.enter="handleLogin" />
+                            <p v-if="errorMsg" class="mb-4 text-red-600">{{ errorMsg }}</p>
 
                             <div class="flex items-center justify-between gap-8 mt-2 mb-8">
                                 <div class="flex items-center">

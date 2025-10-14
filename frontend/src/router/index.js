@@ -33,7 +33,8 @@ const router = createRouter({
                 {
                     path: '/uikit/SeatDesigner',
                     name: 'SeatDesigner',
-                    component: () => import('@/views/uikit/SeatDesigner.vue')
+                    component: () => import('@/views/uikit/SeatDesigner.vue'),
+                    meta: { requiredStatus: 'Dev' }
                 },
                 {
                     path: '/uikit/theme',
@@ -66,9 +67,9 @@ const router = createRouter({
                     component: () => import('@/views/uikit/ListDoc.vue')
                 },
                 {
-                    path: '/pages/empty',
-                    name: 'empty',
-                    component: () => import('@/views/pages/Empty.vue')
+                    path: '/pages/myprofile',
+                    name: 'profile',
+                    component: () => import('@/views/pages/Profile.vue')
                 }
             ]
         },
@@ -110,13 +111,24 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
     const authStore = useAuthStore();
     const isAuthenticated = authStore.isAuthenticated;
+    const userStatus = authStore.status; // ดึง status ของผู้ใช้ออกมา
 
-    // หากผู้ใช้ไม่ได้ล็อกอินและพยายามไปที่หน้าอื่น ๆ จะถูกนำไปหน้า login
-    if (!isAuthenticated && to.name !== 'login' && to.name !== 'landing' && to.name !== 'error') {
-        next({ name: 'login' });
+    // 1. ตรวจสอบว่า Route ที่จะไป ต้องการสิทธิ์พิเศษหรือไม่
+    if (to.meta.requiredStatus) {
+        // 2. ถ้าต้องการสิทธิ์ ให้เช็คว่าผู้ใช้ login แล้ว และมี status ตรงตามที่ต้องการหรือไม่
+        if (isAuthenticated && userStatus === to.meta.requiredStatus) {
+            next(); // สิทธิ์ถูกต้อง ไปต่อได้
+        } else {
+            // ถ้า status ไม่ถูกต้อง ให้ไปหน้า Access Denied
+            next({ name: 'accessDenied' });
+        }
     } else {
-        next();
+        // 3. ถ้า Route ไม่ต้องการสิทธิ์พิเศษ ก็ใช้ logic การตรวจสอบ login แบบเดิม
+        if (!isAuthenticated && to.name !== 'login' && to.name !== 'landing' && to.name !== 'error') {
+            next({ name: 'login' });
+        } else {
+            next(); // ไปต่อได้
+        }
     }
 });
-
 export default router;

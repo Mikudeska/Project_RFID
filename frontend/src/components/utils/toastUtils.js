@@ -21,8 +21,7 @@ export function createLocalToast() {
     return {
         success: (msg, detail) => toast.add({ severity: 'success', summary: msg, detail, life: 3000 }),
         error: (msg, detail) => toast.add({ severity: 'error', summary: msg, detail, life: 3000 }),
-        info:   (msg, detail) => toast.add({ severity: 'info', summary: msg, detail, life: 3000 }),
-        warn:   (msg, detail) => toast.add({ severity: 'warn', summary: msg, detail, life: 3000 })
+        info: (msg, detail) => toast.add({ severity: 'info', summary: msg, detail, life: 3000 }),
+        warn: (msg, detail) => toast.add({ severity: 'warn', summary: msg, detail, life: 3000 })
     };
 }
-

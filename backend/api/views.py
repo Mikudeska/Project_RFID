@@ -5,7 +5,7 @@ from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.db.models import Q
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.decorators import login_required
 from tablib import Dataset
@@ -25,7 +25,7 @@ from reportlab.lib.pagesizes import A4
 from datetime import datetime
 from .resources import PersonResource
 from .consumers import broadcast_to_crud01, broadcast_stats_update, broadcast_ws
-from .models import Person, Log
+from .models import Person, Log, Profile
 from .serializers import PersonSerializer, LogSerializer
 from datetime import datetime, timedelta
 from urllib.parse import quote
@@ -70,7 +70,27 @@ def login_view(request):
 
     else:
         return JsonResponse({"detail": "Invalid credentials"}, status=400)
+    
+@login_required
+@require_POST
+def change_password_view(request):
+    try:
+        data = json.loads(request.body)
+        new_password = data.get('new_password')
 
+        if not new_password:
+            return JsonResponse({'error': 'New password not provided'}, status=400)
+
+        user = request.user
+        user.set_password(new_password) # เข้ารหัสและตั้งรหัสผ่านใหม่
+        user.save()
+
+        # อัปเดต session ของผู้ใช้เพื่อไม่ให้หลุดออกจากระบบ
+        update_session_auth_hash(request, user)
+
+        return JsonResponse({'message': 'Password updated successfully'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 # ✅ Logout
 @require_POST
@@ -82,21 +102,55 @@ def logout_view(request):
 # ✅ ดึง user ปัจจุบัน
 @login_required
 def profile_view(request):
-    user = request.user
-    # ตรวจสอบกลุ่ม Locked / Unlocked
-    if user.groups.filter(name='Dev').exists():
-        status = 'Dev'
-    else:
-        status = 'Staff'
+    user = request.user # <-- ย้าย user มาไว้ข้างบนเพื่อใช้ร่วมกัน
 
-    return JsonResponse({
-        "username": request.user.username,
-        "email": request.user.email,
-        "first_name": request.user.first_name,
-        "last_name": request.user.last_name,
-        "nickname": request.user.profile.nickname if hasattr(request.user, 'profile') else '',
-        "status": status
-    })
+    if request.method == 'GET':
+        if user.groups.filter(name='Dev').exists():
+            status = 'Dev'
+        else:
+            status = 'Staff'
+
+        return JsonResponse({
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "nickname": user.profile.nickname if hasattr(user, 'profile') else '',
+            "status": status
+        })
+
+    elif request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+
+            user.first_name = data.get('first_name', user.first_name)
+            user.last_name = data.get('last_name', user.last_name)
+            user.save()
+            profile, created = Profile.objects.get_or_create(user=user)
+            if created:
+                print(f"Created a new profile for user: {user.username}")
+
+            profile.nickname = data.get('nickname', profile.nickname)
+            profile.save()
+                
+            if user.groups.filter(name='Dev').exists():
+                status = 'Dev'
+            else:
+                status = 'Staff'
+
+            return JsonResponse({
+                "username": user.username,
+                "email": user.email,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "nickname": profile.nickname, # ใช้ profile.nickname ที่เราเพิ่งบันทึก
+                "status": status
+            }, status=200)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Method not allowed'}, status=405)
 
 def file_iterator(buffer, chunk_size=8192):
     buffer.seek(0)
