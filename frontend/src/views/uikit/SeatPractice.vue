@@ -4,6 +4,7 @@ import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import { useToast } from 'primevue/usetoast';
 import { Icon } from '@iconify/vue';
+import { useAuthStore } from '@/stores/auth';
 
 // ตัวแปรเริ่มต้น
 const NUM_ROWS = ref(70);
@@ -18,6 +19,7 @@ const verifiedFilter = ref('all');
 const dialogVisible = ref(false);
 const selectedPerson = ref({});
 const toast = useToast();
+const auth = useAuthStore();
 const showFilterDropdown = ref(false);
 const filterDropdownRef = ref(null);
 const filterButtonRef = ref(null);
@@ -611,7 +613,7 @@ function getMiniMapColor(status) {
         <!-- Filter Icon Button (Right Top) -->
         <div class="fixed z-50 top-20 right-6 flex flex-row gap-3">
             <!-- Designer Button -->
-            <button @click="$router.push('/uikit/SeatDesigner')" class="p-2 transition-all duration-300 bg-purple-100 dark:bg-purple-900 border border-purple-300 dark:border-purple-600 rounded-full shadow-lg hover:bg-purple-200 dark:hover:bg-purple-800 hover:scale-110 hover:shadow-xl transform" title="ออกแบบแผนที่นั่ง">
+            <button v-if="auth.status !== 'Staff'" @click="$router.push('/uikit/SeatDesigner')" class="p-2 transition-all duration-300 bg-purple-100 dark:bg-purple-900 border border-purple-300 dark:border-purple-600 rounded-full shadow-lg hover:bg-purple-200 dark:hover:bg-purple-800 hover:scale-110 hover:shadow-xl transform" title="ออกแบบแผนที่นั่ง">
                 <Icon icon="mdi:chair-rolling" class="text-purple-600 dark:text-purple-300" width="28" height="28" />
             </button>
             <!-- Filter Button -->
