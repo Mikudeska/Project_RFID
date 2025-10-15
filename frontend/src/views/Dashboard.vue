@@ -21,9 +21,9 @@ const displayDateString = computed(() => {
 });
 
 const features = ref([
-    { title: 'จำนวนบัญฑิตทั้งหมด', description: '0' },
-    { title: 'จำนวนบัญฑิตที่ต้องมารายงานตัวทั้งหมด', description: '0' },
-    { title: 'จำนวนบัญฑิตที่มารายงานตัว', description: '0' },
+    { title: 'จำนวนบัณฑิตทั้งหมด', description: '0' },
+    { title: 'จำนวนบัณฑิตที่ต้องมารายงานตัวทั้งหมด', description: '0' },
+    { title: 'จำนวนบัณฑิตที่มารายงานตัว', description: '0' },
     { title: 'อยู่ในห้องพิธี', description: '0' }
 ]);
 
@@ -34,7 +34,7 @@ function handleWsMessage(event) {
         // อัพเดต features ตามข้อมูลใหม่
         const d = msg.data;
         features.value = [
-            { title: 'จำนวนบัญฑิตทั้งหมด', description: d.total },
+            { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
             { title: 'ยังไม่รายงานตัว', description: d.checked_in },
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }

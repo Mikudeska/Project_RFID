@@ -9,16 +9,12 @@ const API_BASE = import.meta.env.VITE_API_BASE;
 // สร้างตัวแปรต่างๆ
 const persons = ref([]);
 const loading = ref(false);
-const filterMachine = ref('AB'); // 'AB', 'A', 'B', 'C', 'ABC'
-const machineOptions = [
-    { label: 'เสา A', value: 'A' },
-    { label: 'เสา B', value: 'B' },
-    { label: 'เสา C', value: 'C' },
-    { label: 'เสา A - B', value: 'AB' },
-    { label: 'เสา A - C', value: 'AC' },
-    { label: 'เสา B - C', value: 'BC' },
-    { label: 'เสา A - B - C', value: 'ABC' }
-];
+
+const visibleMachines = ref({
+    A: true, // ตั้งค่าเริ่มต้นให้แสดงเสา A
+    B: true, // ตั้งค่าเริ่มต้นให้แสดงเสา B
+    C: false // ตั้งค่าเริ่มต้นให้ซ่อนเสา C
+});
 
 // ดึงข้อมูลจาก API
 async function fetchPersons() {
@@ -36,8 +32,8 @@ async function fetchPersons() {
     }
 }
 
-const wsStore = useWebSocketStore(); // ✅ 2. สร้าง instance ของ store
-let unregisterWsHandler = null; // ✅ 3. สร้างตัวแปรไว้เก็บฟังก์ชันยกเลิก
+const wsStore = useWebSocketStore();
+let unregisterWsHandler = null;
 
 function handleWsMessage(msg) {
     if (!msg || !msg.action) {
@@ -102,29 +98,48 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
 
 <template>
     <div>
-        <div class="flex flex-col gap-2 px-2 mb-4 md:flex-row md:items-center md:justify-between">
-            <div class="flex items-center justify-center w-full gap-2 md:w-auto">
+        <div class="flex flex-col gap-4 px-2 mb-4 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center self-center justify-center w-full gap-2 md:w-auto">
                 <span class="flex items-center text-lg font-extrabold tracking-wide text-blue-700 md:text-2xl dark:text-blue-200">
                     <Icon icon="mdi:tag" class="mr-2 text-blue-400" width="28" height="28" />
                     เลขบัณฑิตที่แตะ TAG แล้ว
                 </span>
             </div>
-            <div class="flex items-center justify-end w-full gap-2 md:w-auto">
-                <label for="machine-filter" class="hidden mr-2 text-xs text-gray-500 md:inline md:text-sm dark:text-gray-300">เลือกเครื่อง:</label>
-                <select
-                    id="machine-filter"
-                    v-model="filterMachine"
-                    class="w-full px-3 py-2 text-sm font-semibold text-gray-800 transition-all duration-200 bg-white border border-gray-300 rounded-lg shadow dark:bg-slate-800 dark:border-slate-700 dark:text-gray-100 focus:ring-2 focus:ring-blue-400 md:w-44 md:text-base"
-                >
-                    <option v-for="opt in machineOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                </select>
+
+            <div class="flex items-center justify-center w-full gap-5 md:justify-end md:w-auto">
+                <label for="toggleA" class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" id="toggleA" class="sr-only" v-model="visibleMachines.A" />
+                        <div class="block w-12 h-7 bg-gray-300 rounded-full dark:bg-slate-600"></div>
+                        <div class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full dot transition-transform"></div>
+                    </div>
+                    <div class="ml-3 font-semibold text-gray-700 dark:text-gray-200">เสา A</div>
+                </label>
+
+                <label for="toggleB" class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" id="toggleB" class="sr-only" v-model="visibleMachines.B" />
+                        <div class="block w-12 h-7 bg-gray-300 rounded-full dark:bg-slate-600"></div>
+                        <div class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full dot transition-transform"></div>
+                    </div>
+                    <div class="ml-3 font-semibold text-gray-700 dark:text-gray-200">เสา B</div>
+                </label>
+
+                <label for="toggleC" class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" id="toggleC" class="sr-only" v-model="visibleMachines.C" />
+                        <div class="block w-12 h-7 bg-gray-300 rounded-full dark:bg-slate-600"></div>
+                        <div class="absolute top-1 left-1 w-5 h-5 bg-white rounded-full dot transition-transform"></div>
+                    </div>
+                    <div class="ml-3 font-semibold text-gray-700 dark:text-gray-200">เสา C</div>
+                </label>
             </div>
         </div>
+
         <div class="flex flex-col flex-wrap justify-center w-full max-w-full min-w-0 gap-4 px-1 mx-auto overflow-x-auto md:flex-row md:gap-4 lg:gap-6 xl:gap-8 flex-machine-container">
-            <!-- เครื่อง A -->
             <div
-                v-if="filterMachine === 'AB' || filterMachine === 'A' || filterMachine === 'AC' || filterMachine === 'ABC'"
-                class="flex-1 bg-blue-100/80 dark:bg-blue-900/60 rounded-2xl p-2 md:p-4 shadow-lg border border-blue-200 dark:border-blue-700 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
+                v-if="visibleMachines.A"
+                class="flex-1 p-2 bg-blue-100/80 dark:bg-blue-900/60 rounded-2xl md:p-4 shadow-lg border border-blue-200 dark:border-blue-700 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
             >
                 <div class="mb-2 text-base font-bold text-center text-blue-800 dark:text-blue-200 md:mb-3 md:text-lg">เสา A</div>
                 <div v-if="personsA.length === 0" class="text-center text-gray-400">ยังไม่มีข้อมูล</div>
@@ -136,7 +151,6 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                 >
                     <Icon icon="material-symbols:person" class="text-xl text-blue-500 md:text-2xl dark:text-blue-300" />
                     <span class="flex items-center gap-2 font-mono text-sm md:text-base">
-                        <!-- <span class="text-gray-600 dark:text-gray-200">xxxxxx</span> -->
                         <span class="inline-block rounded px-2 ml-2 tracking-widest font-bold flex-shrink-0 min-w-[44px] md:min-w-[56px] text-center" :class="idx === 0 ? 'bg-green-600 text-white' : idx === 1 ? 'bg-yellow-400 text-gray-900' : ''">
                             {{ person.id }}
                         </span>
@@ -153,10 +167,10 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     </span>
                 </div>
             </div>
-            <!-- เครื่อง B -->
+
             <div
-                v-if="filterMachine === 'AB' || filterMachine === 'B' || filterMachine === 'BC' || filterMachine === 'ABC'"
-                class="flex-1 bg-purple-100/80 dark:bg-purple-900/60 rounded-2xl p-2 md:p-4 shadow-lg border border-purple-200 dark:border-purple-700 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
+                v-if="visibleMachines.B"
+                class="flex-1 p-2 bg-purple-100/80 dark:bg-purple-900/60 rounded-2xl md:p-4 shadow-lg border border-purple-200 dark:border-purple-700 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
             >
                 <div class="mb-2 text-base font-bold text-center text-purple-800 dark:text-purple-200 md:mb-3 md:text-lg">เสา B</div>
                 <div v-if="personsB.length === 0" class="text-center text-gray-400">ยังไม่มีข้อมูล</div>
@@ -168,7 +182,6 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                 >
                     <Icon icon="material-symbols:person" class="text-xl text-purple-500 md:text-2xl dark:text-purple-300" />
                     <span class="flex items-center gap-2 font-mono text-sm md:text-base">
-                        <!-- <span class="text-gray-600 dark:text-gray-200">xxxxxx</span> -->
                         <span class="inline-block rounded px-2 ml-2 tracking-widest font-bold flex-shrink-0 min-w-[44px] md:min-w-[56px] text-center" :class="idx === 0 ? 'bg-green-600 text-white' : idx === 1 ? 'bg-yellow-400 text-gray-900' : ''">
                             {{ person.id }}
                         </span>
@@ -185,10 +198,10 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     </span>
                 </div>
             </div>
-            <!-- เครื่อง C -->
+
             <div
-                v-if="filterMachine === 'C' || filterMachine === 'AC' || filterMachine === 'BC' || filterMachine === 'ABC'"
-                class="flex-1 bg-yellow-100/80 dark:bg-yellow-700/60 rounded-2xl p-2 md:p-4 shadow-lg border border-yellow-200 dark:border-yellow-600 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
+                v-if="visibleMachines.C"
+                class="flex-1 p-2 bg-yellow-100/80 dark:bg-yellow-700/60 rounded-2xl md:p-4 shadow-lg border border-yellow-200 dark:border-yellow-600 min-w-0 w-full max-w-full md:min-w-[280px] lg:min-w-[320px] xl:min-w-[360px] md:max-w-sm lg:max-w-md xl:max-w-lg mx-auto transition-all duration-200 mb-4 md:mb-0"
             >
                 <div class="mb-2 text-base font-bold text-center text-yellow-800 dark:text-yellow-200 md:mb-3 md:text-lg">เสา C</div>
                 <div v-if="personsC.length === 0" class="text-center text-gray-400">ยังไม่มีข้อมูล</div>
@@ -200,7 +213,6 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                 >
                     <Icon icon="material-symbols:person" class="text-xl text-yellow-500 md:text-2xl dark:text-yellow-300" />
                     <span class="flex items-center gap-2 font-mono text-sm md:text-base">
-                        <!-- <span class="text-gray-600 dark:text-gray-200">xxxxxx</span> -->
                         <span class="inline-block rounded px-2 ml-2 tracking-widest font-bold flex-shrink-0 min-w-[44px] md:min-w-[56px] text-center" :class="idx === 0 ? 'bg-green-600 text-white' : idx === 1 ? 'bg-yellow-400 text-gray-900' : ''">
                             {{ person.id }}
                         </span>
@@ -222,6 +234,21 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
 </template>
 
 <style scoped>
+/* --- CSS สำหรับ Toggle Switch --- */
+input:checked ~ .dot {
+    transform: translateX(100%);
+}
+#toggleA:checked ~ div.bg-gray-300 {
+    background-color: #3b82f6; /* blue-500 */
+}
+#toggleB:checked ~ div.bg-gray-300 {
+    background-color: #8b5cf6; /* purple-500 */
+}
+#toggleC:checked ~ div.bg-gray-300 {
+    background-color: #f59e0b; /* amber-500 */
+}
+
+/* --- CSS เดิมของ Component --- */
 .heading-contrast {
     color: #222;
     background: linear-gradient(90deg, #fff 60%, #f3f4f6 100%);
@@ -276,13 +303,11 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
         gap: 1.5rem;
     }
 }
-
 @media (max-width: 1280px) {
     .flex-machine-container {
         gap: 1rem;
     }
 }
-
 @media (max-width: 1200px) {
     .flex-machine-container {
         flex-direction: column;
@@ -291,14 +316,11 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
         gap: 1rem;
     }
 }
-
-/* Additional responsive breakpoints for sidebar compatibility */
 @media (max-width: 1024px) {
     .flex-machine-container {
         gap: 0.75rem;
     }
 }
-
 @media (max-width: 768px) {
     .flex-machine-container {
         gap: 0.5rem;

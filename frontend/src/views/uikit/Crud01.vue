@@ -346,7 +346,6 @@ async function deleteSelectedpersons() {
                 'Content-Type': 'application/json'
             }
         });
-
         persons.value = persons.value.filter((val) => !ids.includes(val.id));
         selectedpersons.value = null;
         deletepersonsDialog.value = false;

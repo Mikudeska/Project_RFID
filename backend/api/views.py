@@ -993,7 +993,7 @@ class PersonDetail(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Person.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
-    
+        
 class RFIDSimulator(APIView):
     parser_classes = [JSONParser]
     def post(self, request):
@@ -1020,6 +1020,7 @@ class RFIDSimulator(APIView):
                 if not epc:
                     continue
                 try:
+                    # ✅ Step 1: ดึงข้อมูล person เพื่อตรวจสอบสถานะปัจจุบันก่อน
                     person = Person.objects.get(rfid=epc)
 
                     verified_field = f"verified{scanner_id}"
@@ -1030,11 +1031,20 @@ class RFIDSimulator(APIView):
                     if current_status == verified_value:
                         results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
                     else:
-                        setattr(person, verified_field, verified_value)
-                        setattr(person, time_field, timezone.now())
-                        person.save()
+                        now = timezone.now()
+                        
+                        # ✅ Step 2: ใช้ .update() เพื่อสั่งให้ฐานข้อมูลอัปเดตโดยตรง
+                        #    วิธีนี้แน่นอนและมีประสิทธิภาพกว่าการใช้ .save()
+                        Person.objects.filter(pk=person.pk).update(**{
+                            verified_field: verified_value,
+                            time_field: now
+                        })
 
                         if settings.USE_CHANNEL:
+                            # ✅ Step 3: อัปเดต object ในหน่วยความจำตาม เพื่อส่งข้อมูลที่ถูกต้องผ่าน WebSocket
+                            setattr(person, verified_field, verified_value)
+                            setattr(person, time_field, now)
+                            
                             broadcast_to_crud01({
                                 'action': 'update',
                                 'id': person.id,
@@ -1046,18 +1056,15 @@ class RFIDSimulator(APIView):
                         results.append(f"rfid: {epc} name: {person.name} status: อัปเดตสถานะสำเร็จ")
 
                 except Person.DoesNotExist:
-                    person_with_empty_rfid = Person.objects.filter(rfid__isnull=True).first()
-                    if not person_with_empty_rfid:
-                        person_with_empty_rfid = Person.objects.filter(rfid='').first()
+                    # ส่วนนี้ทำงานถูกต้องอยู่แล้ว ไม่ต้องแก้ไข
+                    person_with_empty_rfid = Person.objects.filter(Q(rfid__isnull=True) | Q(rfid='')).first()
 
                     if not person_with_empty_rfid:
                         results.append(f"rfid: {epc} name: null status: ไม่พบข้อมูลในระบบ")
                     else:
                         person_with_empty_rfid.rfid = epc
-
                         verified_field = f"verified{scanner_id}"
                         time_field = f"verified_updated_at{scanner_id}"
-
                         verified_value = 2 if scanner_type == 'out' else 1
                         setattr(person_with_empty_rfid, verified_field, verified_value)
                         setattr(person_with_empty_rfid, time_field, timezone.now())
@@ -1071,14 +1078,12 @@ class RFIDSimulator(APIView):
                                 'scanner_type': scanner_type,
                             })
                             broadcast_stats_update()
-
                         results.append(f"epc: {epc} name: {person_with_empty_rfid.name} status: เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว")
 
             return Response({'results': results}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
 class LogPagination(PageNumberPagination):
     page_size = 5
 
