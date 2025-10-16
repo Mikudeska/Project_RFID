@@ -35,7 +35,7 @@ function handleWsMessage(event) {
         const d = msg.data;
         features.value = [
             { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
-            { title: 'ยังไม่รายงานตัว', description: d.checked_in },
+            { title: 'ยังไม่รายงานตัว', description: d.not_checked_in },
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
         ];
@@ -56,7 +56,7 @@ async function fetchStats() {
         const d = res.data;
         features.value = [
             { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
-            { title: 'ยังไม่รายงานตัว', description: d.checked_in },
+            { title: 'ยังไม่รายงานตัว', description: d.not_checked_in },
             { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
             { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
         ];

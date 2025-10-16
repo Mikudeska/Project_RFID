@@ -21,19 +21,8 @@ const passwordFields = ref({
 });
 const passwordError = ref('');
 
-// --- V V V ส่วนที่เพิ่มเข้ามาสำหรับ CSS Method V V V ---
-// State สำหรับสลับ type ของ input ระหว่าง 'password' กับ 'text'
 const passwordFieldType = ref('password');
 const confirmPasswordFieldType = ref('password');
-
-// ฟังก์ชันสำหรับสลับการมองเห็นรหัสผ่าน
-const togglePasswordVisibility = () => {
-    passwordFieldType.value = passwordFieldType.value === 'password' ? 'text' : 'password';
-};
-const toggleConfirmPasswordVisibility = () => {
-    confirmPasswordFieldType.value = confirmPasswordFieldType.value === 'password' ? 'text' : 'password';
-};
-// --- ^ ^ ^ สิ้นสุดส่วนที่เพิ่มเข้ามา ^ ^ ^ ---
 
 // --- Functions ---
 const startEditing = () => {
@@ -85,14 +74,10 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="card p-5 md:p-8 rounded-lg shadow-sm">
+    <div class="p-5 rounded-lg shadow-sm card md:p-8">
         <Toast />
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold">แก้ไขโปรไฟล์</h1>
-        </div>
-
-        <div class="mt-8">
-            <h3 class="text-lg font-semibold mb-6">ข้อมูลส่วนตัว</h3>
+        <div class="">
+            <h3 class="mb-6 text-lg font-semibold">ข้อมูลส่วนตัว</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                 <div class="flex flex-col gap-2">
                     <label for="first_name" class="font-medium">ชื่อจริง</label>
@@ -150,54 +135,38 @@ onMounted(() => {
         <Divider class="my-8" />
 
         <div>
-            <h3 class="text-lg font-semibold mb-6">เปลี่ยนรหัสผ่าน</h3>
+            <input type="text" name="fakeusernameremembered" autocomplete="username" class="hidden" />
+            <input type="password" name="fakepasswordremembered" autocomplete="new-password" class="hidden" />
+
+            <h3 class="mb-6 text-lg font-semibold">เปลี่ยนรหัสผ่าน</h3>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
                 <div class="flex flex-col gap-2">
-                    <label for="new_password_custom" class="font-medium">รหัสผ่านใหม่</label>
-                    <div class="password-wrapper">
-                        <InputText id="new_password_custom" :type="passwordFieldType" v-model="passwordFields.new_password" placeholder="กรอกรหัสผ่านใหม่" class="w-full password-input" />
-                        <Icon :icon="passwordFieldType === 'password' ? 'solar:eye-closed-bold' : 'solar:eye-bold'" class="password-icon" @click="togglePasswordVisibility" />
-                    </div>
-                    <small v-if="passwordError" class="text-red-500 mt-1">
+                    <label for="new_password_custom" class="block mb-2 font-medium">รหัสผ่านใหม่</label>
+                    <Password id="new_password_custom" :type="passwordFieldType" v-model="passwordFields.new_password" placeholder="กรอกรหัสผ่านใหม่" :toggleMask="true" class="mb-4" fluid :feedback="false" autocomplete="new-password" />
+                    <small v-if="passwordError" class="mt-1 text-red-500">
                         {{ passwordError }}
                     </small>
                 </div>
-
                 <div class="flex flex-col gap-2">
-                    <label for="confirm_password_custom" class="font-medium">ยืนยันรหัสผ่านใหม่</label>
-                    <div class="password-wrapper">
-                        <InputText id="confirm_password_custom" :type="confirmPasswordFieldType" v-model="passwordFields.confirm_password" placeholder="ยืนยันรหัสผ่านอีกครั้ง" class="w-full password-input" />
-                        <Icon :icon="confirmPasswordFieldType === 'password' ? 'solar:eye-closed-bold' : 'solar:eye-bold'" class="password-icon" @click="toggleConfirmPasswordVisibility" />
-                    </div>
+                    <label for="confirm_password_custom" class="block mb-2 font-medium">ยืนยันรหัสผ่านใหม่</label>
+                    <Password
+                        id="confirm_password_custom"
+                        :type="confirmPasswordFieldType"
+                        v-model="passwordFields.confirm_password"
+                        placeholder="ยืนยันรหัสผ่านอีกครั้ง"
+                        :toggleMask="true"
+                        class="mb-4"
+                        fluid
+                        :feedback="false"
+                        autocomplete="new-password"
+                    />
                 </div>
             </div>
-            <div class="mt-6 flex">
+            <div class="flex mt-6">
                 <Button label="เปลี่ยนรหัสผ่าน" icon="pi pi-key" @click="changePassword" severity="secondary" />
             </div>
         </div>
     </div>
 </template>
 
-<style scoped>
-/* สไตล์สำหรับ Wrapper ของ Input และ Icon */
-.password-wrapper {
-    position: relative;
-    width: 100%;
-}
-
-/* สไตล์สำหรับ Icon ที่เราสร้างขึ้นเอง */
-.password-icon {
-    position: absolute;
-    top: 50%;
-    right: 1rem; /* ระยะห่างจากขอบขวา */
-    transform: translateY(-50%); /* จัดให้อยู่กึ่งกลางแนวตั้งพอดี */
-    cursor: pointer;
-    color: #f7f7f7; /* สีไอคอน */
-    font-size: 1.25rem;
-}
-
-/* เพิ่ม Padding ด้านขวาให้ Input เพื่อไม่ให้ตัวหนังสือทับไอคอน */
-.p-inputtext.password-input {
-    padding-right: 3rem !important;
-}
-</style>
+<style scoped></style>
