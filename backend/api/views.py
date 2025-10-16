@@ -334,13 +334,38 @@ class ExportPDF(View):
             y_position = 730  # ตำแหน่งเริ่มต้นของข้อมูล
             
             def get_verified_status(person):
-                if 2 in [person.verified1, person.verified2, person.verified3]:
+                """
+                หาค่า verified ล่าสุดโดยอิงจาก timestamp ที่ใหม่ที่สุด
+                """
+                latest_status = None
+                latest_time = None
+                has_any_timestamp = False
+
+                # วนลูปเพื่อหา timestamp ที่ใหม่ที่สุด
+                for i in range(1, 4):
+                    updated_time = getattr(person, f'verified_updated_at{i}')
+                    if updated_time:
+                        has_any_timestamp = True
+                        if latest_time is None or updated_time > latest_time:
+                            latest_time = updated_time
+                            latest_status = getattr(person, f'verified{i}')
+
+                # ถ้าไม่มี timestamp เลย ให้ยึดตามค่า verified ที่ไม่ใช่ 0 ตัวแรกที่เจอ
+                if not has_any_timestamp:
+                    for i in range(1, 4):
+                        status_value = getattr(person, f'verified{i}')
+                        if status_value in [1, 2]:
+                            latest_status = status_value
+                            break
+
+                # แปลงค่าตัวเลขเป็นข้อความ
+                if latest_status == 2:
                     return "อยู่ในห้องพิธี"
-                elif 1 in [person.verified1, person.verified2, person.verified3]:
+                elif latest_status == 1:
                     return "รายงานตัวแล้ว"
-                else:
+                else: # รวมถึงกรณี latest_status เป็น 0 หรือ None
                     return "ยังไม่รายงานตัว"
-            
+                
             # เขียนข้อมูล - จัดกึ่งกลางทั้งแนวตั้งและแนวนอน
             for i, person in enumerate(persons, start=1):
                 # คำนวณตำแหน่งกึ่งกลางแนวตั้งของแถว
@@ -771,23 +796,24 @@ class StatsView(APIView):
         for person in persons:
             verified_with_time = []
             for i in range(1, 4):
-                value = getattr(person, f'verified{i}', None)
+                value = getattr(person, f'verified{i}', 0)
                 timestamp = getattr(person, f'verified_updated_at{i}', None)
-                if value in [0, 1, 2]:
-                    # ถ้า timestamp ไม่มี ให้ใช้วันที่เก่ามากๆ แทน เพื่อให้ไม่เลือกก่อน timestamp อื่น
-                    if not timestamp:
-                        timestamp = datetime.min.replace(tzinfo=timezone.utc)
-                    verified_with_time.append((timestamp, value))
+
+                # ถ้า timestamp ไม่มี ให้ใช้วันที่เก่ามากๆ แทน เพื่อให้ไม่ถูกเลือกก่อน timestamp อื่น
+                if not timestamp:
+                    timestamp = datetime.min.replace(tzinfo=timezone.utc)
+                verified_with_time.append((timestamp, value))
 
             if verified_with_time:
-                latest_value = sorted(verified_with_time, reverse=True)[0][1]
+                # หาค่าล่าสุดจาก timestamp ที่ใหม่ที่สุด
+                latest_value = sorted(verified_with_time, key=lambda x: x[0], reverse=True)[0][1]
                 verified_counter[latest_value] += 1
-
+    
         stats = {
             'total': total,
-            'checked_in': verified_counter[0],
-            'in_checkin_room': verified_counter[1],
-            'in_graduation_room': verified_counter[2],
+            'not_checked_in': verified_counter[0],      # ยังไม่รายงานตัว (สถานะ 0)
+            'in_checkin_room': verified_counter[1],     # รายงานตัวแล้ว (สถานะ 1)
+            'in_graduation_room': verified_counter[2],  # อยู่ในห้องพิธี (สถานะ 2)
         }
         return Response(stats, status=200)
 

@@ -495,7 +495,18 @@ function getLatestVerified(data) {
         2: data.verified_updated_at2,
         3: data.verified_updated_at3
     };
-    const latest = Object.entries(updatedAts).sort((a, b) => new Date(b[1]) - new Date(a[1]))[0]?.[0];
+
+    // หา key (1, 2, หรือ 3) ของเวลาที่ใหม่ที่สุด
+    const latest = Object.entries(updatedAts)
+        // Filter out null or undefined timestamps before sorting
+        .filter(([, timestamp]) => timestamp)
+        .sort((a, b) => new Date(b[1]) - new Date(a[1]))[0]?.[0];
+
+    // ถ้าหา latest ไม่เจอ (อาจจะเพราะทุกค่าเป็น null) ให้คืนค่า verified1 หรือ 0 เป็นค่าเริ่มต้น
+    if (!latest) {
+        return data.verified1 !== undefined ? data.verified1 : 0;
+    }
+
     return data[`verified${latest}`];
 }
 
@@ -625,17 +636,17 @@ const tableData = computed(() => {
                     </template>
                 </Column> -->
                 <Column field="seat" header="เลขที่นั่ง" sortable style="min-width: 8rem"></Column>
-                <Column field="verified" :body="(data) => getLatestVerified(data)" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
+                <Column field="verified" header="รายงานตัว" dataType="boolean" bodyClass="text-center" style="min-width: 8rem">
                     <template #body="{ data }">
-                        <Icon
-                            class="icon"
-                            :icon="getLatestVerified(data) === 1 ? 'rivet-icons:check-circle-solid' : getLatestVerified(data) === 0 ? 'rivet-icons:close-circle-solid' : 'tdesign:certificate-filled'"
-                            :class="{
-                                'text-green-500': getLatestVerified(data) === 1,
-                                'text-red-500': getLatestVerified(data) === 0,
-                                'text-yellow-300': getLatestVerified(data) === 2
-                            }"
-                        />
+                        <template v-if="getLatestVerified(data) === 1">
+                            <Icon class="text-green-500 icon" icon="rivet-icons:check-circle-solid" />
+                        </template>
+                        <template v-else-if="getLatestVerified(data) === 2">
+                            <Icon class="text-yellow-300 icon" icon="tdesign:certificate-filled" />
+                        </template>
+                        <template v-else>
+                            <Icon class="text-red-500 icon" icon="rivet-icons:close-circle-solid" />
+                        </template>
                     </template>
                     <template #filter="{ filterModel }">
                         <label for="verified-filter" class="font-bold"> Verified </label>
