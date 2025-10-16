@@ -64,8 +64,6 @@ class PersonSerializer(serializers.ModelSerializer):
             'verified3': instance.verified3,
             'verified': data.get('verified'),  # ใช้จาก get_verified
             'rfid': instance.rfid,
-            'read_flag': instance.read_flag,
-            'read_light': instance.read_light,
         }
         return data
 

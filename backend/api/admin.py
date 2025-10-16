@@ -8,7 +8,7 @@ from .models import Profile
 @admin.register(Person)
 class PersonAdmin(admin.ModelAdmin):
     list_display = ('display_id', 'name', 'nisit', 'degree', 'seat', 'rfid', 'date')
-    list_filter = ('degree', 'verified1', 'verified2', 'verified3', 'read_flag', 'read_light')
+    list_filter = ('degree', 'verified1', 'verified2', 'verified3')
     search_fields = ('name', 'nisit', 'rfid')
     ordering = ('seat',)
     readonly_fields = ('date',)
@@ -22,7 +22,6 @@ class PersonAdmin(admin.ModelAdmin):
                 ('verified1', 'verified_updated_at1'),
                 ('verified2', 'verified_updated_at2'),
                 ('verified3', 'verified_updated_at3'),
-                ('read_flag', 'read_light'),
             )
         }),
         ('ข้อมูลระบบ', {

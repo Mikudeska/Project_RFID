@@ -19,9 +19,6 @@ class Person(models.Model):
     verified_updated_at2 = models.DateTimeField(null=True, blank=True)
     verified_updated_at3 = models.DateTimeField(null=True, blank=True)
 
-    read_flag = models.BooleanField(default=False, blank=True) 
-    read_light = models.BooleanField(default=False, blank=True) 
-
     date = models.DateTimeField(auto_now_add=True)
     rfid = models.CharField(max_length=25, unique=True, blank=True, null=True)  
 
