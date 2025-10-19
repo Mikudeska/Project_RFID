@@ -26,13 +26,20 @@ onMounted(() => {
 });
 
 watch(isConnected, (newValue, oldValue) => {
-    // เราจะแจ้งเตือนเฉพาะตอนที่สถานะเปลี่ยนจาก 'เชื่อมต่อ' (true) เป็น 'หลุด' (false)
     if (oldValue === true && newValue === false) {
         toastStore.show({
             severity: 'error',
             summary: 'การเชื่อมต่อหลุด 🛑',
-            detail: 'การเชื่อมต่อ WebSocket ขาดหาย กรุณากด F5 หรือรีเฟรชหน้าเพจเพื่อเชื่อมต่อใหม่',
-            life: 60000 // แสดงข้อความค้างไว้ 1000/1 วินาที
+            detail: 'การเชื่อมต่อ WebSocket ขาดหาย กรุณากด F5 หรือรีเฟรชหน้าเพจ',
+            sticky: true
+        });
+    } 
+    else if (oldValue === false && newValue === true) {
+        toastStore.show({
+            severity: 'success',
+            summary: 'เชื่อมต่อสำเร็จ ✅',
+            detail: 'เชื่อมต่อ WebSocket เรียบร้อย',
+            life: 3000 // 1000/1 วินาที
         });
     }
 });
