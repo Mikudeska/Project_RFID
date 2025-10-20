@@ -32,8 +32,12 @@ export const useAuthStore = defineStore('auth', () => {
         try {
             await api.get('/api/get-csrf-token/'); // ให้ browser ได้ csrftoken
             const res = await api.post('/api/login/', { username, password });
-            setUser(res.data); // data = { id, username } (จาก backend)
-            await fetchUserProfile(); // โหลดข้อมูลเต็ม ๆ
+            
+            // res.data คือข้อมูล user/profile ที่ส่งมาจาก login_view เลย
+            setUser(res.data); // data = { id, username, status, ... }
+            
+            // await fetchUserProfile(); // 👈 ลบ หรือ Comment บรรทัดนี้ (ไม่จำเป็นแล้ว)
+        
         } catch (err) {
             console.error('Login error:', err);
             throw err;

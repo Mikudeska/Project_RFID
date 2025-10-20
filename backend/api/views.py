@@ -43,29 +43,40 @@ def get_csrf_token(request):
 
 
 # ✅ Login
+@require_POST  # 👈 2. บังคับให้รับเฉพาะ POST ป้องกัน JSONDecodeError จาก GET
 def login_view(request):
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'detail': 'Empty or invalid JSON body'}, status=400)
+
     username = data.get("username")
     password = data.get("password")
-    expires_in = int(data.get("expires_in", 24 * 60 * 60))  # 1 วันเป็นค่า default หากไม่ได้ส่งมา
+    # 3. ดึงค่า expires_in มา (ยังใช้ได้กับ Session)
+    expires_in = int(data.get("expires_in", 24 * 60 * 60))  # 1 วัน
 
     user = authenticate(request, username=username, password=password)
+    
     if user is not None:
-        # สร้าง refresh token และ access token
-        refresh = RefreshToken.for_user(user)
-        access_token = refresh.access_token
-
-        # กำหนดเวลาหมดอายุของ access token ตาม expires_in ที่ส่งมาจาก frontend
-        access_token.set_exp(lifetime=timedelta(seconds=expires_in))
-
-        # Login ระบบ session ของ Django (จะสร้าง sessionid ให้)
+        # 4. Login ระบบ session ของ Django (จะสร้าง sessionid cookie)
         login(request, user)
+        
+        # 5. ตั้งค่าหมดอายุ session ตามที่ frontend ส่งมา
+        request.session.set_expiry(expires_in)
 
-        # ส่ง token กลับไปยัง frontend
+        # 6. ดึงข้อมูล profile เพื่อส่งกลับ (เหมือน profile_view)
+        if user.groups.filter(name='Dev').exists():
+            status = 'Dev'
+        else:
+            status = 'Staff'
+
+        # 7. ส่งข้อมูล user กลับไป (auth.js จะใช้ setUser(res.data))
         return JsonResponse({
-            "access": str(access_token),
-            "refresh": str(refresh),
-            "detail": "Login success"
+            "username": user.username,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "nickname": user.profile.nickname if hasattr(user, 'profile') else '',
+            "status": status
         })
 
     else:
@@ -602,7 +613,7 @@ class ExportPDFResult(View):
             if rows_y:
                 draw_table_grid(p, col_positions, rows_y)
 
-            # ---------------- 3. รายชื่อที่ยังไม่รายงานตัว ----------------
+            # ---------------- 3. รายชื่อที่ยังไม่รายงานตัว (*** แก้ไขส่วนนี้ ***) ----------------
             p.showPage()
             p.setFont('THSarabun', 25)
             p.drawCentredString(width / 2, height - 80, "รายชื่อที่ยังไม่รายงานตัว")
@@ -621,9 +632,44 @@ class ExportPDFResult(View):
             y_position = height - 140
             rows_y = [height - 110]
 
-            missing_persons = Person.objects.filter(
+            # --- Helper function สำหรับการเรียงลำดับแบบพิเศษ ---
+            def get_custom_sort_key(person):
+                person_id = str(person.id) # แปลงเป็น string ก่อนเสมอ
+
+                if person_id.startswith('ปท'):
+                    group = 1  # 1. กลุ่ม "ปท"
+                    num_part = person_id[2:] # เอาตัวเลข/ข้อความ หลัง "ปท"
+                elif person_id.startswith('ป'):
+                    group = 0  # 0. กลุ่ม "ป" (มาก่อน)
+                    num_part = person_id[1:] # เอาตัวเลข/ข้อความ หลัง "ป"
+                elif person_id.isdigit():
+                    group = 2  # 2. กลุ่ม "ตัวเลขธรรมดา"
+                    num_part = person_id
+                else:
+                    group = 3  # 3. กลุ่มอื่นๆ (ถ้ามี)
+                    num_part = person_id
+                
+                # พยายามแปลงส่วนที่เหลือเป็นตัวเลข
+                try:
+                    sort_val = int(num_part)
+                    value_type = 0 # 0. เป็นตัวเลข (มาก่อน)
+                except ValueError:
+                    sort_val = num_part # เป็นข้อความ
+                    value_type = 1 # 1. เป็นข้อความ (มาทีหลัง)
+
+                # คืนค่าเป็น tuple (Group, Type, Value)
+                return (group, value_type, sort_val)
+            # --- จบ Helper function ---
+
+            # 1. ดึงข้อมูลทั้งหมดที่ยังไม่ verified
+            missing_persons_query = Person.objects.filter(
                 verified1=0, verified2=0, verified3=0
-            ).order_by('id')
+            )
+
+            # 2. สั่งเรียงใน Python โดยใช้ฟังก์ชันที่เราสร้างขึ้น
+            missing_persons = sorted(list(missing_persons_query), key=get_custom_sort_key)
+            
+            # --- (จบส่วนแก้ไข) ---
 
             for person in missing_persons:
                 vertical_center = y_position - 15
