@@ -18,6 +18,8 @@ api.interceptors.request.use((config) => {
         const token = getCookie('csrftoken');
         if (token) config.headers['X-CSRFToken'] = token;
     }
+    // Ensure credentials are included for all requests
+    config.withCredentials = true;
     return config;
 });
 

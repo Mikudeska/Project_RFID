@@ -69,6 +69,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
 
+# อนุญาตให้ frontend อ่าน custom headers
+CORS_EXPOSE_HEADERS = [
+    'Content-Disposition',
+    'X-Filename',
+]
+
 CSRF_TRUSTED_ORIGINS = [
     "http://27.254.134.124",
     "http://localhost:5173",

@@ -145,70 +145,112 @@ const handleResetStep2 = async () => {
 // โหลดข้อมูล
 const exportPDF = async () => {
     try {
+        // 1. ดึงค่าสถานะที่เลือก (null, 0, 1, 2)
+        const status = filteredVerified.value; 
+
+        // 2. สร้าง object สำหรับ query params
+        const queryParams = {};
+        if (status !== null) {
+            // จะส่งค่า '0', '1', หรือ '2'
+            queryParams.verified_status = status;
+        }
+        // ถ้า status เป็น null, เราจะไม่ส่ง param, backend จะถือว่าเป็น 'all'
+
         const response = await api.get(`/api/export-pdf/`, {
             responseType: 'blob',
-            timeout: 30000
+            timeout: 30000,
+            params: queryParams // 👈 3. ส่ง params ที่สร้างไว้
         });
 
         if (response.data.size < 1024) {
             throw new Error('ไฟล์ PDF ว่างเปล่า');
         }
 
-        // อ่านชื่อไฟล์จาก header
+        // ... (ส่วนที่เหลือของโค้ดคุณ (การดึงชื่อไฟล์, สร้าง link) ถูกต้องแล้ว) ...
         const disposition = response.headers['content-disposition'];
         let filename = 'รายชื่อ.pdf';
-
         if (disposition) {
-            // วิธีที่ 1: แยกด้วย regex
             const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
             if (matches && matches[1]) {
                 filename = matches[1].replace(/['"]/g, '');
             }
-
-            // วิธีที่ 2: สำหรับ UTF-8 filename (ทางเลือกเสริม)
             const utf8Filename = disposition.match(/filename\*=UTF-8''(.*)/)?.[1];
             if (utf8Filename) {
                 filename = decodeURIComponent(utf8Filename);
             }
         }
-
-        // สร้างลิงก์ดาวน์โหลด
         const blob = new Blob([response.data], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
-
         const link = document.createElement('a');
         link.href = url;
         link.download = filename;
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
-
-        // ล้างทรัพยากร
         setTimeout(() => {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
         }, 100);
+
     } catch (error) {
         console.error('PDF Export Error:', error);
         alert('การส่งออก PDF ล้มเหลว: ' + error.message);
     }
 };
 
-// Export ข้อมูล
-const exportData = async (format) => {
+// Export ข้อมูล (CSV / Excel)
+const exportData = async (format) => { // format คือ 'xlsx' หรือ 'csv'
     try {
-        const response = await api.get(`/api/export/${format}/`, { responseType: 'blob' });
+        // 1. ดึงค่าสถานะที่เลือก (null, 0, 1, 2)
+        const status = filteredVerified.value; 
+        
+        // 2. (สำคัญ) แปลง 'xlsx' เป็น 'excel' ให้ตรงกับ URL ของ Django
+        const exportFormat = (format === 'xlsx') ? 'excel' : format;
 
-        // สร้างลิงก์ดาวน์โหลด
+        // 3. สร้าง objectสำหรับ query params
+        const queryParams = {};
+        if (status !== null) {
+            queryParams.verified_status = status;
+        }
+
+        const response = await api.get(`/api/export/${exportFormat}/`, { 
+            responseType: 'blob',
+            params: queryParams // 👈 4. ส่ง params ที่สร้างไว้
+        });
+
+        // สร้างชื่อไฟล์เองแทนการอ่านจาก header
+        const statusText = filteredVerified.value === null ? 'ทั้งหมด' : 
+                          filteredVerified.value === 0 ? 'ยังไม่รายงานตัว' :
+                          filteredVerified.value === 1 ? 'รายงานตัวแล้ว' : 'อยู่ในห้องพิธี';
+        
+        const today = new Date();
+        const dateStr = today.getFullYear().toString() + 
+                       (today.getMonth() + 1).toString().padStart(2, '0') + 
+                       today.getDate().toString().padStart(2, '0');
+        
+        const filename = `รายชื่อ${statusText}_${dateStr}.${format}`;
+        
+        console.log('Generated filename:', filename);
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', `persons${format}.${format}`);
+        link.setAttribute('download', filename); 
         document.body.appendChild(link);
         link.click();
         link.remove();
     } catch (error) {
         console.error('Export error:', error);
+        if (error.response) {
+            console.error('Response status:', error.response.status);
+            console.error('Response data:', error.response.data);
+            alert(`Export failed: ${error.response.data?.error || error.response.statusText}`);
+        } else if (error.request) {
+            console.error('Request error:', error.request);
+            alert('Export failed: Network error');
+        } else {
+            console.error('Error:', error.message);
+            alert(`Export failed: ${error.message}`);
+        }
     }
 };
 
@@ -456,9 +498,9 @@ const verifiedMenuItems = [
 
 const items = ref([
     {
-        label: 'รีเซ็ต',
-        icon: 'grommet-icons:power-reset',
-        color: 'text-green-500',
+        label: 'ทั้งหมด',
+        icon: 'material-symbols:border-all',
+        color: 'text-blue-500',
         command: () => {
             applyVerifiedFilter(null);
         }
@@ -532,6 +574,12 @@ const tableData = computed(() => {
         };
     });
 });
+
+const getExportUrl = (baseUrl) => {
+    // ดึงค่าสถานะที่เลือกอยู่ ถ้าไม่มีให้เป็น 'all'
+    const status = filteredVerified.value || 'all';
+    return `${baseUrl}?verified_status=${status}`;
+};
 </script>
 
 <template>
@@ -600,6 +648,10 @@ const tableData = computed(() => {
                         <div class="flex items-center gap-2">
                             <Button v-tooltip.top="'เช็คสถานะ'" severity="secondary" @click="toggleMenu2" rounded raised>
                                 <Icon icon="mdi:tag" />
+                                <span v-if="filteredVerified === null">ทั้งหมด</span>
+                                <Icon v-else-if="filteredVerified === 1" icon="rivet-icons:check-circle-solid" class="text-green-500"></Icon>
+                                <Icon v-else-if="filteredVerified === 0" icon="rivet-icons:close-circle-solid" class="text-red-500"></Icon>
+                                <Icon v-else-if="filteredVerified === 2" icon="tdesign:certificate-filled" class="text-yellow-300"></Icon>
                             </Button>
                             <Menu ref="menu2" :model="items" :popup="true">
                                 <template #item="{ item }">
@@ -799,19 +851,47 @@ const tableData = computed(() => {
             </template>
         </Toast>
 
-        <Dialog v-model:visible="ExportDialog" header="โหลดไฟล์" :modal="true">
+        <Dialog v-model:visible="ExportDialog" header="ยืนยันการโหลดไฟล์" :modal="true">
+            <div class="flex items-center justify-center gap-4 mb-5">  
+                <div class="inline-flex items-center flex-wrap gap-2 text-base"> 
+                    <span>คุณต้องการโหลดไฟล์</span>
+                    <span class="font-bold"> <span v-if="filteredVerified === null" class="text-blue-500">
+                            <Tag severity="info" class="px-2 py-1 rounded-xl">
+                                <Icon icon="material-symbols:border-all" class="mr-1" />
+                                ทั้งหมด</Tag>
+                        </span>
+                        <span v-else-if="filteredVerified === 1" class="text-green-500">
+                            <Tag severity="success" class="px-2 py-1 rounded-xl">
+                                <Icon icon="rivet-icons:check-circle-solid" class="mr-1" />
+                                รายงานตัวแล้ว</Tag>
+                        </span>
+                        <span v-else-if="filteredVerified === 0" class="text-red-500">
+                            <Tag severity="danger" class="px-2 py-1 rounded-xl">
+                                <Icon icon="rivet-icons:close-circle-solid" class="mr-1" />
+                                ยังไม่รายงานตัว</Tag>
+                        </span>
+                        <span v-else class="text-yellow-500">
+                            <Tag severity="warn" class="px-2 py-1 rounded-xl">
+                                <Icon icon="tdesign:certificate-filled" class="mr-1" />
+                                อยู่ในห้องพิธี</Tag>
+                        </span>
+                    </span> 
+                    <span>ใช่หรือไม่ ?</span>
+                </div>
+            </div>
+            
             <div class="flex items-center justify-center">
                 <Button severity="secondary" class="mr-2" @click="exportData('xlsx')" rounded raised>
                     <Icon icon="vscode-icons:file-type-excel"></Icon>
-                    <span>โหลดไฟล์เป็น Excel</span>
+                    <span class="ml-2">โหลดไฟล์เป็น Excel</span>
                 </Button>
                 <Button severity="secondary" class="mr-2" @click="exportData('csv')" rounded raised>
                     <Icon icon="catppuccin:csv"></Icon>
-                    <span>โหลดไฟล์เป็น CSV</span>
+                    <span class="ml-2">โหลดไฟล์เป็น CSV</span>
                 </Button>
                 <Button severity="secondary" class="mr-2" @click="exportPDF" rounded raised>
                     <Icon icon="vscode-icons:file-type-pdf2" />
-                    <span>โหลดไฟล์เป็น PDF</span>
+                    <span class="ml-2">โหลดไฟล์เป็น PDF</span>
                 </Button>
             </div>
         </Dialog>

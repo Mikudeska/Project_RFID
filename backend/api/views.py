@@ -41,7 +41,6 @@ logger = logging.getLogger(__name__)
 def get_csrf_token(request):
     return JsonResponse({"detail": "CSRF cookie set"})
 
-
 # ✅ Login
 @require_POST  # 👈 2. บังคับให้รับเฉพาะ POST ป้องกัน JSONDecodeError จาก GET
 def login_view(request):
@@ -109,7 +108,6 @@ def logout_view(request):
     logout(request)
     return JsonResponse({"detail": "Logged out"})
 
-
 # ✅ ดึง user ปัจจุบัน
 @login_required
 def profile_view(request):
@@ -170,6 +168,71 @@ def file_iterator(buffer, chunk_size=8192):
         if not chunk:
             break
         yield chunk
+
+def get_filtered_persons(request):
+    # 1. ดึงค่า (จะเป็น '0', '1', '2' หรือ None ถ้าไม่ส่งมา)
+    verified_status = request.GET.get('verified_status', None)
+    persons = Person.objects.all()
+
+    if verified_status == '0':
+        # "ยังไม่รายงานตัว" (code: 0) - ตรรกะจาก person_stats
+        persons = persons.filter(verified1=0, verified2=0, verified3=0)
+    
+    elif verified_status == '1':
+        # "รายงานตัวแล้ว" (code: 1) - ตรรกะจาก person_stats
+        persons = persons.filter(Q(verified1=1) | Q(verified2=1) | Q(verified3=1))
+        
+    elif verified_status == '2':
+        # "อยู่ในห้องพิธี" (code: 2) - ตรรกะจาก person_stats
+        persons = persons.filter(Q(verified1=2) | Q(verified2=2) | Q(verified3=2))
+
+    # ถ้า verified_status เป็น None (ทั้งหมด)
+    # ก็จะไม่ทำอะไร (คืนค่า persons.all())
+    
+    return persons
+
+def get_custom_sort_key(person):
+    """
+    Key สำหรับเรียงลำดับ 'เลขที่บัณฑิต' (varchar)
+    ลำดับ: ป > ปท > ตัวเลข
+    """
+    person_id = str(person.id) # 'id' คือ 'เลขที่บัณฑิต'
+
+    if person_id.startswith('ปท'):
+        group = 1  # 1. กลุ่ม "ปท"
+        num_part = person_id[2:]
+    elif person_id.startswith('ป'):
+        group = 0  # 0. กลุ่ม "ป" (มาก่อน)
+        num_part = person_id[1:]
+    elif person_id.isdigit():
+        group = 2  # 2. กลุ่ม "ตัวเลขธรรมดา"
+        num_part = person_id
+    else:
+        group = 3  # 3. กลุ่มอื่นๆ
+        num_part = person_id
+    
+    # พยายามแปลงส่วนที่เหลือเป็นตัวเลข
+    try:
+        sort_val = int(num_part)
+        value_type = 0 # 0. เป็นตัวเลข (มาก่อน)
+    except ValueError:
+        sort_val = num_part # เป็นข้อความ
+        value_type = 1 # 1. เป็นข้อความ (มาทีหลัง)
+
+    return (group, value_type, sort_val)
+
+def get_filter_name(verified_status):
+    """
+    แปลงค่า status เป็นข้อความสำหรับตั้งชื่อไฟล์
+    """
+    if verified_status == '0':
+        return "ยังไม่รายงานตัว"
+    elif verified_status == '1':
+        return "รายงานตัวแล้ว"
+    elif verified_status == '2':
+        return "อยู่ในห้องพิธี"
+    else: # None
+        return "ทั้งหมด"
 
 class ResetDatabase(APIView):
     def post(self, request):
@@ -280,182 +343,6 @@ def file_iterator(file, chunk_size=8192):
         if not chunk:
             break
         yield chunk
-
-class ExportPDF(View):
-    def get(self, request):
-        try:
-            # ตั้งค่า Font ไทย
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
-            pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
-            buffer = io.BytesIO()
-            p = canvas.Canvas(buffer, pagesize=A4)
-            width, height = A4
-            
-            # ฟังก์ชันวาดเส้นตาราง
-            def draw_table_grid(canvas, x_list, y_list):
-                canvas.setStrokeColorRGB(0, 0, 0)  # สีดำ
-                canvas.setLineWidth(1)  # ความหนาเส้น
-                
-                # วาดเส้นแนวตั้ง
-                for x in x_list:
-                    canvas.line(x, min(y_list) - 20, x, max(y_list))
-                
-                # วาดเส้นแนวนอน
-                for y in y_list:
-                    canvas.line(min(x_list), y, max(x_list), y)
-                
-                # วาดเส้นล่างสุดเพิ่มเติม
-                canvas.line(min(x_list), min(y_list) - 20, max(x_list), min(y_list) - 20)
-            
-            # ตั้งค่าตำแหน่งคอลัมน์และความกว้าง
-            col_positions = [50, 75, 260, 440, 540]
-            col_widths = [25, 185, 180, 100, 0]  # ความกว้างของแต่ละคอลัมน์
-            
-            # คำนวณตำแหน่งกึ่งกลางของแต่ละคอลัมน์
-            header_positions = []
-            for i in range(len(col_positions) - 1):
-                center_x = col_positions[i] + (col_widths[i] / 2)
-                header_positions.append(center_x)
-            
-            # ข้อมูลส่วนหัว
-            p.setFont('THSarabun', 25)
-            date_str = datetime.now().strftime("%d/%m/%Y")
-            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
-            p.setFont('THSarabun', 15)
-            time_str = datetime.now().strftime("%H:%M")
-            p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
-
-            p.setFont('THSarabun', 20)
-            p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต")
-
-            # เขียนหัวตาราง - จัดกึ่งกลางแต่ละคอลัมน์
-            p.setFont('THSarabun', 14)
-            
-            # วาดหัวตารางจัดกึ่งกลาง
-            headers = ["ลำดับ", "ชื่อ-นามสกุล", "รหัสนักศึกษา", "สถานะรายงานตัว"]
-            for i, header in enumerate(headers):
-                p.drawCentredString(header_positions[i], 735, header)
-
-            # เก็บตำแหน่งแถวสำหรับวาดเส้นตาราง
-            rows_y = [750]  # เริ่มจากหัวตาราง
-            
-            # ดึงข้อมูล
-            persons = Person.objects.all().order_by('seat')
-            y_position = 730  # ตำแหน่งเริ่มต้นของข้อมูล
-            
-            def get_verified_status(person):
-                """
-                หาค่า verified ล่าสุดโดยอิงจาก timestamp ที่ใหม่ที่สุด
-                """
-                latest_status = None
-                latest_time = None
-                has_any_timestamp = False
-
-                # วนลูปเพื่อหา timestamp ที่ใหม่ที่สุด
-                for i in range(1, 4):
-                    updated_time = getattr(person, f'verified_updated_at{i}')
-                    if updated_time:
-                        has_any_timestamp = True
-                        if latest_time is None or updated_time > latest_time:
-                            latest_time = updated_time
-                            latest_status = getattr(person, f'verified{i}')
-
-                # ถ้าไม่มี timestamp เลย ให้ยึดตามค่า verified ที่ไม่ใช่ 0 ตัวแรกที่เจอ
-                if not has_any_timestamp:
-                    for i in range(1, 4):
-                        status_value = getattr(person, f'verified{i}')
-                        if status_value in [1, 2]:
-                            latest_status = status_value
-                            break
-
-                # แปลงค่าตัวเลขเป็นข้อความ
-                if latest_status == 2:
-                    return "อยู่ในห้องพิธี"
-                elif latest_status == 1:
-                    return "รายงานตัวแล้ว"
-                else: # รวมถึงกรณี latest_status เป็น 0 หรือ None
-                    return "ยังไม่รายงานตัว"
-                
-            # เขียนข้อมูล - จัดกึ่งกลางทั้งแนวตั้งและแนวนอน
-            for i, person in enumerate(persons, start=1):
-                # คำนวณตำแหน่งกึ่งกลางแนวตั้งของแถว
-                vertical_center = y_position - 15  # กึ่งกลางของความสูง 20 points
-                
-                # วาดข้อมูลแต่ละคอลัมน์ โดยจัดกึ่งกลางทั้งแนวนอนและแนวตั้ง
-                p.drawCentredString(header_positions[0], vertical_center, f"{i:04d}")
-                p.drawCentredString(header_positions[1], vertical_center, person.name)
-                p.drawCentredString(header_positions[2], vertical_center, person.nisit)
-                p.drawCentredString(header_positions[3], vertical_center, get_verified_status(person))
-                
-                # เก็บตำแหน่ง y ปัจจุบัน
-                rows_y.append(y_position)
-                
-                y_position -= 20  # เลื่อนบรรทัด
-
-                # ตรวจสอบว่าขึ้นหน้าใหม่หรือไม่
-                if y_position < 50:
-                    # วาดเส้นตารางก่อนขึ้นหน้าใหม่
-                    draw_table_grid(p, col_positions, rows_y)
-                    p.showPage()
-                    
-                    # รีเซ็ตค่าสำหรับหน้าใหม่
-                    y_position = 800
-                    rows_y = []
-                    
-                    # วาดหัวตารางในหน้าใหม่
-                    p.setFont('THSarabun', 20)
-                    p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต (ต่อ)")
-                    
-                    # วาดหัวตารางจัดกึ่งกลางในหน้าใหม่
-                    p.setFont('THSarabun', 14)
-                    for i, header in enumerate(headers):
-                        p.drawCentredString(header_positions[i], 735, header)
-                    
-                    rows_y = [750]
-                    y_position = 730
-
-            # วาดเส้นตารางสำหรับหน้าสุดท้าย (หากมีข้อมูล)
-            if len(rows_y) > 0:
-                draw_table_grid(p, col_positions, rows_y)
-
-            p.save()
-            buffer.seek(0)
-
-            # สร้าง response สำหรับดาวน์โหลดไฟล์
-            date_str = datetime.now().strftime('%Y%m%d')
-            filename = f"รายชื่อ_{date_str}.pdf"
-            quoted_filename = quote(filename)
-
-            response = StreamingHttpResponse(
-                file_iterator(buffer), 
-                content_type='application/pdf'
-            )
-            response['Cache-Control'] = 'no-store'
-            response['Pragma'] = 'no-cache'
-            response['Expires'] = '0'
-            response['Content-Disposition'] = (
-                f'attachment; filename="{quoted_filename}"; '
-                f'filename*=UTF-8\'\'{quoted_filename}'
-            )
-            response["Access-Control-Expose-Headers"] = "Content-Disposition"
-            response['Content-Security-Policy'] = "upgrade-insecure-requests"
-            response['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-            
-            # บันทึก Log
-            Log.objects.create(
-                action='Export',
-                model='Person',
-                details="โหลดไฟล์เป็น PDF",
-                record_id=None,
-                user=request.user,
-                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
-            )
-            return response
-
-        except Exception as e:
-            print('PDF Export Error:', str(e))
-            return JsonResponse({'error': str(e)}, status=500)
 
 class ExportPDFResult(View):
     def get(self, request):
@@ -723,33 +610,195 @@ class ExportPDFResult(View):
             print(traceback.format_exc())
             return HttpResponse(f'เกิดข้อผิดพลาด: {str(e)}', status=500)
 
-class ExportData(APIView):
-    def get(self, request, format_type):
-        resource = PersonResource()
-        dataset = resource.export()
-        response = None  # กำหนดค่าเริ่มต้น
-
+class ExportPDF(View):
+    def get(self, request):
         try:
-            format_type = format_type.lower()  # แปลงเป็นตัวเล็กทั้งหมด
+            # 1. ดึงข้อมูลและสถานะ
+            verified_status = request.GET.get('verified_status', None)
+            persons_queryset = get_filtered_persons(request)
+            
+            # 2. เรียงลำดับใน Python
+            persons_list = sorted(list(persons_queryset), key=get_custom_sort_key)
 
-            if format_type == 'xlsx':
+            # ตั้งค่า Font
+            BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            FONT_PATH = os.path.join(BASE_DIR, 'fonts', 'THSarabunNew.ttf')
+            pdfmetrics.registerFont(TTFont('THSarabun', FONT_PATH))
+            buffer = io.BytesIO()
+            p = canvas.Canvas(buffer, pagesize=A4)
+            width, height = A4
+            
+            def draw_table_grid(canvas, x_list, y_list):
+                canvas.setStrokeColorRGB(0, 0, 0)
+                canvas.setLineWidth(1)
+                for x in x_list:
+                    canvas.line(x, min(y_list) - 20, x, max(y_list))
+                for y in y_list:
+                    canvas.line(min(x_list), y, max(x_list), y)
+                canvas.line(min(x_list), min(y_list) - 20, max(x_list), min(y_list) - 20)
+            
+            # 3. ตั้งค่าตำแหน่งคอลัมน์ (สำหรับ 3 คอลัมน์)
+            col_positions = [50, 150, 350, 550] # 3 คอลัมน์ = 4 เส้น
+            col_widths = [100, 200, 200]
+            
+            header_positions = []
+            for i in range(len(col_widths)):
+                center_x = col_positions[i] + (col_widths[i] / 2)
+                header_positions.append(center_x)
+            
+            # ข้อมูลส่วนหัว (วันที่/เวลา)
+            p.setFont('THSarabun', 25)
+            date_str = datetime.now().strftime("%d/%m/%Y")
+            p.drawRightString(width - 40, height - 40, f"วันที่ {date_str}")
+            p.setFont('THSarabun', 15)
+            time_str = datetime.now().strftime("%H:%M")
+            p.drawRightString(width - 40, height - 60, f"เวลา {time_str}")
+
+            p.setFont('THSarabun', 20)
+            p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต")
+
+            # 4. เขียนหัวตาราง (สำหรับ 3 คอลัมน์)
+            p.setFont('THSarabun', 14)
+            headers = ["เลขที่บัณฑิต", "ชื่อ - สกุล", "ชื่อหลักสูตร"]
+            for i, header in enumerate(headers):
+                p.drawCentredString(header_positions[i], 735, header)
+
+            rows_y = [750]
+            y_position = 730
+            
+            # 5. วาดข้อมูล (สำหรับ 3 คอลัมน์)
+            for person in persons_list:
+                vertical_center = y_position - 15
+                
+                p.drawCentredString(header_positions[0], vertical_center, str(person.id))
+                p.drawCentredString(header_positions[1], vertical_center, person.name)
+                p.drawCentredString(header_positions[2], vertical_center, person.degree or "-")
+                
+                rows_y.append(y_position)
+                y_position -= 20
+
+                if y_position < 50:
+                    draw_table_grid(p, col_positions, rows_y)
+                    p.showPage()
+                    
+                    y_position = 800
+                    rows_y = []
+                    
+                    p.setFont('THSarabun', 20)
+                    p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต (ต่อ)")
+                    p.setFont('THSarabun', 14)
+                    for i, header in enumerate(headers):
+                        p.drawCentredString(header_positions[i], 735, header)
+                    
+                    rows_y = [750]
+                    y_position = 730
+
+            if len(rows_y) > 0:
+                draw_table_grid(p, col_positions, rows_y)
+
+            p.save()
+            buffer.seek(0)
+
+            # 6. ตั้งชื่อไฟล์แบบ Dynamic
+            filter_name = get_filter_name(verified_status)
+            date_str = datetime.now().strftime('%Y%m%d')
+            filename = f"รายชื่อ{filter_name}_{date_str}.pdf"
+            quoted_filename = quote(filename)
+
+            response = StreamingHttpResponse(
+                file_iterator(buffer), 
+                content_type='application/pdf'
+            )
+            response['Cache-Control'] = 'no-store'
+            response['Pragma'] = 'no-cache'
+            response['Expires'] = '0'
+            response['Content-Disposition'] = (
+                f'attachment; filename="{quoted_filename}"; '
+                f'filename*=UTF-8\'\'{quoted_filename}'
+            )
+            response["Access-Control-Expose-Headers"] = "Content-Disposition"
+            
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details="โหลดไฟล์เป็น PDF",
+                record_id=None,
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
+            )
+            return response
+
+        except Exception as e:
+            print('PDF Export Error:', str(e))
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': str(e)}, status=500)
+
+class ExportData(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, format_type):
+        try:
+            # Debug logging
+            logger.info(f"Export request: format_type={format_type}, verified_status={request.GET.get('verified_status', None)}")
+            
+            # 1. ดึงข้อมูลและสถานะ
+            verified_status = request.GET.get('verified_status', None)
+            persons_queryset = get_filtered_persons(request)
+
+            # 2. เรียงลำดับใน Python
+            persons_list = sorted(list(persons_queryset), key=get_custom_sort_key)
+
+            # 3. สร้าง Dataset ด้วยตนเอง (นี่คือการแก้ Error 400)
+            dataset = Dataset()
+            dataset.headers = ['เลขที่บัณฑิต', 'ชื่อ - สกุล', 'ชื่อหลักสูตร']
+            
+            for person in persons_list:
+                dataset.append([
+                    str(person.id),  # แปลงเป็น string เพื่อป้องกันปัญหา
+                    person.name or "-",
+                    person.degree or "-" # ใช้ or "-" เผื่อค่าว่าง
+                ])
+
+            response = None
+            format_type = format_type.lower()
+            
+            # Validate format_type
+            if format_type not in ['excel', 'csv']:
+                logger.error(f"Invalid format_type: {format_type}")
+                return Response(
+                    {'error': f'รูปแบบไฟล์ไม่ถูกต้อง: {format_type}'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # 4. ตั้งชื่อไฟล์แบบ Dynamic
+            filter_name = get_filter_name(verified_status)
+            date_str = datetime.now().strftime('%Y%m%d')
+            base_filename = f"รายชื่อ{filter_name}_{date_str}"
+
+            if format_type == 'excel':
                 response = HttpResponse(
                     dataset.xlsx,
                     content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
-                filename = urllib.parse.quote('รายชื่อบัณฑิต.xlsx')
+                filename = f'{base_filename}.xlsx'
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+                response['X-Filename'] = filename  # ส่งชื่อไฟล์ผ่าน custom header
 
             elif format_type == 'csv':
                 response = HttpResponse(dataset.csv, content_type='text/csv; charset=utf-8-sig')
-                filename = urllib.parse.quote('รายชื่อบัณฑิต.csv')
+                filename = f'{base_filename}.csv'
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+                response['X-Filename'] = filename  # ส่งชื่อไฟล์ผ่าน custom header
 
             else:
                 return Response(
                     {'error': 'รูปแบบไฟล์ไม่ถูกต้อง'}, 
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            
             Log.objects.create(
                 action='Export',
                 model='Person',
@@ -760,9 +809,11 @@ class ExportData(APIView):
             return response
 
         except Exception as e:
-            logger.error(f"Reset failed: {str(e)}", exc_info=True)
+            import traceback
+            traceback.print_exc() # พิมพ์ error ออกมาดูใน console
+            logger.error(f"Export error: {str(e)}", exc_info=True)
             return Response(
-                {'error': 'Internal Server Error'}, 
+                {'error': f'Export failed: {str(e)}'}, 
                 status=500
             )
 
@@ -988,7 +1039,6 @@ class PersonList(APIView):
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-
 class PersonDetail(APIView):
     def get(self, request, pk):
         try:
@@ -1156,6 +1206,7 @@ class RFIDSimulator(APIView):
 
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class LogPagination(PageNumberPagination):
     page_size = 5
 
