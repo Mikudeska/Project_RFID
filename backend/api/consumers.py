@@ -42,7 +42,7 @@ def broadcast_stats_update():
 
     stats = {
         'total': total,
-        'checked_in': verified_counter[0],
+        'not_checked_in': verified_counter[0],
         'in_checkin_room': verified_counter[1],
         'in_graduation_room': verified_counter[2],
     }
