@@ -46,12 +46,21 @@ def generate_nisit():
             return nisit
 
 data = []
-for _ in range(num_records):
+for i in range(num_records):
     name = f"{random.choice(first_names)} {random.choice(last_names)}"
     degree = random.choice(degree_list)
     verified1 = random.choice([0, 1, 2])
     nisit = generate_nisit()
+    # สร้างเลขที่บัณฑิต (id) แบบต่างๆ
+    if i < 30:
+        person_id = f"ป{i+1:03d}"  # ป001, ป002, ...
+    elif i < 60:
+        person_id = f"ปท{i-29:03d}"  # ปท001, ปท002, ...
+    else:
+        person_id = f"{i+1:04d}"  # 0001, 0002, ...
+    
     data.append({
+        "เลขที่บัณฑิต": person_id,
         "รหัสนักศึกษา": nisit,
         "ชื่อ - สกุล": name,
         "ชื่อหลักสูตร": degree,
@@ -59,6 +68,6 @@ for _ in range(num_records):
     })
 
 df = pd.DataFrame(data)
-output_path = r"D:\D o w n l o a d\simu_person.xlsx"
+output_path = "simu_person.xlsx"
 df.to_excel(output_path, index=False)
 print("สร้างไฟล์ simu_person.xlsx สำหรับ import เรียบร้อยแล้ว")

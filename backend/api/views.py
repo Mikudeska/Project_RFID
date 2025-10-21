@@ -637,9 +637,9 @@ class ExportPDF(View):
                     canvas.line(min(x_list), y, max(x_list), y)
                 canvas.line(min(x_list), min(y_list) - 20, max(x_list), min(y_list) - 20)
             
-            # 3. ตั้งค่าตำแหน่งคอลัมน์ (สำหรับ 3 คอลัมน์)
-            col_positions = [50, 150, 350, 550] # 3 คอลัมน์ = 4 เส้น
-            col_widths = [100, 200, 200]
+            # 3. ตั้งค่าตำแหน่งคอลัมน์ (สำหรับ 5 คอลัมน์)
+            col_positions = [50, 150, 300, 450, 550, 650] # 5 คอลัมน์ = 6 เส้น
+            col_widths = [100, 150, 150, 100, 100]
             
             header_positions = []
             for i in range(len(col_widths)):
@@ -657,22 +657,24 @@ class ExportPDF(View):
             p.setFont('THSarabun', 20)
             p.drawCentredString(width / 2, 780, "รายชื่อบัณฑิต")
 
-            # 4. เขียนหัวตาราง (สำหรับ 3 คอลัมน์)
+            # 4. เขียนหัวตาราง (สำหรับ 5 คอลัมน์)
             p.setFont('THSarabun', 14)
-            headers = ["เลขที่บัณฑิต", "ชื่อ - สกุล", "ชื่อหลักสูตร"]
+            headers = ["เลขที่บัณฑิต", "ชื่อ - สกุล", "ชื่อหลักสูตร", "รหัส RFID", "สถานะรายงานตัว"]
             for i, header in enumerate(headers):
                 p.drawCentredString(header_positions[i], 735, header)
 
             rows_y = [750]
             y_position = 730
             
-            # 5. วาดข้อมูล (สำหรับ 3 คอลัมน์)
+            # 5. วาดข้อมูล (สำหรับ 5 คอลัมน์)
             for person in persons_list:
                 vertical_center = y_position - 15
                 
                 p.drawCentredString(header_positions[0], vertical_center, str(person.id))
                 p.drawCentredString(header_positions[1], vertical_center, person.name)
                 p.drawCentredString(header_positions[2], vertical_center, person.degree or "-")
+                p.drawCentredString(header_positions[3], vertical_center, person.rfid or "-")
+                p.drawCentredString(header_positions[4], vertical_center, str(person.verified1))
                 
                 rows_y.append(y_position)
                 y_position -= 20
@@ -751,13 +753,15 @@ class ExportData(APIView):
 
             # 3. สร้าง Dataset ด้วยตนเอง (นี่คือการแก้ Error 400)
             dataset = Dataset()
-            dataset.headers = ['เลขที่บัณฑิต', 'ชื่อ - สกุล', 'ชื่อหลักสูตร']
+            dataset.headers = ['เลขที่บัณฑิต', 'ชื่อ - สกุล', 'ชื่อหลักสูตร', 'รหัส RFID', 'สถานะรายงานตัว']
             
             for person in persons_list:
                 dataset.append([
                     str(person.id),  # แปลงเป็น string เพื่อป้องกันปัญหา
                     person.name or "-",
-                    person.degree or "-" # ใช้ or "-" เผื่อค่าว่าง
+                    person.degree or "-", # ใช้ or "-" เผื่อค่าว่าง
+                    person.rfid or "-",
+                    person.verified1  # แสดงเป็นตัวเลข 0, 1, 2
                 ])
 
             response = None
