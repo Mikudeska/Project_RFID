@@ -62,10 +62,37 @@ class PersonResource(resources.ModelResource):
         row['สถานะรายงานตัว'] = val
         row['verified1'] = val
         
+        # ตรวจสอบว่ามีข้อมูลอยู่แล้วหรือไม่ และอัปเดตโดยตรง
+        try:
+            existing = self._meta.model.objects.get(id=row.get('id'))
+            print(f"   🔍 Found existing record: {existing.id} - {existing.name}")
+            print(f"   📊 Current verified1: {existing.verified1}")
+            print(f"   📊 New verified1: {val}")
+            
+            # อัปเดตข้อมูลโดยตรง
+            existing.name = row.get('ชื่อ - สกุล', existing.name)
+            existing.nisit = row.get('รหัสนักศึกษา', existing.nisit)
+            existing.degree = row.get('ชื่อหลักสูตร', existing.degree)
+            existing.verified1 = val
+            existing.rfid = row.get('รหัส RFID', existing.rfid)
+            existing.save()
+            print(f"   ✅ Updated existing record: {existing.id}")
+            
+            # ตั้งค่าให้ข้ามการ import ครั้งนี้
+            row['_skip_import'] = True
+            
+        except self._meta.model.DoesNotExist:
+            print(f"   🆕 Creating new record for id: {row.get('id')}")
+        
         print(f"   ✅ Final row: {row}")
         print("-" * 30)
 
     def save_instance(self, instance, *args, **kwargs):
+        # ตรวจสอบว่าข้อมูลนี้ถูกอัปเดตไปแล้วหรือไม่
+        if hasattr(instance, '_skip_import') and instance._skip_import:
+            print(f"⏭️ Skipping save for {instance.id} (already updated)")
+            return instance
+            
         print(f"💾 Saving instance: {instance}")
         print(f"   ID: {instance.id}")
         print(f"   Name: {instance.name}")

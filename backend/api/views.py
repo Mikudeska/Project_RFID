@@ -853,6 +853,11 @@ class ImportData(APIView):
             print(f"📁 File: {file.name}")
             print(f"📊 Dataset rows: {len(dataset)}")
             print(f"📋 Headers: {dataset.headers}")
+            
+            # ตรวจสอบข้อมูลที่มีอยู่ก่อน import
+            print("\n🔍 CHECKING EXISTING DATA:")
+            for person in persons_list[:3]:  # แสดงแค่ 3 รายการแรก
+                print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
             print("=" * 60)
 
             # นำเข้าข้อมูล (เพิ่ม update=True เพื่อให้ทับข้อมูลเก่า)
@@ -860,8 +865,9 @@ class ImportData(APIView):
                 dataset, 
                 dry_run=False, 
                 update=True,
-                skip_unchanged=True,
-                use_bulk=False
+                skip_unchanged=False,  # เปลี่ยนเป็น False เพื่อให้อัปเดตทุกครั้ง
+                use_bulk=False,
+                force_update=True  # บังคับให้อัปเดตทุกครั้ง
             )
             
             # Debug: แสดงผลลัพธ์การ import
@@ -922,6 +928,12 @@ class ImportData(APIView):
             )
             broadcast_ws("upload")
             broadcast_stats_update()
+            
+            # ตรวจสอบข้อมูลหลัง import
+            print("\n🔍 CHECKING DATA AFTER IMPORT:")
+            updated_persons = Person.objects.filter(id__in=[str(p.id) for p in persons_list])
+            for person in updated_persons[:3]:  # แสดงแค่ 3 รายการแรก
+                print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
             
             print("=" * 60)
             print("🎉 IMPORT COMPLETED SUCCESSFULLY!")
