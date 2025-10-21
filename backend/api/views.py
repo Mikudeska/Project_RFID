@@ -856,7 +856,9 @@ class ImportData(APIView):
             
             # ตรวจสอบข้อมูลที่มีอยู่ก่อน import
             print("\n🔍 CHECKING EXISTING DATA:")
-            for person in persons_list[:3]:  # แสดงแค่ 3 รายการแรก
+            # ดึงข้อมูลที่มีอยู่แล้วจากฐานข้อมูล
+            existing_persons = Person.objects.all()[:3]  # แสดงแค่ 3 รายการแรก
+            for person in existing_persons:
                 print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
             print("=" * 60)
 
@@ -931,9 +933,18 @@ class ImportData(APIView):
             
             # ตรวจสอบข้อมูลหลัง import
             print("\n🔍 CHECKING DATA AFTER IMPORT:")
-            updated_persons = Person.objects.filter(id__in=[str(p.id) for p in persons_list])
-            for person in updated_persons[:3]:  # แสดงแค่ 3 รายการแรก
-                print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
+            # ดึงข้อมูลที่เกี่ยวข้องกับไฟล์ที่ import
+            imported_ids = []
+            for row in dataset:
+                if 'เลขที่บัณฑิต' in row:
+                    imported_ids.append(str(row['เลขที่บัณฑิต']))
+            
+            if imported_ids:
+                updated_persons = Person.objects.filter(id__in=imported_ids)[:3]  # แสดงแค่ 3 รายการแรก
+                for person in updated_persons:
+                    print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
+            else:
+                print("   No imported data found to check")
             
             print("=" * 60)
             print("🎉 IMPORT COMPLETED SUCCESSFULLY!")
