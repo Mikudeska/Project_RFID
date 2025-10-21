@@ -189,7 +189,7 @@ onMounted(async () => {
                     </div>
                     <div class="">
                         <div class="grid grid-cols-12 gap-2 pt-4 md:flex-row">
-                            <InputText type="text" v-model="newComment" placeholder="พิมพ์คอมเมนต์ของคุณ.... " class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-10 text-1xl" />
+                            <InputText type="text" v-model="newComment" placeholder="พิมพ์คอมเมนต์ของคุณ.... " class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-10 text-1xl" @keydown.enter.exact.prevent="addComment" @keydown.shift.enter.stop />
                             <Button label="ส่ง" @click="addComment" class="flex flex-col col-span-12 text-xl xl:col-span-2" Rounded />
                         </div>
                     </div>
