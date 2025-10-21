@@ -846,6 +846,14 @@ class ImportData(APIView):
             # ตรวจสอบข้อมูล
             if len(dataset) == 0:
                 raise ValueError("ไฟล์ที่อัปโหลดว่างเปล่า")
+            
+            print("=" * 60)
+            print("🚀 STARTING IMPORT PROCESS")
+            print("=" * 60)
+            print(f"📁 File: {file.name}")
+            print(f"📊 Dataset rows: {len(dataset)}")
+            print(f"📋 Headers: {dataset.headers}")
+            print("=" * 60)
 
             # นำเข้าข้อมูล (เพิ่ม update=True เพื่อให้ทับข้อมูลเก่า)
             result = resource.import_data(
@@ -857,6 +865,33 @@ class ImportData(APIView):
             )
             
             # Debug: แสดงผลลัพธ์การ import
+            print("=" * 50)
+            print("🔍 IMPORT DEBUG INFO")
+            print("=" * 50)
+            print(f"📊 Import result: {result.totals}")
+            print(f"✅ New records: {result.totals.get('new', 0)}")
+            print(f"🔄 Updated records: {result.totals.get('update', 0)}")
+            print(f"❌ Errors: {result.totals.get('error', 0)}")
+            print(f"🗑️ Delete: {result.totals.get('delete', 0)}")
+            print(f"⏭️ Skip: {result.totals.get('skip', 0)}")
+            print(f"⚠️ Invalid: {result.totals.get('invalid', 0)}")
+            print("=" * 50)
+            
+            # แสดง error details ถ้ามี
+            if result.has_errors():
+                print("🚨 IMPORT ERRORS FOUND:")
+                for error in result.row_errors():
+                    print(f"   Row {error[0]}: {error[1]}")
+                print("=" * 50)
+            
+            # แสดงข้อมูลที่ import
+            print(f"📁 Dataset rows: {len(dataset)}")
+            print(f"📋 Headers: {dataset.headers}")
+            if len(dataset) > 0:
+                print(f"📄 First row: {dataset[0]}")
+            print("=" * 50)
+            
+            # Log ไปยัง logger ด้วย
             logger.info(f"Import result: {result.totals}")
             logger.info(f"New records: {result.totals.get('new', 0)}")
             logger.info(f"Updated records: {result.totals.get('update', 0)}")
@@ -865,7 +900,6 @@ class ImportData(APIView):
             logger.info(f"Skip: {result.totals.get('skip', 0)}")
             logger.info(f"Invalid: {result.totals.get('invalid', 0)}")
             
-            # แสดง error details ถ้ามี
             if result.has_errors():
                 logger.error("Import errors found:")
                 for error in result.row_errors():
@@ -888,12 +922,28 @@ class ImportData(APIView):
             )
             broadcast_ws("upload")
             broadcast_stats_update()
+            
+            print("=" * 60)
+            print("🎉 IMPORT COMPLETED SUCCESSFULLY!")
+            print("=" * 60)
+            print(f"✅ Total processed: {imported_count} records")
+            print(f"🆕 New records: {result.totals.get('new', 0)}")
+            print(f"🔄 Updated records: {result.totals.get('update', 0)}")
+            print(f"⏭️ Skipped records: {result.totals.get('skip', 0)}")
+            print("=" * 60)
+            
             return Response(
                 {'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ'}, 
                 status=status.HTTP_201_CREATED
             )
             
         except Exception as e:
+            print("=" * 60)
+            print("❌ IMPORT FAILED!")
+            print("=" * 60)
+            print(f"🚨 Error: {str(e)}")
+            print("=" * 60)
+            
             Log.objects.create(
                 action='Import',
                 model='Person',

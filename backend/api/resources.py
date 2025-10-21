@@ -39,25 +39,44 @@ class PersonResource(resources.ModelResource):
         return person.verified1
 
     def before_import_row(self, row, **kwargs):
+        print(f"🔄 Processing row: {row}")
+        
         # ถ้ามีเลขที่บัณฑิตในไฟล์ จะใช้ค่านั้นเป็น id
         id_value = row.get('เลขที่บัณฑิต')
         if id_value:
             try:
                 row['id'] = str(id_value)  # แปลงเป็น string เพื่อให้ตรงกับ CharField
+                print(f"   📝 Set id to: {row['id']}")
             except ValueError:
+                print(f"   ❌ Invalid id value: {id_value}")
                 pass  # ถ้าไม่ใช่ตัวเลขข้ามไป
 
         # เดิมที่ตรวจ verified1
         value = row.get('สถานะรายงานตัว', None)
         try:
             val = int(value) if value in ['0', '1', '2'] else 0
+            print(f"   📊 Set verified1 to: {val}")
         except (ValueError, TypeError):
             val = 0
+            print(f"   ⚠️ Invalid verified1 value: {value}, using default: 0")
         row['สถานะรายงานตัว'] = val
         row['verified1'] = val
+        
+        print(f"   ✅ Final row: {row}")
+        print("-" * 30)
 
     def save_instance(self, instance, *args, **kwargs):
+        print(f"💾 Saving instance: {instance}")
+        print(f"   ID: {instance.id}")
+        print(f"   Name: {instance.name}")
+        print(f"   Verified1: {instance.verified1}")
+        
         if hasattr(instance, 'verified1') and instance.verified1 is None:
             instance.verified1 = 0
-        return super().save_instance(instance, *args, **kwargs)
+            print(f"   ⚠️ Set verified1 to default: 0")
+        
+        result = super().save_instance(instance, *args, **kwargs)
+        print(f"   ✅ Save completed")
+        print("-" * 30)
+        return result
     
