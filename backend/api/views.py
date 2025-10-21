@@ -835,6 +835,9 @@ class ImportData(APIView):
         
         dataset = Dataset()
         resource = PersonResource()
+        
+        # สร้าง list เพื่อเก็บ debug ข้อมูล
+        debug_messages = []
 
         try:
             # อ่านไฟล์
@@ -847,20 +850,20 @@ class ImportData(APIView):
             if len(dataset) == 0:
                 raise ValueError("ไฟล์ที่อัปโหลดว่างเปล่า")
             
-            print("=" * 60)
-            print("🚀 STARTING IMPORT PROCESS")
-            print("=" * 60)
-            print(f"📁 File: {file.name}")
-            print(f"📊 Dataset rows: {len(dataset)}")
-            print(f"📋 Headers: {dataset.headers}")
+            debug_messages.append("=" * 60)
+            debug_messages.append("🚀 เริ่มต้นกระบวนการนำเข้าข้อมูล")
+            debug_messages.append("=" * 60)
+            debug_messages.append(f"📁 ไฟล์: {file.name}")
+            debug_messages.append(f"📊 จำนวนแถวข้อมูล: {len(dataset)}")
+            debug_messages.append(f"📋 หัวตาราง: {dataset.headers}")
             
             # ตรวจสอบข้อมูลที่มีอยู่ก่อน import
-            print("\n🔍 CHECKING EXISTING DATA:")
+            debug_messages.append("\n🔍 ตรวจสอบข้อมูลที่มีอยู่:")
             # ดึงข้อมูลที่มีอยู่แล้วจากฐานข้อมูล
             existing_persons = Person.objects.all()[:3]  # แสดงแค่ 3 รายการแรก
             for person in existing_persons:
-                print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
-            print("=" * 60)
+                debug_messages.append(f"   ID: {person.id}, ชื่อ: {person.name}, สถานะรายงานตัว: {person.verified1}")
+            debug_messages.append("=" * 60)
 
             # นำเข้าข้อมูล (เพิ่ม update=True เพื่อให้ทับข้อมูลเก่า)
             result = resource.import_data(
@@ -871,32 +874,36 @@ class ImportData(APIView):
                 use_bulk=False
             )
             
+            # ดึง debug ข้อมูลจาก resource
+            if hasattr(resource, 'debug_messages'):
+                debug_messages.extend(resource.debug_messages)
+            
             # Debug: แสดงผลลัพธ์การ import
-            print("=" * 50)
-            print("🔍 IMPORT DEBUG INFO")
-            print("=" * 50)
-            print(f"📊 Import result: {result.totals}")
-            print(f"✅ New records: {result.totals.get('new', 0)}")
-            print(f"🔄 Updated records: {result.totals.get('update', 0)}")
-            print(f"❌ Errors: {result.totals.get('error', 0)}")
-            print(f"🗑️ Delete: {result.totals.get('delete', 0)}")
-            print(f"⏭️ Skip: {result.totals.get('skip', 0)}")
-            print(f"⚠️ Invalid: {result.totals.get('invalid', 0)}")
-            print("=" * 50)
+            debug_messages.append("=" * 50)
+            debug_messages.append("🔍 ข้อมูลการดีบักการนำเข้า")
+            debug_messages.append("=" * 50)
+            debug_messages.append(f"📊 ผลลัพธ์การนำเข้า: {result.totals}")
+            debug_messages.append(f"✅ ข้อมูลใหม่: {result.totals.get('new', 0)}")
+            debug_messages.append(f"🔄 ข้อมูลที่อัปเดต: {result.totals.get('update', 0)}")
+            debug_messages.append(f"❌ ข้อผิดพลาด: {result.totals.get('error', 0)}")
+            debug_messages.append(f"🗑️ ลบ: {result.totals.get('delete', 0)}")
+            debug_messages.append(f"⏭️ ข้าม: {result.totals.get('skip', 0)}")
+            debug_messages.append(f"⚠️ ไม่ถูกต้อง: {result.totals.get('invalid', 0)}")
+            debug_messages.append("=" * 50)
             
             # แสดง error details ถ้ามี
             if result.has_errors():
-                print("🚨 IMPORT ERRORS FOUND:")
+                debug_messages.append("🚨 พบข้อผิดพลาดในการนำเข้า:")
                 for error in result.row_errors():
-                    print(f"   Row {error[0]}: {error[1]}")
-                print("=" * 50)
+                    debug_messages.append(f"   แถว {error[0]}: {error[1]}")
+                debug_messages.append("=" * 50)
             
             # แสดงข้อมูลที่ import
-            print(f"📁 Dataset rows: {len(dataset)}")
-            print(f"📋 Headers: {dataset.headers}")
+            debug_messages.append(f"📁 จำนวนแถวข้อมูล: {len(dataset)}")
+            debug_messages.append(f"📋 หัวตาราง: {dataset.headers}")
             if len(dataset) > 0:
-                print(f"📄 First row: {dataset[0]}")
-            print("=" * 50)
+                debug_messages.append(f"📄 แถวแรก: {dataset[0]}")
+            debug_messages.append("=" * 50)
             
             # Log ไปยัง logger ด้วย
             logger.info(f"Import result: {result.totals}")
@@ -941,30 +948,38 @@ class ImportData(APIView):
             if imported_ids:
                 updated_persons = Person.objects.filter(id__in=imported_ids)[:3]  # แสดงแค่ 3 รายการแรก
                 for person in updated_persons:
-                    print(f"   ID: {person.id}, Name: {person.name}, Verified1: {person.verified1}")
+                    debug_messages.append(f"   ID: {person.id}, ชื่อ: {person.name}, สถานะรายงานตัว: {person.verified1}")
             else:
-                print("   No imported data found to check")
+                debug_messages.append("   ไม่พบข้อมูลที่นำเข้าเพื่อตรวจสอบ")
             
-            print("=" * 60)
-            print("🎉 IMPORT COMPLETED SUCCESSFULLY!")
-            print("=" * 60)
-            print(f"✅ Total processed: {imported_count} records")
-            print(f"🆕 New records: {result.totals.get('new', 0)}")
-            print(f"🔄 Updated records: {result.totals.get('update', 0)}")
-            print(f"⏭️ Skipped records: {result.totals.get('skip', 0)}")
-            print("=" * 60)
+            debug_messages.append("=" * 60)
+            debug_messages.append("🎉 การนำเข้าข้อมูลเสร็จสิ้น!")
+            debug_messages.append("=" * 60)
+            debug_messages.append(f"✅ รวมที่ประมวลผล: {imported_count} รายการ")
+            debug_messages.append(f"🆕 ข้อมูลใหม่: {result.totals.get('new', 0)}")
+            debug_messages.append(f"🔄 ข้อมูลที่อัปเดต: {result.totals.get('update', 0)}")
+            debug_messages.append(f"⏭️ ข้อมูลที่ข้าม: {result.totals.get('skip', 0)}")
+            debug_messages.append("=" * 60)
             
             return Response(
-                {'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ'}, 
+                {
+                    'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ',
+                    'debug_messages': debug_messages,
+                    'imported_count': imported_count,
+                    'new_records': result.totals.get('new', 0),
+                    'updated_records': result.totals.get('update', 0),
+                    'skipped_records': result.totals.get('skip', 0),
+                    'error_records': result.totals.get('error', 0)
+                }, 
                 status=status.HTTP_201_CREATED
             )
             
         except Exception as e:
-            print("=" * 60)
-            print("❌ IMPORT FAILED!")
-            print("=" * 60)
-            print(f"🚨 Error: {str(e)}")
-            print("=" * 60)
+            debug_messages.append("=" * 60)
+            debug_messages.append("❌ การนำเข้าข้อมูลล้มเหลว!")
+            debug_messages.append("=" * 60)
+            debug_messages.append(f"🚨 ข้อผิดพลาด: {str(e)}")
+            debug_messages.append("=" * 60)
             
             Log.objects.create(
                 action='Import',
@@ -976,7 +991,10 @@ class ImportData(APIView):
             )
             logger.error(f"Import failed: {str(e)}", exc_info=True)
             return Response(
-                {'error': str(e)}, 
+                {
+                    'error': str(e),
+                    'debug_messages': debug_messages
+                }, 
                 status=status.HTTP_400_BAD_REQUEST
             )
 
