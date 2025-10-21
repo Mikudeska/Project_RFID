@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ExportPDFResult, ResetDatabase, RFIDSimulator, LogList, ResetLog, LogCreateView, change_password_view
+from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ExportPDFResult, ResetDatabase, RFIDReceive1, RFIDReceive2, RFIDReceive3, LogList, ResetLog, LogCreateView, change_password_view
 from . import views
 
 urlpatterns = [
@@ -13,7 +13,9 @@ urlpatterns = [
     path('export-pdf-result/', ExportPDFResult.as_view()),
     path('reset/', ResetDatabase.as_view(), name='reset-database'),
     path('resetlog/', ResetLog.as_view(), name='reset-log'),
-    path('rfidAPI/', RFIDSimulator.as_view(), name='rfid_api'),
+    path('rfidAPI1/', RFIDReceive1.as_view(), name='rfid_api1'),
+    path('rfidAPI2/', RFIDReceive2.as_view(), name='rfid_api2'),
+    path('rfidAPI3/', RFIDReceive3.as_view(), name='rfid_api3'),
     path('logs/', LogList.as_view(), name='log-list'),
     path('logs/new/', LogCreateView.as_view(), name='log-create'),
     path("get-csrf-token/", views.get_csrf_token, name="get_csrf_token"),

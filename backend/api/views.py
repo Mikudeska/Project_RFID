@@ -1154,22 +1154,189 @@ class PersonDetail(APIView):
         except Person.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
         
-class RFIDSimulator(APIView):
+class RFIDReceive1(APIView):
     parser_classes = [JSONParser]
     def post(self, request):
         try:
             simulated_tags = request.data.get('tags', [])
             scanner_type = request.data.get('scanner_type')  # 'in' or 'out'
-            scanner_id = request.data.get('scanner_id')       # 1, 2, or 3
+            scanner_id = 1  # ตายตัวเป็น 1
 
-            try:
-                scanner_id = int(scanner_id)
-            except (TypeError, ValueError):
-                scanner_id = None
-
-            if not simulated_tags or scanner_type not in ['in', 'out'] or scanner_id not in [1, 2, 3]:
+            if not simulated_tags or scanner_type not in ['in', 'out']:
                 return Response(
-                    {'error': 'Missing tags or invalid scanner_type (in/out) or scanner_id (1-3)'},
+                    {'error': 'Missing tags or invalid scanner_type (in/out)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            results = []
+
+            for tag in simulated_tags:
+                epc = tag.get('epc')
+                if not epc:
+                    continue
+                try:
+                    # ✅ Step 1: ดึงข้อมูล person เพื่อตรวจสอบสถานะปัจจุบันก่อน
+                    person = Person.objects.get(rfid=epc)
+
+                    verified_field = f"verified{scanner_id}"
+                    time_field = f"verified_updated_at{scanner_id}"
+                    current_status = getattr(person, verified_field, 0)
+                    verified_value = 2 if scanner_type == 'out' else 1
+
+                    if current_status == verified_value:
+                        results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
+                    else:
+                        now = timezone.now()
+                        
+                        # ✅ Step 2: ใช้ .update() เพื่อสั่งให้ฐานข้อมูลอัปเดตโดยตรง
+                        #    วิธีนี้แน่นอนและมีประสิทธิภาพกว่าการใช้ .save()
+                        Person.objects.filter(pk=person.pk).update(**{
+                            verified_field: verified_value,
+                            time_field: now
+                        })
+
+                        if settings.USE_CHANNEL:
+                            # ✅ Step 3: อัปเดต object ในหน่วยความจำตาม เพื่อส่งข้อมูลที่ถูกต้องผ่าน WebSocket
+                            setattr(person, verified_field, verified_value)
+                            setattr(person, time_field, now)
+                            
+                            broadcast_to_crud01({
+                                'action': 'update',
+                                'id': person.id,
+                                'fields': person_to_dict(person),
+                                'scanner_type': scanner_type,
+                            })
+                            broadcast_stats_update()
+
+                        results.append(f"rfid: {epc} name: {person.name} status: อัปเดตสถานะสำเร็จ")
+
+                except Person.DoesNotExist:
+                    # ส่วนนี้ทำงานถูกต้องอยู่แล้ว ไม่ต้องแก้ไข
+                    person_with_empty_rfid = Person.objects.filter(Q(rfid__isnull=True) | Q(rfid='')).first()
+
+                    if not person_with_empty_rfid:
+                        results.append(f"rfid: {epc} name: null status: ไม่พบข้อมูลในระบบ")
+                    else:
+                        person_with_empty_rfid.rfid = epc
+                        verified_field = f"verified{scanner_id}"
+                        time_field = f"verified_updated_at{scanner_id}"
+                        verified_value = 2 if scanner_type == 'out' else 1
+                        setattr(person_with_empty_rfid, verified_field, verified_value)
+                        setattr(person_with_empty_rfid, time_field, timezone.now())
+                        person_with_empty_rfid.save()
+
+                        if settings.USE_CHANNEL:
+                            broadcast_to_crud01({
+                                'action': 'update',
+                                'id': person_with_empty_rfid.id,
+                                'fields': person_to_dict(person_with_empty_rfid),
+                                'scanner_type': scanner_type,
+                            })
+                            broadcast_stats_update()
+                        results.append(f"epc: {epc} name: {person_with_empty_rfid.name} status: เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว")
+
+            return Response({'results': results}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class RFIDReceive2(APIView):
+    parser_classes = [JSONParser]
+    def post(self, request):
+        try:
+            simulated_tags = request.data.get('tags', [])
+            scanner_type = request.data.get('scanner_type')  # 'in' or 'out'
+            scanner_id = 2  # ตายตัวเป็น 2
+
+            if not simulated_tags or scanner_type not in ['in', 'out']:
+                return Response(
+                    {'error': 'Missing tags or invalid scanner_type (in/out)'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            results = []
+
+            for tag in simulated_tags:
+                epc = tag.get('epc')
+                if not epc:
+                    continue
+                try:
+                    # ✅ Step 1: ดึงข้อมูล person เพื่อตรวจสอบสถานะปัจจุบันก่อน
+                    person = Person.objects.get(rfid=epc)
+
+                    verified_field = f"verified{scanner_id}"
+                    time_field = f"verified_updated_at{scanner_id}"
+                    current_status = getattr(person, verified_field, 0)
+                    verified_value = 2 if scanner_type == 'out' else 1
+
+                    if current_status == verified_value:
+                        results.append(f"rfid: {epc} name: {person.name} status: แท็กนี้ถูกแสกนแล้ว")
+                    else:
+                        now = timezone.now()
+                        
+                        # ✅ Step 2: ใช้ .update() เพื่อสั่งให้ฐานข้อมูลอัปเดตโดยตรง
+                        #    วิธีนี้แน่นอนและมีประสิทธิภาพกว่าการใช้ .save()
+                        Person.objects.filter(pk=person.pk).update(**{
+                            verified_field: verified_value,
+                            time_field: now
+                        })
+
+                        if settings.USE_CHANNEL:
+                            # ✅ Step 3: อัปเดต object ในหน่วยความจำตาม เพื่อส่งข้อมูลที่ถูกต้องผ่าน WebSocket
+                            setattr(person, verified_field, verified_value)
+                            setattr(person, time_field, now)
+                            
+                            broadcast_to_crud01({
+                                'action': 'update',
+                                'id': person.id,
+                                'fields': person_to_dict(person),
+                                'scanner_type': scanner_type,
+                            })
+                            broadcast_stats_update()
+
+                        results.append(f"rfid: {epc} name: {person.name} status: อัปเดตสถานะสำเร็จ")
+
+                except Person.DoesNotExist:
+                    # ส่วนนี้ทำงานถูกต้องอยู่แล้ว ไม่ต้องแก้ไข
+                    person_with_empty_rfid = Person.objects.filter(Q(rfid__isnull=True) | Q(rfid='')).first()
+
+                    if not person_with_empty_rfid:
+                        results.append(f"rfid: {epc} name: null status: ไม่พบข้อมูลในระบบ")
+                    else:
+                        person_with_empty_rfid.rfid = epc
+                        verified_field = f"verified{scanner_id}"
+                        time_field = f"verified_updated_at{scanner_id}"
+                        verified_value = 2 if scanner_type == 'out' else 1
+                        setattr(person_with_empty_rfid, verified_field, verified_value)
+                        setattr(person_with_empty_rfid, time_field, timezone.now())
+                        person_with_empty_rfid.save()
+
+                        if settings.USE_CHANNEL:
+                            broadcast_to_crud01({
+                                'action': 'update',
+                                'id': person_with_empty_rfid.id,
+                                'fields': person_to_dict(person_with_empty_rfid),
+                                'scanner_type': scanner_type,
+                            })
+                            broadcast_stats_update()
+                        results.append(f"epc: {epc} name: {person_with_empty_rfid.name} status: เพิ่มรหัส RFID สำเร็จและอัปเดตสถานะแล้ว")
+
+            return Response({'results': results}, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class RFIDReceive3(APIView):
+    parser_classes = [JSONParser]
+    def post(self, request):
+        try:
+            simulated_tags = request.data.get('tags', [])
+            scanner_type = request.data.get('scanner_type')  # 'in' or 'out'
+            scanner_id = 3  # ตายตัวเป็น 3
+
+            if not simulated_tags or scanner_type not in ['in', 'out']:
+                return Response(
+                    {'error': 'Missing tags or invalid scanner_type (in/out)'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
