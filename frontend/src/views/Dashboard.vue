@@ -10,13 +10,13 @@ setInterval(() => {
     displayTime.value = new Date();
 }, 1000);
 const displayTimeString = computed(() => {
-    return displayTime.value.toLocaleString('th-TH', {
+        return displayTime.value.toLocaleString('th-TH', {
         timeStyle: 'medium'
     });
 });
 const displayDateString = computed(() => {
     return displayTime.value.toLocaleString('th-TH', {
-        dateStyle: 'full'
+        dateStyle: 'medium'
     });
 });
 
@@ -131,9 +131,12 @@ onMounted(async () => {
 <template>
     <div class="flex flex-col">
         <!-- ส่วนแสดงวันที่และเวลา -->
-        <div class="card flex flex-row md:flex-row items-center justify-between mb-[2rem] gap-2 divide-x-4 divide-indigo-600">
-            <div class="flex-1 text-center text-1xl sm:text-2xl md:text-3xl xl:text-5xl">{{ displayDateString }}</div>
-            <div class="flex items-center justify-center flex-1 gap-2 text-2xl sm:text-5xl md:text-7xl">
+        <div class="card flex items-center justify-center mb-[1rem] gap-2 divide-x-4 divide-indigo-600 border-b-4 border-indigo-600">
+            <div class="flex items-center justify-center flex-1 gap-2 text-2xl lg:text-5xl md:text-7xl">
+                <Icon icon="uil:calender"></Icon>
+                <span>{{ displayDateString }}</span>
+            </div>
+            <div class="flex items-center justify-center flex-1 gap-2 text-2xl lg:text-5xl md:text-7xl">
                 <Icon icon="material-symbols:alarm-outline-rounded"></Icon>
                 <span>{{ displayTimeString }}</span>
             </div>
@@ -183,7 +186,7 @@ onMounted(async () => {
                             </p>
                         </div>
                         <!-- แสดงเนื้อหาคอมเมนต์ -->
-                        <p class="flex-col w-full px-2 text-2xl break-words">
+                        <p class="flex-col w-full px-2 text-2xl break-words flex-1 overflow">
                             {{ comment.comment }}
                         </p>
                     </div>

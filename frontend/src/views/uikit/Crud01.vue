@@ -260,9 +260,24 @@ const progress = ref(0);
 const processing = ref(false);
 const processingInterval = ref(null);
 const uploadInProgress = ref(false);
+const uploadStartTime = ref(null);
+const uploadStats = ref(null);
 
 const handleFileSelect = (event) => {
     file.value = event.target.files[0];
+    uploadStats.value = null; // รีเซ็ตสถิติเมื่อเลือกไฟล์ใหม่
+};
+
+const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+};
+
+const getFileExtension = (filename) => {
+    return filename.split('.').pop().toUpperCase();
 };
 
 const handleFileUpload = async () => {
@@ -281,16 +296,18 @@ const handleFileUpload = async () => {
     uploadInProgress.value = true;
     progress.value = 0;
     processing.value = false;
+    uploadStartTime.value = Date.now();
+    uploadStats.value = null;
 
     const formData = new FormData();
     formData.append('file', file.value);
 
     try {
-        await api.post(`/api/import/`, formData, {
+        const response = await api.post(`/api/import/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-                progress.value = Math.min(percent * 0.8, 95); // จำกัดไม่ให้เกิน %
+                progress.value = Math.min(percent * 0.8, 79); // จำกัดไม่ให้เกิน 79%
             }
         });
 
@@ -308,6 +325,19 @@ const handleFileUpload = async () => {
 
         clearInterval(processingInterval.value);
         progress.value = 100;
+
+        // คำนวณเวลาที่ใช้
+        const uploadTime = ((Date.now() - uploadStartTime.value) / 1000).toFixed(2);
+        
+        // เก็บสถิติจาก response
+        uploadStats.value = {
+            ...response.data.stats,
+            uploadTime: uploadTime,
+            fileName: file.value.name,
+            fileSize: formatFileSize(file.value.size),
+            fileType: getFileExtension(file.value.name)
+        };
+
     } catch (error) {
         clearInterval(processingInterval.value);
         toast.error('อัปโหลดล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
@@ -323,6 +353,7 @@ const closeDialog = () => {
     progress.value = 0;
     uploadInProgress.value = false;
     processing.value = false;
+    uploadStats.value = null;
     UploadDialog.value = false;
 };
 
@@ -791,50 +822,163 @@ const getExportUrl = (baseUrl) => {
             </template>
         </Dialog>
 
-        <Dialog v-model:visible="UploadDialog" header="อัปโหลดไฟล์" :modal="true" :closable="false">
-            <div class="flex flex-col items-center gap-4">
-                <div v-if="file" class="py-2">
-                    <div class="flex items-center gap-3">
-                        <Icon icon="clarity:file-line" class="text-primary-700" style="width: 36px; height: 36px" />
-                        <Tag severity="success" class="px-4 py-2 rounded-xl max-w-[400px] overflow-hidden text-ellipsis whitespace-nowrap">
-                            <span class="text-3xl font-bold break-all">{{ file.name }}</span>
-                        </Tag>
+        <Dialog v-model:visible="UploadDialog" :modal="true" :closable="!uploadInProgress" :style="{ width: '600px' }" class="upload-dialog">
+            <template #header>
+                <div class="flex items-center gap-3">
+                    <Icon icon="material-symbols:cloud-upload" class="text-3xl text-primary-500" />
+                    <span class="text-xl font-semibold">{{ progress >= 100 ? 'สรุปผลการอัปโหลด' : 'อัปโหลดไฟล์' }}</span>
+                </div>
+            </template>
+
+            <div class="flex flex-col gap-6 py-4">
+                <!-- ส่วนแสดงไฟล์ที่เลือก -->
+                <div v-if="file && !uploadStats" class="p-4 border-2 border-dashed rounded-xl bg-surface-50 dark:bg-surface-800">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <Icon 
+                                :icon="file.name.endsWith('.xlsx') ? 'vscode-icons:file-type-excel' : 'catppuccin:csv'" 
+                                class="text-4xl" 
+                            />
+                            <div>
+                                <p class="font-semibold text-surface-900 dark:text-surface-0">{{ file.name }}</p>
+                                <p class="text-sm text-surface-600 dark:text-surface-400">{{ formatFileSize(file.size) }}</p>
+                            </div>
+                        </div>
+                        <Tag severity="info" class="px-3 py-1">{{ getFileExtension(file.name) }}</Tag>
                     </div>
                 </div>
-                <small class="block mt-2 text-gray-500">[ ไฟล์ไม่เกิน 15 MB ]</small>
 
                 <!-- ปุ่มเลือกไฟล์ -->
-                <div v-if="!uploadInProgress && !processing && !progress">
+                <div v-if="!file && !uploadInProgress" class="flex flex-col items-center gap-3 py-8">
+                    <Icon icon="material-symbols:upload-file" class="text-6xl text-surface-400" />
+                    <p class="text-sm text-surface-600 dark:text-surface-400">เลือกไฟล์ Excel (.xlsx) หรือ CSV (.csv)</p>
+                    <small class="text-xs text-surface-500">ขนาดไฟล์ไม่เกิน 15 MB</small>
                     <input type="file" accept=".xlsx,.csv" @change="handleFileSelect" ref="fileInput" hidden />
-                    <Button @click="$refs.fileInput.click()">
-                        <Icon icon="lets-icons:import" />
-                        {{ file ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์' }}
+                    <Button @click="$refs.fileInput.click()" severity="secondary" size="large">
+                        <Icon icon="material-symbols:folder-open" class="mr-2" />
+                        เลือกไฟล์
                     </Button>
                 </div>
 
-                <!-- ข้อความเมื่อเสร็จ -->
-                <p v-if="progress >= 100" class="text-sm text-center text-green-600">✔️ อัปโหลดและประมวลผลเสร็จสมบูรณ์</p>
-
                 <!-- Progress Bar -->
-                <template v-if="uploadInProgress">
-                    <ProgressBar v-if="uploadInProgress" :value="progress" :showValue="false" class="w-full" style="height: 4px" />
-                    <p v-if="uploadInProgress" class="mt-2 text-sm text-center text-sold">
-                        {{ progress < 80 ? 'กำลังอัปโหลดไฟล์...' : 'กำลังประมวลผลข้อมูล...' }}
-                    </p>
-                </template>
+                <div v-if="uploadInProgress || (progress > 0 && progress < 100)" class="flex flex-col gap-3">
+                    <div class="flex items-center justify-between text-sm">
+                        <span class="font-medium text-surface-700 dark:text-surface-300">
+                            {{ progress < 80 ? 'กำลังอัปโหลด...' : 'กำลังประมวลผล...' }}
+                        </span>
+                        <span class="font-bold text-primary-600">{{ Math.round(progress) }}%</span>
+                    </div>
+                    <ProgressBar :value="progress" class="h-3" />
+                </div>
+
+                <!-- แสดงสถิติหลังอัปโหลดเสร็จ -->
+                <div v-if="uploadStats" class="flex flex-col gap-4">
+                    <!-- ข้อมูลไฟล์ -->
+                    <div class="p-3 border rounded-lg bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800">
+                        <div class="flex items-center gap-2 mb-2">
+                            <Icon icon="line-md:confirm-circle" class="text-xl text-green-600" />
+                            <h3 class="text-xl font-semibold text-green-800 dark:text-green-200">อัปโหลดสำเร็จ!</h3>
+                        </div>
+                        <div class="grid grid-cols-4 gap-2 text-base text-center">
+                            <div>
+                                <span class="text-surface-600 dark:text-surface-400">ชื่อไฟล์:</span>
+                                <p class="font-medium text-surface-900 dark:text-surface-0 truncate">{{ uploadStats.fileName }}</p>
+                            </div>
+                            <div>
+                                <span class="text-surface-600 dark:text-surface-400">ประเภท:</span>
+                                <p class="font-medium text-surface-900 dark:text-surface-0">{{ uploadStats.fileType }}</p>
+                            </div>
+                            <div>
+                                <span class="text-surface-600 dark:text-surface-400">ขนาด:</span>
+                                <p class="font-medium text-surface-900 dark:text-surface-0">{{ uploadStats.fileSize }}</p>
+                            </div>
+                            <div>   
+                                <span class="text-surface-600 dark:text-surface-400">เวลา:</span>
+                                <p class="font-medium text-surface-900 dark:text-surface-0">{{ uploadStats.uploadTime }}s</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- สถิติข้อมูล และระดับปริญญา -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 gap-2">
+                            <div class="p-3 text-center border rounded-lg bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                                <Icon icon="material-symbols:database" class="mb-1 text-2xl text-blue-600" />
+                                <p class="text-3xl font-bold text-blue-900 dark:text-blue-100">{{ uploadStats.imported_count }}</p>
+                                <p class="text-lg text-blue-700 dark:text-blue-300">รายการที่นำเข้า</p>
+                                <p class="mt-1 text-base text-surface-600 dark:text-surface-400">
+                                    ใหม่: {{ uploadStats.new_count }} | อัปเดต: {{ uploadStats.updated_count }}
+                                </p>
+                            </div>
+                            <!-- คอลัมน์กลาง: มีรหัส RFID -->
+                            <div class="p-3 text-center border rounded-lg bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800">
+                                <Icon icon="flowbite:tag-solid" class="mb-1 text-2xl text-purple-600" />
+                                <p class="text-3xl font-bold text-purple-900 dark:text-purple-100">{{ uploadStats.rfid_count }}</p>
+                                <p class="text-lg text-purple-700 dark:text-purple-300">มีรหัส RFID</p>
+                                <p class="mt-1 text-base text-surface-600 dark:text-surface-400">
+                                    จากทั้งหมด {{ uploadStats.total_count }} คน
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col justify-between gap-2">
+                            <!-- ป.ตรี -->
+                            <div class="flex items-center gap-3 p-3 border rounded-lg bg-cyan-50 dark:bg-cyan-900/20 border-cyan-200 dark:border-cyan-800 flex-1">
+                                <Icon icon="fluent:hat-graduation-16-filled" class="text-2xl text-cyan-600 flex-shrink-0" />
+                                <div class="flex-1">
+                                    <p class="text-xl font-bold text-cyan-900 dark:text-cyan-100">{{ uploadStats.bachelor_count }} คน</p>
+                                    <p class="text-sm text-cyan-700 dark:text-cyan-300">ปริญญาตรี</p>
+                                </div>
+                            </div>
+                            
+                            <!-- ป.โท -->
+                            <div class="flex items-center gap-3 p-3 border rounded-lg bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 flex-1">
+                                <Icon icon="fluent:hat-graduation-16-filled" class="text-2xl text-orange-600 flex-shrink-0" />
+                                <div class="flex-1">
+                                    <p class="text-xl font-bold text-orange-900 dark:text-orange-100">{{ uploadStats.master_count }} คน</p>
+                                    <p class="text-sm text-orange-700 dark:text-orange-300">ปริญญาโท</p>
+                                </div>
+                            </div>
+                            
+                            <!-- ป.เอก -->
+                            <div class="flex items-center gap-3 p-3 border rounded-lg bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 flex-1">
+                                <Icon icon="fluent:hat-graduation-16-filled" class="text-2xl text-red-600 flex-shrink-0" />
+                                <div class="flex-1">
+                                    <p class="text-xl font-bold text-red-900 dark:text-red-100">{{ uploadStats.doctor_count }} คน</p>
+                                    <p class="text-sm text-red-700 dark:text-red-300">ปริญญาเอก</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <template #footer>
-                <!-- ปุ่มก่อนอัปโหลดเสร็จ -->
-                <template v-if="progress < 100">
-                    <Button label="ยกเลิก" icon="pi pi-times" @click="closeDialog" severity="danger" />
-                    <Button label="ยืนยัน" icon="pi pi-check" @click="handleFileUpload" :loading="uploadInProgress" :disabled="!file || uploadInProgress" />
-                </template>
-
-                <!-- ปุ่มหลังอัปโหลดเสร็จ -->
-                <template v-else>
-                    <Button label="ปิด" @click="closeDialog" severity="success" />
-                </template>
+                <div class="flex justify-end gap-2">
+                    <Button 
+                        v-if="progress < 100" 
+                        label="ยกเลิก" 
+                        severity="secondary" 
+                        @click="closeDialog" 
+                        :disabled="uploadInProgress" 
+                        text
+                    />
+                    <Button 
+                        v-if="progress < 100" 
+                        label="อัปโหลด" 
+                        icon="pi pi-upload" 
+                        @click="handleFileUpload" 
+                        :loading="uploadInProgress" 
+                        :disabled="!file || uploadInProgress" 
+                    />
+                    <Button 
+                        v-if="progress >= 100" 
+                        label="ปิด" 
+                        icon="pi pi-check" 
+                        @click="closeDialog" 
+                        severity="success" 
+                    />
+                </div>
             </template>
         </Dialog>
 

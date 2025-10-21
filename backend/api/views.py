@@ -879,6 +879,25 @@ class ImportData(APIView):
                 + result.totals.get('update', 0)  # ข้อมูลที่อัปเดต
             )
 
+            # คำนวณสถิติเพิ่มเติม
+            all_persons = Person.objects.all()
+            total_count = all_persons.count()
+            rfid_count = all_persons.exclude(Q(rfid__isnull=True) | Q(rfid='')).count()
+            
+            # นับจำนวนตามระดับปริญญา
+            bachelor_count = 0
+            master_count = 0
+            doctor_count = 0
+            
+            for person in all_persons:
+                if person.degree:
+                    if 'ดุษฎีบัณฑิต' in person.degree:
+                        doctor_count += 1
+                    elif 'มหาบัณฑิต' in person.degree:
+                        master_count += 1
+                    else:
+                        bachelor_count += 1
+
             # บันทึก Log
             Log.objects.create(
                 action='Import',
@@ -891,17 +910,20 @@ class ImportData(APIView):
             broadcast_ws("upload")
             broadcast_stats_update()
             
-            # ตรวจสอบข้อมูลหลัง import
-            print("\n🔍 CHECKING DATA AFTER IMPORT:")
-            # ดึงข้อมูลที่เกี่ยวข้องกับไฟล์ที่ import
-            imported_ids = []
-            for row in dataset:
-                if 'เลขที่บัณฑิต' in row:
-                    imported_ids.append(str(row['เลขที่บัณฑิต']))
-            
-            
             return Response(
-                {'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ'}, 
+                {
+                    'success': f'นำเข้าข้อมูลสำเร็จ {imported_count} รายการ',
+                    'stats': {
+                        'imported_count': imported_count,
+                        'new_count': result.totals.get('new', 0),
+                        'updated_count': result.totals.get('update', 0),
+                        'total_count': total_count,
+                        'rfid_count': rfid_count,
+                        'bachelor_count': bachelor_count,
+                        'master_count': master_count,
+                        'doctor_count': doctor_count
+                    }
+                }, 
                 status=status.HTTP_201_CREATED
             )
             
