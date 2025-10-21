@@ -317,9 +317,14 @@ const extractShortenedIDs = (details) => {
                 </template>
             </Column>
 
-            <Column header="ผู้ใช้" style="min-width: 100px">
+            <Column header="ผู้ใช้" style="min-width: 120px">
                 <template #body="{ data }">
-                    {{ data.user_nickname ?? '-' }}
+                    <div class="flex items-center gap-2">
+                        <Icon icon="mdi:account" class="text-blue-500" />
+                        <span class="font-medium text-blue-600">
+                            {{ data.user_nickname || 'ผู้ใช้ไม่ระบุชื่อ' }}
+                        </span>
+                    </div>
                 </template>
             </Column>
 
@@ -347,6 +352,14 @@ const extractShortenedIDs = (details) => {
                             <span v-else-if="data.details.includes('ลบข้อมูลแบบกลุ่ม')">
                                 <span>ไอดีข้อมูลที่ลบไป</span>
                             </span>
+                        </template>
+
+                        <!-- กรณีคอมเมนต์ -->
+                        <template v-else-if="data.action === 'comment'">
+                            <div class="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                                <Icon icon="mdi:comment-text" class="text-blue-500" />
+                                <span class="font-medium text-blue-700">{{ data.details }}</span>
+                            </div>
                         </template>
 
                         <!-- กรณี log แบบ object (ของเดิม) -->

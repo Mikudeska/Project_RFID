@@ -1208,7 +1208,7 @@ class RFIDSimulator(APIView):
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class LogPagination(PageNumberPagination):
-    page_size = 5
+    page_size = 100  # เพิ่มจาก 5 เป็น 100 เพื่อแสดงคอมเมนต์มากขึ้น
 
 class LogList(generics.ListAPIView):
     serializer_class = LogSerializer
@@ -1220,7 +1220,18 @@ class LogList(generics.ListAPIView):
 
 class LogCreateView(APIView):
     def post(self, request):
-        serializer = LogSerializer(data=request.data)
+        # เพิ่มข้อมูล user และ user_nickname จาก request
+        data = request.data.copy()
+        if request.user.is_authenticated:
+            data['user'] = request.user.id
+            # ใช้ nickname จาก Profile หรือ username เป็น fallback
+            try:
+                profile = request.user.profile
+                data['user_nickname'] = profile.nickname or request.user.username
+            except:
+                data['user_nickname'] = request.user.username
+        
+        serializer = LogSerializer(data=data)
         if serializer.is_valid():
             log = serializer.save()
 
@@ -1228,7 +1239,8 @@ class LogCreateView(APIView):
                 if settings.USE_CHANNEL:
                     broadcast_ws("comment", {
                         "comment": log.details,
-                        "time": log.timestamp.isoformat()
+                        "time": log.timestamp.isoformat(),
+                        "user_nickname": log.user_nickname or "ผู้ใช้ไม่ระบุชื่อ"
                     })
 
             return Response(serializer.data, status=status.HTTP_201_CREATED)

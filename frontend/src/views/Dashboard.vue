@@ -42,7 +42,8 @@ function handleWsMessage(event) {
     } else if (msg.action === 'comment') {
         comments.value.push({
             comment: msg.data.comment,
-            time: msg.data.time
+            time: msg.data.time,
+            user_nickname: msg.data.user_nickname || 'ผู้ใช้ไม่ระบุชื่อ'
         });
         nextTick().then(() => {
             scrollToBottom();
@@ -111,7 +112,8 @@ const loadComments = async () => {
         .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)) // เรียงจากเก่าไปใหม่
         .map((log) => ({
             comment: log.details,
-            time: log.timestamp
+            time: log.timestamp,
+            user_nickname: log.user_nickname || 'ผู้ใช้ไม่ระบุชื่อ'
         }));
 };
 
@@ -166,18 +168,21 @@ onMounted(async () => {
                 <div class="card h-[calc(100vh-100px)] max-h-[calc(100vh-230px)] xl:max-h-[calc(100vh-310px)] overflow-auto" ref="commentsContainer">
                     <div class="pb-2 text-4xl">กล่องข้อความ</div>
                     <div v-for="(comment, index) in comments" :key="index" class="pt-2 mb-4 border-t-2 border-indigo-600">
-                        <p class="w-full mb-2 text-lg text-center">
-                            {{
-                                new Date(comment.time).toLocaleString('th-TH', {
-                                    dateStyle: 'short'
-                                })
-                            }}
-                            {{
-                                new Date(comment.time).toLocaleString('th-TH', {
-                                    timeStyle: 'short'
-                                })
-                            }}
-                        </p>
+                        <!-- แสดงชื่อเล่นและเวลา -->
+                        <div class="flex justify-between items-center mb-2">
+                            <p class="text-lg font-semibold text-blue-600">
+                                {{ comment.user_nickname }}
+                            </p>
+                            <p class="text-sm text-gray-500">
+                                {{
+                                    new Date(comment.time).toLocaleString('th-TH', {
+                                        dateStyle: 'short',
+                                        timeStyle: 'short'
+                                    })
+                                }}
+                            </p>
+                        </div>
+                        <!-- แสดงเนื้อหาคอมเมนต์ -->
                         <p class="flex-col w-full px-2 text-2xl break-words">
                             {{ comment.comment }}
                         </p>
