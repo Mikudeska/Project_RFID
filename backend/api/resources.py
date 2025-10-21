@@ -43,7 +43,7 @@ class PersonResource(resources.ModelResource):
         id_value = row.get('เลขที่บัณฑิต')
         if id_value:
             try:
-                row['id'] = int(id_value)
+                row['id'] = str(id_value)  # แปลงเป็น string เพื่อให้ตรงกับ CharField
             except ValueError:
                 pass  # ถ้าไม่ใช่ตัวเลขข้ามไป
 
@@ -60,3 +60,20 @@ class PersonResource(resources.ModelResource):
         if hasattr(instance, 'verified1') and instance.verified1 is None:
             instance.verified1 = 0
         return super().save_instance(instance, *args, **kwargs)
+    
+    def get_or_init_instance(self, instance_loader, row):
+        """
+        Override เพื่อให้การอัปเดตทำงานถูกต้อง
+        """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        try:
+            # ลองหาข้อมูลที่มีอยู่แล้ว
+            instance = self._meta.model.objects.get(id=row.get('id'))
+            logger.info(f"Found existing instance: {instance.id} - {instance.name}")
+            return instance, False  # False = ไม่ใช่ instance ใหม่
+        except self._meta.model.DoesNotExist:
+            # ถ้าไม่พบ ให้สร้างใหม่
+            logger.info(f"Creating new instance for id: {row.get('id')}")
+            return super().get_or_init_instance(instance_loader, row)

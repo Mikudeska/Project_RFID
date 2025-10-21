@@ -843,8 +843,14 @@ class ImportData(APIView):
             if len(dataset) == 0:
                 raise ValueError("ไฟล์ที่อัปโหลดว่างเปล่า")
 
-            # นำเข้าข้อมูล
-            result = resource.import_data(dataset, dry_run=False)
+            # นำเข้าข้อมูล (เพิ่ม update=True เพื่อให้ทับข้อมูลเก่า)
+            result = resource.import_data(dataset, dry_run=False, update=True)
+            
+            # Debug: แสดงผลลัพธ์การ import
+            logger.info(f"Import result: {result.totals}")
+            logger.info(f"New records: {result.totals.get('new', 0)}")
+            logger.info(f"Updated records: {result.totals.get('update', 0)}")
+            logger.info(f"Errors: {result.totals.get('error', 0)}")
             
             # แก้ไขการนับจำนวนรายการ
             imported_count = (
