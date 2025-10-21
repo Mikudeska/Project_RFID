@@ -868,8 +868,7 @@ class ImportData(APIView):
                 dry_run=False, 
                 update=True,
                 skip_unchanged=False,  # เปลี่ยนเป็น False เพื่อให้อัปเดตทุกครั้ง
-                use_bulk=False,
-                force_update=True  # บังคับให้อัปเดตทุกครั้ง
+                use_bulk=False
             )
             
             # Debug: แสดงผลลัพธ์การ import
