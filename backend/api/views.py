@@ -848,13 +848,28 @@ class ImportData(APIView):
                 raise ValueError("ไฟล์ที่อัปโหลดว่างเปล่า")
 
             # นำเข้าข้อมูล (เพิ่ม update=True เพื่อให้ทับข้อมูลเก่า)
-            result = resource.import_data(dataset, dry_run=False, update=True)
+            result = resource.import_data(
+                dataset, 
+                dry_run=False, 
+                update=True,
+                skip_unchanged=True,
+                use_bulk=False
+            )
             
             # Debug: แสดงผลลัพธ์การ import
             logger.info(f"Import result: {result.totals}")
             logger.info(f"New records: {result.totals.get('new', 0)}")
             logger.info(f"Updated records: {result.totals.get('update', 0)}")
             logger.info(f"Errors: {result.totals.get('error', 0)}")
+            logger.info(f"Delete: {result.totals.get('delete', 0)}")
+            logger.info(f"Skip: {result.totals.get('skip', 0)}")
+            logger.info(f"Invalid: {result.totals.get('invalid', 0)}")
+            
+            # แสดง error details ถ้ามี
+            if result.has_errors():
+                logger.error("Import errors found:")
+                for error in result.row_errors():
+                    logger.error(f"Row {error[0]}: {error[1]}")
             
             # แก้ไขการนับจำนวนรายการ
             imported_count = (
