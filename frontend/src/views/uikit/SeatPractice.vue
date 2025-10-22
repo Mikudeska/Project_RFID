@@ -187,19 +187,22 @@ function resetFilter() {
 }
 
 const filteredPersons = computed(() => {
-    // เรียงตามประเภทปริญญาก่อน แล้วค่อยเรียงตาม id
-    return persons.value.sort((a, b) => {
-        // 1. เรียงตามประเภทปริญญาก่อน
-        const degreeOrder = { 'doctoral': 1, 'master': 2, 'bachelor': 3 };
+    // เรียงตามประเภทปริญญาก่อน (ป.เอก > ป.โท > ป.ตรี) แล้วค่อยเรียงตามเลขที่นั่ง
+    // สร้าง shallow copy เพื่อไม่ให้ mutate array ต้นฉบับ
+    return [...persons.value].sort((a, b) => {
+        // 1. เรียงตามประเภทปริญญา: doctoral (ป.เอก) > master (ป.โท) > bachelor (ป.ตรี)
+        const degreeOrder = { doctoral: 1, master: 2, bachelor: 3, unknown: 4 };
         const aDegreeType = getDegreeType(a.degree);
         const bDegreeType = getDegreeType(b.degree);
-        
+
         if (degreeOrder[aDegreeType] !== degreeOrder[bDegreeType]) {
             return degreeOrder[aDegreeType] - degreeOrder[bDegreeType];
         }
-        
-        // 2. ถ้าปริญญาเดียวกัน ให้เรียงตาม id (numerical)
-        return parseInt(a.id) - parseInt(b.id);
+
+        // 2. ถ้าปริญญาเดียวกัน ให้เรียงตามเลขที่นั่ง (numerical sort)
+        const aSeat = parseInt(a.seat) || 0;
+        const bSeat = parseInt(b.seat) || 0;
+        return aSeat - bSeat;
     });
 });
 

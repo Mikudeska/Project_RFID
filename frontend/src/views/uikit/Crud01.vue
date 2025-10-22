@@ -584,24 +584,32 @@ function getLatestVerified(data) {
 }
 
 const multiSortMeta = ref([
-    { field: 'degree_level', order: -1 },
-    { field: 'id', order: 1 }
+    { field: 'degree_level', order: 1 },  // เรียงจาก ป.เอก > ป.โท > ป.ตรี
+    { field: 'seat', order: 1 }  // จากนั้นเรียงตามเลขที่นั่ง
 ]);
 
 const tableData = computed(() => {
     if (!filteredPersons.value) return [];
 
     return filteredPersons.value.map((person) => {
-        let degree_level = 'ป.ตรี';
+        // ใช้ตัวเลขแทน string เพื่อให้เรียงลำดับได้ถูกต้อง
+        // 1 = ป.เอก, 2 = ป.โท, 3 = ป.ตรี
+        let degree_level = 3; // ค่าเริ่มต้นเป็น ป.ตรี
+        let degree_label = 'ป.ตรี';
+        
         if (person.degree?.includes('ดุษฎีบัณฑิต')) {
-            degree_level = 'ป.เอก';
+            degree_level = 1;
+            degree_label = 'ป.เอก';
         } else if (person.degree?.includes('มหาบัณฑิต')) {
-            degree_level = 'ป.โท';
+            degree_level = 2;
+            degree_label = 'ป.โท';
         }
 
         return {
             ...person,
-            degree_level: degree_level
+            degree_level: degree_level,
+            degree_label: degree_label,
+            seat: parseInt(person.seat) || 0  // แปลงเป็นตัวเลขสำหรับการเรียง
         };
     });
 });
@@ -700,7 +708,11 @@ const getExportUrl = (baseUrl) => {
                 </template>
 
                 <Column v-if="auth.status !== 'Staff'" selectionMode="multiple" style="width: 3rem" :exportable="false"></Column>
-                <Column field="degree_level" header="วุฒิ" sortable></Column>
+                <Column field="degree_level" header="วุฒิ" sortable style="min-width: 5rem">
+                    <template #body="slotProps">
+                        {{ slotProps.data.degree_label }}
+                    </template>
+                </Column>
                 <Column field="id" header="เลขที่บัณฑิต" sortable style="min-width: 5rem"></Column>
                 <Column field="nisit" header="รหัสนักศึกษา" sortable style="min-width: 10rem"></Column>
                 <!-- <Column header="Image">
