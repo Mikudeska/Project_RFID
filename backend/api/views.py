@@ -3,7 +3,8 @@ from django.conf import settings
 from django.db import transaction, connection
 from django.http import JsonResponse, StreamingHttpResponse
 from django.utils import timezone
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
+from django.utils.decorators import method_decorator
 from django.db.models import Q
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.views.decorators.http import require_POST, require_GET
@@ -1498,3 +1499,235 @@ def convert_datetime_fields(data: dict, fields: list):
         if f in data and isinstance(data[f], datetime):
             data[f] = data[f].isoformat()
     return data
+
+class ExportSeatMap(APIView):
+    """
+    Export แผนที่นั่งเป็น Excel โดยแสดง:
+    - แกน Y = เลขแถว
+    - แกน X = เลขที่นั่ง (พร้อมทางเดิน)
+    - เซลล์ = ลำดับที่บัณฑิต
+    - สีเขียว = มารายงานตัว, สีแดง = ยังไม่มา
+    - ทางเดิน = คอลัมน์ว่าง
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        try:
+            from openpyxl import Workbook
+            from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
+            import json
+            
+            # ดึงข้อมูล layout จาก query parameters
+            rows_param = request.GET.get('rows')
+            seats_per_row_param = request.GET.get('seatsPerRow')
+            seats_per_side_a_param = request.GET.get('seatsPerSideA')
+            seats_per_side_b_param = request.GET.get('seatsPerSideB')
+            pillars_param = request.GET.get('pillars', '[]')
+            
+            # ดึงข้อมูลทั้งหมด
+            persons = Person.objects.all()
+            
+            # กำหนดค่าเริ่มต้น
+            if rows_param and seats_per_side_a_param:
+                SEATS_PER_ROW = int(seats_per_row_param)
+                SEATS_PER_SIDE_A = int(seats_per_side_a_param)
+                SEATS_PER_SIDE_B = int(seats_per_side_b_param)
+                pillars = json.loads(pillars_param)
+                max_rows_config = int(rows_param)
+            else:
+                SEATS_PER_ROW = 70
+                SEATS_PER_SIDE_A = 35
+                SEATS_PER_SIDE_B = 35
+                pillars = []
+                max_rows_config = 70
+            
+            # หาจำนวนแถวที่มีข้อมูลจริง
+            max_seat = max([p.seat for p in persons if p.seat], default=0)
+            total_rows = min(
+                (max_seat // SEATS_PER_ROW) + (1 if max_seat % SEATS_PER_ROW > 0 else 0),
+                max_rows_config
+            ) if max_seat > 0 else 0
+            
+            # สร้าง workbook
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "แผนที่นั่ง"
+            
+            # สร้าง dictionary สำหรับค้นหาบัณฑิตตามที่นั่ง
+            seat_map = {}
+            for person in persons:
+                if person.seat:
+                    seat_map[int(person.seat)] = person
+            
+            # กำหนดสีและ style
+            green_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
+            red_fill = PatternFill(start_color="FFB6C1", end_color="FFB6C1", fill_type="solid")
+            header_fill = PatternFill(start_color="B0E0E6", end_color="B0E0E6", fill_type="solid")
+            aisle_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # สีเทาสำหรับทางเดิน
+            pillar_fill = PatternFill(start_color="808080", end_color="808080", fill_type="solid")  # สีเทาเข้มสำหรับเสา
+            header_font = Font(bold=True, size=12)
+            center_alignment = Alignment(horizontal='center', vertical='center')
+            thin_border = Border(
+                left=Side(style='thin'),
+                right=Side(style='thin'),
+                top=Side(style='thin'),
+                bottom=Side(style='thin')
+            )
+            
+            # ฟังก์ชันสร้าง layout สำหรับแต่ละแถว
+            def get_row_layout(row_idx):
+                # เริ่มต้นด้วยที่นั่งทั้งหมด
+                layout = ['seat'] * SEATS_PER_ROW
+                
+                # แทรกเสา (pillar)
+                for pillar in pillars:
+                    if pillar['row'] == row_idx:
+                        side = pillar['side']
+                        index = pillar['index']
+                        length = pillar.get('length', 1)
+                        
+                        # คำนวณตำแหน่งจริง
+                        if side == 'left':
+                            start_idx = index
+                        else:  # right
+                            start_idx = SEATS_PER_SIDE_A + index
+                        
+                        # แทนที่เป็น pillar
+                        for i in range(length):
+                            if start_idx + i < len(layout):
+                                layout[start_idx + i] = 'pillar'
+                
+                return layout
+            
+            # สร้างส่วนหัวคอลัมน์
+            ws.cell(row=1, column=1, value="แถว\\ที่นั่ง")
+            ws.cell(row=1, column=1).fill = header_fill
+            ws.cell(row=1, column=1).font = header_font
+            ws.cell(row=1, column=1).alignment = center_alignment
+            ws.cell(row=1, column=1).border = thin_border
+            
+            # นับตำแหน่งคอลัมน์ใน Excel (รวมทางเดิน)
+            excel_col = 2
+            seat_counter = 1
+            
+            # สร้างหัวคอลัมน์สำหรับฝั่งซ้าย
+            for i in range(SEATS_PER_SIDE_A):
+                ws.cell(row=1, column=excel_col, value=seat_counter)
+                ws.cell(row=1, column=excel_col).fill = header_fill
+                ws.cell(row=1, column=excel_col).font = header_font
+                ws.cell(row=1, column=excel_col).alignment = center_alignment
+                ws.cell(row=1, column=excel_col).border = thin_border
+                ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 5
+                excel_col += 1
+                seat_counter += 1
+            
+            # ทางเดินกลาง
+            ws.cell(row=1, column=excel_col, value="ทางเดิน")
+            ws.cell(row=1, column=excel_col).fill = aisle_fill
+            ws.cell(row=1, column=excel_col).font = header_font
+            ws.cell(row=1, column=excel_col).alignment = center_alignment
+            ws.cell(row=1, column=excel_col).border = thin_border
+            ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 8
+            aisle_col = excel_col
+            excel_col += 1
+            
+            # สร้างหัวคอลัมน์สำหรับฝั่งขวา
+            for i in range(SEATS_PER_SIDE_B):
+                ws.cell(row=1, column=excel_col, value=seat_counter)
+                ws.cell(row=1, column=excel_col).fill = header_fill
+                ws.cell(row=1, column=excel_col).font = header_font
+                ws.cell(row=1, column=excel_col).alignment = center_alignment
+                ws.cell(row=1, column=excel_col).border = thin_border
+                ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 5
+                excel_col += 1
+                seat_counter += 1
+            
+            # เติมข้อมูลแต่ละแถว
+            for row_num in range(1, total_rows + 1):
+                row_layout = get_row_layout(row_num - 1)
+                
+                # คอลัมน์แรก = เลขแถว
+                ws.cell(row=row_num + 1, column=1, value=f"แถว {row_num}")
+                ws.cell(row=row_num + 1, column=1).fill = header_fill
+                ws.cell(row=row_num + 1, column=1).font = header_font
+                ws.cell(row=row_num + 1, column=1).alignment = center_alignment
+                ws.cell(row=row_num + 1, column=1).border = thin_border
+                
+                excel_col = 2
+                seat_in_row = 1
+                
+                # เติมข้อมูลแต่ละที่นั่ง
+                for i in range(SEATS_PER_ROW):
+                    # ถ้าถึงทางเดินกลาง ให้ข้ามคอลัมน์
+                    if i == SEATS_PER_SIDE_A:
+                        ws.cell(row=row_num + 1, column=aisle_col, value="")
+                        ws.cell(row=row_num + 1, column=aisle_col).fill = aisle_fill
+                        ws.cell(row=row_num + 1, column=aisle_col).border = thin_border
+                        excel_col = aisle_col + 1
+                    
+                    cell = ws.cell(row=row_num + 1, column=excel_col if i < SEATS_PER_SIDE_A else excel_col)
+                    
+                    if row_layout[i] == 'pillar':
+                        # เสา
+                        cell.value = "▓"
+                        cell.fill = pillar_fill
+                    else:
+                        # ที่นั่ง
+                        seat_number = (row_num - 1) * SEATS_PER_ROW + (i + 1)
+                        
+                        if seat_number in seat_map:
+                            person = seat_map[seat_number]
+                            cell.value = person.id
+                            
+                            # กำหนดสีตามสถานะ
+                            is_verified = any([
+                                person.verified1 in [1, 2],
+                                person.verified2 in [1, 2],
+                                person.verified3 in [1, 2]
+                            ])
+                            
+                            cell.fill = green_fill if is_verified else red_fill
+                        else:
+                            cell.value = ""
+                    
+                    cell.alignment = center_alignment
+                    cell.border = thin_border
+                    excel_col += 1
+            
+            # ปรับความกว้างคอลัมน์แรก
+            ws.column_dimensions['A'].width = 12
+            
+            # บันทึกไฟล์
+            buffer = io.BytesIO()
+            wb.save(buffer)
+            buffer.seek(0)
+            
+            # ตั้งชื่อไฟล์
+            date_str = datetime.now().strftime('%Y%m%d')
+            filename = f"แผนที่นั่ง_{date_str}.xlsx"
+            
+            response = HttpResponse(
+                buffer.getvalue(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Access-Control-Expose-Headers'] = 'Content-Disposition'
+            
+            # Log การ export
+            Log.objects.create(
+                action='Export',
+                model='Person',
+                details="โหลดแผนที่นั่งเป็น Excel (พร้อมทางเดิน)",
+                user=request.user,
+                user_nickname=request.user.profile.nickname if hasattr(request.user, 'profile') else ''
+            )
+            
+            return response
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

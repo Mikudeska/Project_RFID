@@ -27,6 +27,79 @@ const searchMessage = ref('');
 // เพิ่ม ref สำหรับเก้าอี้ที่ถูก highlight
 const highlightedSeatRef = ref(null);
 
+// ฟังก์ชันโหลดแผนที่นั่งเป็น Excel
+async function exportSeatMap() {
+    try {
+        loading.value = true;
+        
+        // โหลดข้อมูล layout จาก localStorage
+        const layoutConfig = localStorage.getItem('seatLayoutConfig');
+        let params = {};
+        
+        if (layoutConfig) {
+            const config = JSON.parse(layoutConfig);
+            // ส่งเป็น query parameter แทน
+            params = {
+                rows: config.seatLayout.rows,
+                seatsPerRow: config.seatLayout.seatsPerSideA + config.seatLayout.seatsPerSideB,
+                seatsPerSideA: config.seatLayout.seatsPerSideA,
+                seatsPerSideB: config.seatLayout.seatsPerSideB,
+                pillars: JSON.stringify(config.pillars || [])
+            };
+        }
+        
+        // ส่งข้อมูล layout เป็น query params
+        const response = await axios.get(`${API_BASE}/api/export-seat-map/`, {
+            params: params,
+            responseType: 'blob',
+            timeout: 60000  // 60 วินาที
+        });
+
+        // สร้าง download link
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // ดึงชื่อไฟล์จาก Content-Disposition header
+        const disposition = response.headers['content-disposition'];
+        const today = new Date();
+        const dateStr = today.getFullYear().toString() + 
+                       (today.getMonth() + 1).toString().padStart(2, '0') + 
+                       today.getDate().toString().padStart(2, '0');
+        let filename = `แผนที่นั่ง_${dateStr}.xlsx`;
+        
+        if (disposition) {
+            const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(disposition);
+            if (matches && matches[1]) {
+                filename = matches[1].replace(/['"]/g, '');
+            }
+        }
+        
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        
+        toast.add({
+            severity: 'success',
+            summary: 'สำเร็จ',
+            detail: 'โหลดแผนที่นั่งเป็น Excel เรียบร้อย',
+            life: 3000
+        });
+    } catch (error) {
+        console.error('Error exporting seat map:', error);
+        toast.add({
+            severity: 'error',
+            summary: 'เกิดข้อผิดพลาด',
+            detail: 'ไม่สามารถโหลดแผนที่นั่งได้',
+            life: 3000
+        });
+    } finally {
+        loading.value = false;
+    }
+}
+
 
 
 function handleClickOutside(event) {
@@ -618,6 +691,10 @@ function getMiniMapColor(status) {
             <!-- Designer Button -->
             <button v-if="auth.status !== 'Staff'" @click="$router.push('/uikit/SeatDesigner')" class="p-2 transition-all duration-300 bg-purple-100 dark:bg-purple-900 border border-purple-300 dark:border-purple-600 rounded-full shadow-lg hover:bg-purple-200 dark:hover:bg-purple-800 hover:scale-110 hover:shadow-xl transform" title="ออกแบบแผนที่นั่ง">
                 <Icon icon="mdi:chair-rolling" class="text-purple-600 dark:text-purple-300" width="28" height="28" />
+            </button>
+            <!-- Export Seat Map Button -->
+            <button @click="exportSeatMap" class="p-2 transition-all duration-300 bg-green-100 dark:bg-green-900 border border-green-300 dark:border-green-600 rounded-full shadow-lg hover:bg-green-200 dark:hover:bg-green-800 hover:scale-110 hover:shadow-xl transform" title="โหลดแผนที่นั่งเป็น Excel">
+                <Icon icon="vscode-icons:file-type-excel" width="28" height="28" />
             </button>
             <!-- Filter Button -->
             <button ref="filterButtonRef" @click="showFilterDropdown = !showFilterDropdown" class="p-2 transition-all duration-300 bg-blue-100 dark:bg-blue-900 border border-blue-300 dark:border-blue-600 rounded-full shadow-lg hover:bg-blue-200 dark:hover:bg-blue-800 hover:scale-110 hover:shadow-xl transform">

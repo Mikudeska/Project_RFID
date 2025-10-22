@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ExportPDFResult, ResetDatabase, RFIDReceive1, RFIDReceive2, RFIDReceive3, LogList, ResetLog, LogCreateView, change_password_view
+from .views import PersonList, PersonDetail, StatsView, ExportData, ImportData, ExportPDF, ExportPDFResult, ResetDatabase, RFIDReceive1, RFIDReceive2, RFIDReceive3, LogList, ResetLog, LogCreateView, change_password_view, ExportSeatMap
 from . import views
 
 urlpatterns = [
@@ -8,6 +8,7 @@ urlpatterns = [
     path('stats/', StatsView.as_view(), name='stats'),
     path('person/delete/', PersonList.as_view(), name='person-delete'),
     path('export/<str:format_type>/', ExportData.as_view()),
+    path('export-seat-map/', ExportSeatMap.as_view(), name='export-seat-map'),
     path('import/', ImportData.as_view()),
     path('export-pdf/', ExportPDF.as_view()),
     path('export-pdf-result/', ExportPDFResult.as_view()),
