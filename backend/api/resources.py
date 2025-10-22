@@ -47,6 +47,13 @@ class PersonResource(resources.ModelResource):
             except ValueError:
                 pass  # ถ้าไม่ใช่ตัวเลขข้ามไป
 
+        # จัดการฟิลด์ที่นั่ง - ถ้าไม่มีค่าหรือเป็นค่าว่าง ให้ลบออกเพื่อให้ model gen ใหม่
+        seat_value = row.get('ที่นั่ง')
+        if seat_value is None or str(seat_value).strip() == '':
+            # ไม่มีค่า ให้ลบ key ออก เพื่อให้ model.save() gen ใหม่
+            if 'ที่นั่ง' in row:
+                del row['ที่นั่ง']
+
         # จัดการฟิลด์ verified (ถ้ามี) ให้แมปไปยัง verified1
         if 'verified' in row:
             verified_value = row.get('verified')
