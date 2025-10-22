@@ -754,11 +754,11 @@ const getExportUrl = (baseUrl) => {
                 <div class="space-y-5">
                     <div>
                         <label for="id" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">ลำดับ</label>
-                        <InputText id="id" v-model.trim="product.id" :disabled="true" fluid class="!bg-surface-100 dark:!bg-surface-800" />
+                        <InputText id="id" v-model.trim="product.id" fluid />
                     </div>
                     <div>
                         <label for="nisit" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">รหัสนักศึกษา</label>
-                        <InputText id="nisit" v-model.trim="product.nisit" :disabled="true" fluid class="!bg-surface-100 dark:!bg-surface-800" />
+                        <InputText id="nisit" v-model.trim="product.nisit" fluid />
                     </div>
                     <div>
                         <label for="name" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">
@@ -769,10 +769,9 @@ const getExportUrl = (baseUrl) => {
                     </div>
                     <div>
                         <label for="seat" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">ที่นั่ง</label>
-                        <InputText id="seat" v-model.trim="product.seat" :disabled="true" fluid class="!bg-surface-100 dark:!bg-surface-800" />
+                        <InputText id="seat" v-model.trim="product.seat" fluid />
                     </div>
                 </div>
-
                 <!-- คอลัมน์ขวา -->
                 <div class="space-y-5">
                     <div>
