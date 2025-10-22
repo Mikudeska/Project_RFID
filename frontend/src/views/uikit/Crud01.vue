@@ -584,8 +584,8 @@ function getLatestVerified(data) {
 }
 
 const multiSortMeta = ref([
-    { field: 'degree_level', order: 1 },  // เรียงจาก ป.เอก > ป.โท > ป.ตรี
-    { field: 'seat', order: 1 }  // จากนั้นเรียงตามเลขที่นั่ง
+    { field: 'degree_level', order: 1 },
+    { field: 'id', order: 1 }
 ]);
 
 const tableData = computed(() => {
@@ -608,17 +608,10 @@ const tableData = computed(() => {
         return {
             ...person,
             degree_level: degree_level,
-            degree_label: degree_label,
-            seat: parseInt(person.seat) || 0  // แปลงเป็นตัวเลขสำหรับการเรียง
+            degree_label: degree_label
         };
     });
 });
-
-const getExportUrl = (baseUrl) => {
-    // ดึงค่าสถานะที่เลือกอยู่ ถ้าไม่มีให้เป็น 'all'
-    const status = filteredVerified.value || 'all';
-    return `${baseUrl}?verified_status=${status}`;
-};
 </script>
 
 <template>

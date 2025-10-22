@@ -37,6 +37,34 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Helper function: คำนวณ verified ตามเวลาอัพเดต (ใช้ logic เดียวกับ serializer)
+def get_verified_by_timestamp(person):
+    """
+    คำนวณค่า verified จาก timestamp ของการอัพเดต
+    คืนค่า verified ล่าสุดที่ถูกอัพเดต
+    """
+    latest_verified = None
+    latest_time = None
+    
+    # เช็กจาก timestamp ก่อน
+    for i in range(1, 4):
+        verified_value = getattr(person, f'verified{i}')
+        updated_time = getattr(person, f'verified_updated_at{i}')
+        if updated_time:
+            if latest_time is None or updated_time > latest_time:
+                latest_time = updated_time
+                latest_verified = verified_value
+    
+    # ถ้าไม่มี timestamp เลย (null หมด)
+    if latest_verified is None:
+        for i in range(1, 4):
+            verified_value = getattr(person, f'verified{i}')
+            if verified_value is not None:
+                return verified_value
+        return 0  # ถ้าไม่มีเลย ให้เป็น 0
+    
+    return latest_verified
+
 # ✅ แจก CSRF token (frontend ต้องเรียกก่อน)
 @ensure_csrf_cookie
 def get_csrf_token(request):
@@ -171,26 +199,32 @@ def file_iterator(buffer, chunk_size=8192):
         yield chunk
 
 def get_filtered_persons(request):
-    # 1. ดึงค่า (จะเป็น '0', '1', '2' หรือ None ถ้าไม่ส่งมา)
+    """
+    ดึงข้อมูลบัณฑิตโดยกรองตามสถานะ verified ที่คำนวณจาก timestamp
+    """
     verified_status = request.GET.get('verified_status', None)
     persons = Person.objects.all()
 
-    if verified_status == '0':
-        # "ยังไม่รายงานตัว" (code: 0) - ตรรกะจาก person_stats
-        persons = persons.filter(verified1=0, verified2=0, verified3=0)
-    
-    elif verified_status == '1':
-        # "รายงานตัวแล้ว" (code: 1) - ตรรกะจาก person_stats
-        persons = persons.filter(Q(verified1=1) | Q(verified2=1) | Q(verified3=1))
-        
-    elif verified_status == '2':
-        # "อยู่ในห้องพิธี" (code: 2) - ตรรกะจาก person_stats
-        persons = persons.filter(Q(verified1=2) | Q(verified2=2) | Q(verified3=2))
+    # ถ้าไม่ระบุสถานะ (ทั้งหมด) ให้คืน queryset ทั้งหมด
+    if verified_status is None or verified_status == 'all':
+        return persons
 
-    # ถ้า verified_status เป็น None (ทั้งหมด)
-    # ก็จะไม่ทำอะไร (คืนค่า persons.all())
+    # แปลงเป็น list เพื่อ filter ใน Python ตาม verified ที่คำนวณจาก timestamp
+    persons_list = list(persons)
     
-    return persons
+    if verified_status == '0':
+        # "ยังไม่รายงานตัว" (code: 0)
+        filtered = [p for p in persons_list if get_verified_by_timestamp(p) == 0]
+    elif verified_status == '1':
+        # "รายงานตัวแล้ว" (code: 1)
+        filtered = [p for p in persons_list if get_verified_by_timestamp(p) == 1]
+    elif verified_status == '2':
+        # "อยู่ในห้องพิธี" (code: 2)
+        filtered = [p for p in persons_list if get_verified_by_timestamp(p) == 2]
+    else:
+        filtered = persons_list
+    
+    return filtered
 
 def get_custom_sort_key(person):
     """
@@ -375,7 +409,9 @@ class ExportPDFResult(View):
                 return 'ป.ตรี'
 
             def is_verified(person):
-                return any(getattr(person, f'verified{i}') in [1, 2] for i in range(1, 4))
+                # ใช้ verified ที่คำนวณจาก timestamp
+                verified = get_verified_by_timestamp(person)
+                return verified in [1, 2]
 
             persons = Person.objects.all()
             degree_summary = {'ป.ตรี': {'total': 0, 'present': 0},
@@ -549,13 +585,12 @@ class ExportPDFResult(View):
                 return (group, value_type, sort_val)
             # --- จบ Helper function ---
 
-            # 1. ดึงข้อมูลทั้งหมดที่ยังไม่ verified
-            missing_persons_query = Person.objects.filter(
-                verified1=0, verified2=0, verified3=0
-            )
+            # 1. ดึงข้อมูลทั้งหมดแล้ว filter ใน Python ตาม verified ที่คำนวณจาก timestamp
+            all_persons = Person.objects.all()
+            missing_persons_list = [p for p in all_persons if get_verified_by_timestamp(p) == 0]
 
             # 2. สั่งเรียงใน Python โดยใช้ฟังก์ชันที่เราสร้างขึ้น
-            missing_persons = sorted(list(missing_persons_query), key=get_custom_sort_key)
+            missing_persons = sorted(missing_persons_list, key=get_custom_sort_key)
             
             # --- (จบส่วนแก้ไข) ---
 
@@ -675,7 +710,7 @@ class ExportPDF(View):
                 p.drawCentredString(header_positions[1], vertical_center, person.name)
                 p.drawCentredString(header_positions[2], vertical_center, person.degree or "-")
                 p.drawCentredString(header_positions[3], vertical_center, person.rfid or "-")
-                p.drawCentredString(header_positions[4], vertical_center, str(person.verified1))
+                p.drawCentredString(header_positions[4], vertical_center, str(get_verified_by_timestamp(person)))
                 
                 rows_y.append(y_position)
                 y_position -= 20
@@ -762,7 +797,7 @@ class ExportData(APIView):
                     person.name or "-",
                     person.degree or "-", # ใช้ or "-" เผื่อค่าว่าง
                     person.rfid or "-",
-                    person.verified1  # แสดงเป็นตัวเลข 0, 1, 2
+                    get_verified_by_timestamp(person)  # ใช้ verified ที่คำนวณจาก timestamp
                 ])
 
             response = None
@@ -951,21 +986,10 @@ class StatsView(APIView):
         persons = Person.objects.all()
         total = persons.count()
 
+        # ใช้ get_verified_by_timestamp เพื่อความสม่ำเสมอในการคำนวณ
         for person in persons:
-            verified_with_time = []
-            for i in range(1, 4):
-                value = getattr(person, f'verified{i}', 0)
-                timestamp = getattr(person, f'verified_updated_at{i}', None)
-
-                # ถ้า timestamp ไม่มี ให้ใช้วันที่เก่ามากๆ แทน เพื่อให้ไม่ถูกเลือกก่อน timestamp อื่น
-                if not timestamp:
-                    timestamp = datetime.min.replace(tzinfo=timezone.utc)
-                verified_with_time.append((timestamp, value))
-
-            if verified_with_time:
-                # หาค่าล่าสุดจาก timestamp ที่ใหม่ที่สุด
-                latest_value = sorted(verified_with_time, key=lambda x: x[0], reverse=True)[0][1]
-                verified_counter[latest_value] += 1
+            verified = get_verified_by_timestamp(person)
+            verified_counter[verified] += 1
     
         stats = {
             'total': total,

@@ -47,6 +47,11 @@ class PersonSerializer(serializers.ModelSerializer):
         return latest_verified
 
     def validate_nisit(self, value):
+        # อนุญาตให้เป็นค่าว่างหรือ null ได้
+        if not value:
+            return value
+        
+        # ตรวจสอบเฉพาะกรณีมีค่า ว่าซ้ำหรือไม่
         if Person.objects.filter(nisit=value).exclude(id=self.instance.id if self.instance else None).exists():
             raise serializers.ValidationError("รหัสนิสิตนี้มีอยู่แล้ว")
         return value

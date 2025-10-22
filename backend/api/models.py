@@ -7,7 +7,7 @@ import random
 class Person(models.Model):
     id = models.CharField(primary_key=True, max_length=6)
     name = models.CharField(max_length=100)
-    nisit = models.CharField(max_length=11, unique=True, blank=True)
+    nisit = models.CharField(max_length=11, blank=True, null=True)
     degree = models.CharField(max_length=100)
     seat = models.IntegerField(unique=True, blank=True)
 
@@ -30,9 +30,6 @@ class Person(models.Model):
                 return value
 
     def save(self, *args, **kwargs):
-        if not self.nisit:
-            self.nisit = self.generate_unique_value(11, Person, 'nisit')
-
         if not self.seat:
             with transaction.atomic():
                 # Lock the table to prevent concurrent updates
