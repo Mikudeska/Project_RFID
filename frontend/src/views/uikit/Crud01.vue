@@ -620,16 +620,16 @@ const getExportUrl = (baseUrl) => {
                 <Toolbar class="mb-6">
                     <template #start>
                         <div class="flex items-center gap-2">
-                            <Button v-tooltip.top="'เพิ่มรายชื่อ'" severity="secondary" class="mr-2" @click="openNew" rounded raised>
+                            <Button v-if="auth.status !== 'Staff'" v-tooltip.top="'เพิ่มรายชื่อ'" severity="secondary" class="mr-2" @click="openNew" rounded raised>
                                 <Icon icon="material-symbols:add-2-rounded" />
                             </Button>
-                            <Button v-tooltip.top="'ลบรายการที่เลือก'" severity="secondary" class="mr-2" @click="confirmDeleteSelected" :disabled="!selectedpersons || !selectedpersons.length" rounded raised>
+                            <Button v-if="auth.status !== 'Staff'" v-tooltip.top="'ลบรายการที่เลือก'" severity="secondary" class="mr-2" @click="confirmDeleteSelected" :disabled="!selectedpersons || !selectedpersons.length" rounded raised>
                                 <Icon icon="mdi:trash-can-outline" />
                             </Button>
-                            <Button v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
+                            <Button v-if="auth.status !== 'Staff'" v-tooltip.top="'รีเซ็ตข้อมูล'" severity="secondary" class="mr-2" @click="confirmResetdatabase" rounded raised>
                                 <Icon icon="lucide:database-backup" />
                             </Button>
-                            <Button v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="toggleMenu1" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
+                            <Button v-if="auth.status !== 'Staff'" v-tooltip.top="'เปลี่ยนสถานะ'" severity="secondary" @click="toggleMenu1" :disabled="!selectedpersons || selectedpersons.length === 0" rounded raised>
                                 <Icon icon="mdi:tag" />
                             </Button>
                             <Menu ref="menu1" :model="verifiedMenuItems" :popup="true">
@@ -644,13 +644,10 @@ const getExportUrl = (baseUrl) => {
                     </template>
 
                     <template #end>
-                        <Button :disabled="uploadInProgress" severity="secondary" class="mr-2" @click="confirmUpload" rounded raised> <Icon icon="lets-icons:import" />อัปโหลดไฟล์ </Button>
+                        <Button v-if="auth.status !== 'Staff'" :disabled="uploadInProgress" severity="secondary" class="mr-2" @click="confirmUpload" rounded raised> <Icon icon="lets-icons:import" />อัปโหลดไฟล์ </Button>
                         <Button severity="secondary" class="mr-2" @click="choseExport" rounded raised> <Icon icon="lets-icons:export" />โหลดไฟล์ </Button>
                     </template>
                 </Toolbar>
-
-                <!-- Overlay ครอบทั้งแท็บ -->
-                <div v-if="auth.status === 'Staff'" class="absolute inset-0 flex items-center justify-center text-lg font-semibold rounded bg-gray-500/60">ไม่มีสิทธิใช้งาน</div>
             </div>
 
             <DataTable
@@ -751,74 +748,84 @@ const getExportUrl = (baseUrl) => {
             </DataTable>
         </div>
 
-        <Dialog v-model:visible="productDialog" :style="{ width: '450px' }" header="รายละเอียดบัณฑิต" :modal="true">
-            <div class="flex flex-col gap-6">
-                <div>
-                    <label for="id" class="block mb-3 font-bold">ลำดับ</label>
-                    <InputText id="id" v-model.trim="product.id" autofocus :invalid="submitted && !product.id" fluid :disabled="true" />
-                </div>
-                <div>
-                    <label for="nisit" class="block mb-3 font-bold">รหัสนักศึกษา</label>
-                    <InputText id="nisit" v-model.trim="product.nisit" autofocus :invalid="submitted && !product.nisit" fluid :disabled="true" />
-                </div>
-                <div>
-                    <label for="name" class="block mb-3 font-bold">ชื่อ - สกุล</label>
-                    <InputText id="name" v-model.trim="product.name" required="true" autofocus :invalid="submitted && !product.name" fluid />
-                    <small v-if="submitted && !product.name" class="text-red-500">จำเป็นต้องใส่</small>
-                </div>
-                <div>
-                    <label for="degree" class="block mb-3 font-bold">ชื่อปริญญา</label>
-                    <InputText id="degree" v-model.trim="product.degree" required="true" autofocus :invalid="submitted && !product.degree" fluid />
-                    <small v-if="submitted && !product.degree" class="text-red-500">จำเป็นต้องใส่</small>
-                </div>
-                <div>
-                    <label for="seat" class="block mb-3 font-bold">ที่นั่ง</label>
-                    <InputText id="seat" v-model.trim="product.seat" autofocus :invalid="submitted && !product.degree" fluid :disabled="true" />
-                </div>
-                <div>
-                    <span class="block mb-4 font-bold">สถานะรายงานตัว</span>
-                    <div class="grid grid-cols-12 gap-4">
-                        <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified0" v-model="product.verified" name="verified" :value="0" />
-                            <label for="verified0">
-                                <Icon icon="rivet-icons:close-circle-solid" class="text-red-500" />
-                            </label>
-                        </div>
-                        <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified1" v-model="product.verified" name="verified" :value="1" />
-                            <label for="verified1">
-                                <Icon icon="rivet-icons:check-circle-solid" class="text-green-500" />
-                            </label>
-                        </div>
-                        <div class="flex items-center col-span-4 gap-2">
-                            <RadioButton id="verified2" v-model="product.verified" name="verified" :value="2" />
-                            <label for="verified2">
-                                <Icon icon="tdesign:certificate-filled" class="text-yellow-300" />
-                            </label>
-                        </div>
+        <Dialog v-model:visible="productDialog" :style="{ width: '850px' }" header="รายละเอียดบัณฑิต" :modal="true" class="graduate-dialog">
+            <div class="grid grid-cols-2 gap-x-6 gap-y-5">
+                <!-- คอลัมน์ซ้าย -->
+                <div class="space-y-5">
+                    <div>
+                        <label for="id" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">ลำดับ</label>
+                        <InputText id="id" v-model.trim="product.id" :disabled="true" fluid class="!bg-surface-100 dark:!bg-surface-800" />
+                    </div>
+                    <div>
+                        <label for="nisit" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">รหัสนักศึกษา</label>
+                        <InputText id="nisit" v-model.trim="product.nisit" :disabled="true" fluid class="!bg-surface-100 dark:!bg-surface-800" />
+                    </div>
+                    <div>
+                        <label for="name" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">
+                            ชื่อ - สกุล <span class="text-red-500">*</span>
+                        </label>
+                        <InputText id="name" v-model.trim="product.name" required="true" autofocus :invalid="submitted && !product.name" fluid />
+                        <small v-if="submitted && !product.name" class="text-red-500">กรุณากรอกชื่อ - สกุล</small>
+                    </div>
+                    <div>
+                        <label for="seat" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">ที่นั่ง</label>
+                        <InputText id="seat" v-model.trim="product.seat" :disabled="true" fluid class="!bg-surface-100 dark:!bg-surface-800" />
                     </div>
                 </div>
-                <div>
-                    <label for="rfid" class="block mb-3 font-bold">รหัส RFID</label>
-                    <InputText id="rfid" v-model.trim="product.rfid" required="true" autofocus :invalid="submitted && !product.rfid" fluid />
-                </div>
-                <!--
 
-                <div class="grid grid-cols-12 gap-4">
-                    <div class="col-span-6">
-                        <label for="price" class="block mb-3 font-bold">Price</label>
-                        <InputNumber id="price" v-model="product.price" mode="currency" currency="USD" locale="en-US" fluid />
+                <!-- คอลัมน์ขวา -->
+                <div class="space-y-5">
+                    <div>
+                        <label for="degree" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">
+                            ชื่อปริญญา <span class="text-red-500">*</span>
+                        </label>
+                        <InputText id="degree" v-model.trim="product.degree" required="true" :invalid="submitted && !product.degree" fluid />
+                        <small v-if="submitted && !product.degree" class="text-red-500">กรุณากรอกชื่อปริญญา</small>
                     </div>
-                    <div class="col-span-6">
-                        <label for="quantity" class="block mb-3 font-bold">Quantity</label>
-                        <InputNumber id="quantity" v-model="product.quantity" integeronly fluid />
+                    <div>
+                        <label for="rfid" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">รหัส RFID</label>
+                        <InputText id="rfid" v-model.trim="product.rfid" fluid placeholder="ระบุรหัส RFID (ถ้ามี)" />
                     </div>
-                </div> -->
+                    <div>
+                        <span class="block mb-3 text-sm font-semibold text-surface-700 dark:text-surface-300">สถานะรายงานตัว</span>
+                        <div class="flex justify-between gap-3">
+                            <div class="flex items-center justify-center flex-1 gap-2 p-3 transition-all border-2 rounded-lg cursor-pointer hover:shadow-md" 
+                                 :class="product.verified === 0 ? 'border-red-500 bg-red-50 dark:bg-red-900/20' : 'border-surface-300 dark:border-surface-700'"
+                                 @click="product.verified = 0">
+                                <RadioButton id="verified0" v-model="product.verified" name="verified" :value="0" />
+                                <label for="verified0" class="flex flex-col items-center gap-1 cursor-pointer">
+                                    <Icon icon="rivet-icons:close-circle-solid" class="text-2xl text-red-500" />
+                                    <span class="text-xs font-medium">ยังไม่รายงาน</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-center flex-1 gap-2 p-3 transition-all border-2 rounded-lg cursor-pointer hover:shadow-md"
+                                 :class="product.verified === 1 ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-surface-300 dark:border-surface-700'"
+                                 @click="product.verified = 1">
+                                <RadioButton id="verified1" v-model="product.verified" name="verified" :value="1" />
+                                <label for="verified1" class="flex flex-col items-center gap-1 cursor-pointer">
+                                    <Icon icon="rivet-icons:check-circle-solid" class="text-2xl text-green-500" />
+                                    <span class="text-xs font-medium">รายงานแล้ว</span>
+                                </label>
+                            </div>
+                            <div class="flex items-center justify-center flex-1 gap-2 p-3 transition-all border-2 rounded-lg cursor-pointer hover:shadow-md"
+                                 :class="product.verified === 2 ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'border-surface-300 dark:border-surface-700'"
+                                 @click="product.verified = 2">
+                                <RadioButton id="verified2" v-model="product.verified" name="verified" :value="2" />
+                                <label for="verified2" class="flex flex-col items-center gap-1 cursor-pointer">
+                                    <Icon icon="tdesign:certificate-filled" class="text-2xl text-yellow-500" />
+                                    <span class="text-xs font-medium">ในห้องพิธี</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <template #footer>
-                <Button label="ยกเลิก" icon="pi pi-times" text @click="hideDialog" severity="danger" />
-                <Button label="บันทึก" icon="pi pi-check" text @click="saveProduct" />
+                <div class="flex justify-end gap-2">
+                    <Button label="ยกเลิก" icon="pi pi-times" @click="hideDialog" severity="secondary" text />
+                    <Button label="บันทึก" icon="pi pi-check" @click="saveProduct" />
+                </div>
             </template>
         </Dialog>
 
