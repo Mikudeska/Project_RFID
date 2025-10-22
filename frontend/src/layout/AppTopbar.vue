@@ -47,47 +47,6 @@ function togglePanel(event) {
     op.value.toggle(event);
 }
 
-// ✅ ฟัง WS เฉพาะ upload/comment/reset
-function handleWsInbox(event) {
-    const msg = event.detail;
-    if (['upload', 'comment', 'reset'].includes(msg.action)) {
-        logs.value.unshift({
-            id: Date.now(),
-            user: auth.user?.nickname || 'ผู้ใช้',
-            action: msg.action,
-            timestamp: msg.fields?.timestamp || new Date().toISOString()
-        });
-        logs.value = logs.value.slice(0, 5); // เก็บแค่ 5 ล่าสุด
-    }
-}
-
-onMounted(() => {
-    wsStore.registerHandler((msg) => {
-        if (['upload', 'comment', 'reset'].includes(msg.action)) {
-            logs.value.unshift({
-                id: Date.now(),
-                user: auth.user?.nickname || 'ผู้ใช้',
-                action: msg.action,
-                timestamp: msg.fields?.timestamp || new Date().toISOString()
-            });
-            logs.value = logs.value.slice(0, 5);
-        }
-    });
-});
-
-onBeforeUnmount(() => {
-    window.removeEventListener('ws-message', handleWsInbox);
-});
-
-// ✅ format วันที่
-function formatDate(datetimeStr) {
-    const date = new Date(datetimeStr);
-    return date.toLocaleString('th-TH', {
-        dateStyle: 'short',
-        timeStyle: 'short'
-    });
-}
-
 const filteredLogs = computed(() => logs.value);
 
 const themeIcon = computed(() => (isDarkTheme.value ? 'oi:moon' : 'oi:sun'));
@@ -136,28 +95,6 @@ const themeIcon = computed(() => (isDarkTheme.value ? 'oi:moon' : 'oi:sun'));
                     />
                     <AppConfigurator />
                 </div> -->
-
-                <!-- Inbox -->
-                <div>
-                    <div class="relative">
-                        <button @click="togglePanel($event)" ref="btn" type="button" class="flex items-center justify-center w-10 h-10 rounded-full layout-topbar-action">
-                            <Icon icon="streamline-plump:inbox-content-solid" class="text-xl" />
-                        </button>
-
-                        <Badge v-if="logs.length" severity="warn" class="absolute top-0 right-0 flex items-center justify-center translate-x-1/2 -translate-y-1/2 rounded-full" style="width: 10px; height: 10px; font-size: 10px; padding: 0" />
-                    </div>
-
-                    <OverlayPanel ref="op">
-                        <ul class="w-72">
-                            <li v-for="log in filteredLogs" :key="log.id" class="flex items-center justify-between p-2 text-mg">
-                                <div class="flex-1">{{ log.user }}</div>
-                                <div class="flex-1 text-center text-green-800">{{ log.action }}</div>
-                                <div class="flex-1 text-xs text-right text-gray-500">{{ formatDate(log.timestamp) }}</div>
-                            </li>
-                            <li v-if="!logs.length" class="p-2 text-center text-gray-400">ไม่มีข้อความล่าสุด</li>
-                        </ul>
-                    </OverlayPanel>
-                </div>
 
                 <!-- ด้านล่างแทนที่ปุ่ม Profile -->
                 <div>

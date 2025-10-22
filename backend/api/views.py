@@ -1501,14 +1501,6 @@ def convert_datetime_fields(data: dict, fields: list):
     return data
 
 class ExportSeatMap(APIView):
-    """
-    Export แผนที่นั่งเป็น Excel โดยแสดง:
-    - แกน Y = เลขแถว
-    - แกน X = เลขที่นั่ง (พร้อมทางเดิน)
-    - เซลล์ = ลำดับที่บัณฑิต
-    - สีเขียว = มารายงานตัว, สีแดง = ยังไม่มา
-    - ทางเดิน = คอลัมน์ว่าง
-    """
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
@@ -1559,13 +1551,16 @@ class ExportSeatMap(APIView):
                 if person.seat:
                     seat_map[int(person.seat)] = person
             
-            # กำหนดสีและ style
+            # กำหนดสีและ style พร้อมฟอนต์ไทย
             green_fill = PatternFill(start_color="90EE90", end_color="90EE90", fill_type="solid")
             red_fill = PatternFill(start_color="FFB6C1", end_color="FFB6C1", fill_type="solid")
             header_fill = PatternFill(start_color="B0E0E6", end_color="B0E0E6", fill_type="solid")
-            aisle_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # สีเทาสำหรับทางเดิน
-            pillar_fill = PatternFill(start_color="808080", end_color="808080", fill_type="solid")  # สีเทาเข้มสำหรับเสา
-            header_font = Font(bold=True, size=12)
+            aisle_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")
+            pillar_fill = PatternFill(start_color="808080", end_color="808080", fill_type="solid")
+            
+            # ใช้ฟอนต์ THSarabunNew ขนาด 12
+            thai_font = Font(name='THSarabunNew', size=12, bold=False)
+            header_font = Font(name='THSarabunNew', size=12, bold=True)
             center_alignment = Alignment(horizontal='center', vertical='center')
             thin_border = Border(
                 left=Side(style='thin'),
@@ -1610,6 +1605,9 @@ class ExportSeatMap(APIView):
             excel_col = 2
             seat_counter = 1
             
+            # ตั้งความสูงแถวหัว
+            ws.row_dimensions[1].height = 24
+            
             # สร้างหัวคอลัมน์สำหรับฝั่งซ้าย
             for i in range(SEATS_PER_SIDE_A):
                 ws.cell(row=1, column=excel_col, value=seat_counter)
@@ -1617,17 +1615,17 @@ class ExportSeatMap(APIView):
                 ws.cell(row=1, column=excel_col).font = header_font
                 ws.cell(row=1, column=excel_col).alignment = center_alignment
                 ws.cell(row=1, column=excel_col).border = thin_border
-                ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 5
+                ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 7.43
                 excel_col += 1
                 seat_counter += 1
             
             # ทางเดินกลาง
-            ws.cell(row=1, column=excel_col, value="ทางเดิน")
+            ws.cell(row=1, column=excel_col)
             ws.cell(row=1, column=excel_col).fill = aisle_fill
             ws.cell(row=1, column=excel_col).font = header_font
             ws.cell(row=1, column=excel_col).alignment = center_alignment
             ws.cell(row=1, column=excel_col).border = thin_border
-            ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 8
+            ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 7.43
             aisle_col = excel_col
             excel_col += 1
             
@@ -1638,13 +1636,16 @@ class ExportSeatMap(APIView):
                 ws.cell(row=1, column=excel_col).font = header_font
                 ws.cell(row=1, column=excel_col).alignment = center_alignment
                 ws.cell(row=1, column=excel_col).border = thin_border
-                ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 5
+                ws.column_dimensions[ws.cell(row=1, column=excel_col).column_letter].width = 7.43
                 excel_col += 1
                 seat_counter += 1
             
             # เติมข้อมูลแต่ละแถว
             for row_num in range(1, total_rows + 1):
                 row_layout = get_row_layout(row_num - 1)
+                
+                # ตั้งความสูงแถว
+                ws.row_dimensions[row_num + 1].height = 24
                 
                 # คอลัมน์แรก = เลขแถว
                 ws.cell(row=row_num + 1, column=1, value=f"แถว {row_num}")
@@ -1660,9 +1661,10 @@ class ExportSeatMap(APIView):
                 for i in range(SEATS_PER_ROW):
                     # ถ้าถึงทางเดินกลาง ให้ข้ามคอลัมน์
                     if i == SEATS_PER_SIDE_A:
-                        ws.cell(row=row_num + 1, column=aisle_col, value="")
-                        ws.cell(row=row_num + 1, column=aisle_col).fill = aisle_fill
-                        ws.cell(row=row_num + 1, column=aisle_col).border = thin_border
+                        aisle_cell = ws.cell(row=row_num + 1, column=aisle_col, value="")
+                        aisle_cell.fill = aisle_fill
+                        aisle_cell.border = thin_border
+                        aisle_cell.font = thai_font
                         excel_col = aisle_col + 1
                     
                     cell = ws.cell(row=row_num + 1, column=excel_col if i < SEATS_PER_SIDE_A else excel_col)
@@ -1671,6 +1673,7 @@ class ExportSeatMap(APIView):
                         # เสา
                         cell.value = "▓"
                         cell.fill = pillar_fill
+                        cell.font = thai_font
                     else:
                         # ที่นั่ง
                         seat_number = (row_num - 1) * SEATS_PER_ROW + (i + 1)
@@ -1687,14 +1690,16 @@ class ExportSeatMap(APIView):
                             ])
                             
                             cell.fill = green_fill if is_verified else red_fill
+                            cell.font = thai_font
                         else:
                             cell.value = ""
+                            cell.font = thai_font
                     
                     cell.alignment = center_alignment
                     cell.border = thin_border
                     excel_col += 1
             
-            # ปรับความกว้างคอลัมน์แรก
+            # ปรับความกว้างคอลัมน์แรก (กว้างกว่าคอลัมน์อื่นเพื่อให้พอแสดงข้อความ "แถว XX")
             ws.column_dimensions['A'].width = 12
             
             # บันทึกไฟล์
