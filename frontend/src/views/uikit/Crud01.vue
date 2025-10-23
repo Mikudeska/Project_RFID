@@ -362,14 +362,42 @@ const saveProduct = async () => {
     if (product?.value?.name?.trim()) {
         try {
             const payload = { ...product.value };
-            if (payload.rfid) {
-                payload.rfid = payload.rfid.replace(/-/g, '');
+            
+            // Trim และทำความสะอาดข้อมูล
+            if (payload.nisit) {
+                payload.nisit = payload.nisit.trim();
             }
+            if (payload.name) {
+                payload.name = payload.name.trim();
+            }
+            if (payload.degree) {
+                payload.degree = payload.degree.trim();
+            }
+            if (payload.seat) {
+                payload.seat = payload.seat.toString().trim();
+            }
+            
+            // Trim RFID และลบเครื่องหมาย - ออก
+            if (payload.rfid) {
+                payload.rfid = payload.rfid.trim().replace(/-/g, '');
+                // ถ้า RFID เป็น string เปล่าหลัง trim ให้เซ็ตเป็น null
+                if (payload.rfid === '') {
+                    payload.rfid = null;
+                }
+            }
+            
             payload.verified1 = payload.verified;
             delete payload.verified;
-            if (payload.id) {
+            
+            // ตรวจสอบว่ามี id ที่มีค่าจริงหรือไม่ (id เป็น CharField ใน backend)
+            const hasValidId = payload.id && payload.id.toString().trim() !== '';
+            
+            if (hasValidId) {
+                // แก้ไขข้อมูลเดิม (PUT)
                 await api.put(`api/person/${payload.id}/`, payload);
             } else {
+                // เพิ่มข้อมูลใหม่ (POST) - ลบ id ออกเพื่อให้ backend สร้างให้เอง
+                delete payload.id;
                 await api.post('api/person/', payload);
             }
             await fetchPersons();
@@ -744,7 +772,8 @@ const tableData = computed(() => {
                 <div class="space-y-5">
                     <div>
                         <label for="id" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">ลำดับ</label>
-                        <InputText id="id" v-model.trim="product.id" fluid />
+                        <InputText id="id" v-model.trim="product.id" :disabled="!product.id || product.id === 0" fluid />
+                        <small v-if="!product.id || product.id === 0" class="text-surface-500">ระบบจะสร้างเลขลำดับให้อัตโนมัติ</small>
                     </div>
                     <div>
                         <label for="nisit" class="block mb-2 text-sm font-semibold text-surface-700 dark:text-surface-300">รหัสนักศึกษา</label>
