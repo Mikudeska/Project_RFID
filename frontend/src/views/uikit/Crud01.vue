@@ -362,6 +362,9 @@ const saveProduct = async () => {
     if (product?.value?.name?.trim()) {
         try {
             const payload = { ...product.value };
+            if (payload.rfid) {
+                payload.rfid = payload.rfid.replace(/-/g, '');
+            }
             payload.verified1 = payload.verified;
             delete payload.verified;
             if (payload.id) {
