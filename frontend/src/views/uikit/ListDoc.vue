@@ -80,13 +80,12 @@ onBeforeUnmount(() => {
 const statusLabels = {
     0: 'ยังไม่รายงานตัว',
     1: 'รายงานตัวแล้ว',
-    2: 'เข้าหอประชุมแล้ว',
     unknown: 'ไม่ทราบสถานะ'
 };
 
 function lastNByVerifiedAt(arr, n = 15, verifiedField = 'verified1', updatedAtField = 'verified_updated_at1') {
     return [...arr]
-        .filter((p) => Number(p[verifiedField]) === 1 || Number(p[verifiedField]) === 2)
+        .filter((p) => Number(p[verifiedField]) === 1)
         .sort((a, b) => new Date(b[updatedAtField] || 0) - new Date(a[updatedAtField] || 0))
         .slice(0, n);
 }
@@ -159,8 +158,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
-                            'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-200': person.verified1 == 1,
-                            'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-200': person.verified1 == 2
+                            'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-200': person.verified1 == 1
                         }"
                     >
                         {{ statusLabels[person.verified1?.toString() ?? 'unknown'] }}
@@ -190,8 +188,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
-                            'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-200': person.verified2 == 1,
-                            'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-200': person.verified2 == 2
+                            'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-200': person.verified2 == 1
                         }"
                     >
                         {{ statusLabels[person.verified2?.toString() ?? 'unknown'] }}
@@ -221,8 +218,7 @@ const personsC = computed(() => lastNByVerifiedAt(persons.value, 15, 'verified3'
                     <span
                         class="px-2 py-1 ml-auto text-xs font-bold rounded"
                         :class="{
-                            'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-200': person.verified3 == 1,
-                            'bg-orange-100 text-orange-700 dark:bg-orange-900/60 dark:text-orange-200': person.verified3 == 2
+                            'bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-200': person.verified3 == 1
                         }"
                     >
                         {{ statusLabels[person.verified3?.toString() ?? 'unknown'] }}

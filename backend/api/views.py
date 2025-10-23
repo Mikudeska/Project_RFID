@@ -218,9 +218,6 @@ def get_filtered_persons(request):
     elif verified_status == '1':
         # "รายงานตัวแล้ว" (code: 1)
         filtered = [p for p in persons_list if get_verified_by_timestamp(p) == 1]
-    elif verified_status == '2':
-        # "อยู่ในห้องพิธี" (code: 2)
-        filtered = [p for p in persons_list if get_verified_by_timestamp(p) == 2]
     else:
         filtered = persons_list
     
@@ -264,8 +261,6 @@ def get_filter_name(verified_status):
         return "ยังไม่รายงานตัว"
     elif verified_status == '1':
         return "รายงานตัวแล้ว"
-    elif verified_status == '2':
-        return "อยู่ในห้องพิธี"
     else: # None
         return "ทั้งหมด"
 
@@ -411,7 +406,7 @@ class ExportPDFResult(View):
             def is_verified(person):
                 # ใช้ verified ที่คำนวณจาก timestamp
                 verified = get_verified_by_timestamp(person)
-                return verified in [1, 2]
+                return verified == 1
 
             persons = Person.objects.all()
             degree_summary = {'ป.ตรี': {'total': 0, 'present': 0},
@@ -996,7 +991,6 @@ class StatsView(APIView):
             'total': total,
             'not_checked_in': verified_counter[0],      # ยังไม่รายงานตัว (สถานะ 0)
             'in_checkin_room': verified_counter[1],     # รายงานตัวแล้ว (สถานะ 1)
-            'in_graduation_room': verified_counter[2],  # อยู่ในห้องพิธี (สถานะ 2)
         }
         return Response(stats, status=200)
 
@@ -1709,9 +1703,9 @@ class ExportSeatMap(APIView):
                             
                             # กำหนดสีตามสถานะ
                             is_verified = any([
-                                person.verified1 in [1, 2],
-                                person.verified2 in [1, 2],
-                                person.verified3 in [1, 2]
+                                person.verified1 == 1,
+                                person.verified2 == 1,
+                                person.verified3 == 1
                             ])
                             
                             cell.fill = green_fill if is_verified else red_fill

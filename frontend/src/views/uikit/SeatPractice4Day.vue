@@ -119,18 +119,15 @@ const activeFilters = computed(() => {
 const statistics = computed(() => {
     const total = persons.value.length;
     const reported = persons.value.filter(p => p.verified === 1).length;
-    const inHall = persons.value.filter(p => p.verified === 2).length;
     const notReported = persons.value.filter(p => p.verified === 0).length;
-    const unknown = persons.value.filter(p => ![0, 1, 2].includes(p.verified)).length;
+    const unknown = persons.value.filter(p => ![0, 1].includes(p.verified)).length;
     
     return {
         total,
         reported,
-        inHall,
         notReported,
         unknown,
         reportedPercentage: total > 0 ? Math.round((reported / total) * 100) : 0,
-        inHallPercentage: total > 0 ? Math.round((inHall / total) * 100) : 0,
         notReportedPercentage: total > 0 ? Math.round((notReported / total) * 100) : 0
     };
 });
@@ -797,20 +794,17 @@ function getMiniMapColor(status) {
                     <div class="relative">
                         <div class="w-24 h-24 rounded-full flex items-center justify-center shadow-lg " :class="{
                             'bg-gradient-to-br from-green-400 to-green-600 dark:from-green-500 dark:to-green-700': selectedPerson.verified === 1,
-                            'bg-gradient-to-br from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700': selectedPerson.verified === 2,
                             'bg-gradient-to-br from-red-400 to-red-600 dark:from-red-500 dark:to-red-700': selectedPerson.verified === 0,
-                            'bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-500 dark:to-gray-700': ![0, 1, 2].includes(selectedPerson.verified)
+                            'bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-500 dark:to-gray-700': ![0, 1].includes(selectedPerson.verified)
                         }">
                             <Icon icon="mdi:account-circle" class="text-white" width="60" height="60" />
                         </div>
                         <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg" :class="{
                             'bg-green-500': selectedPerson.verified === 1,
-                            'bg-yellow-500': selectedPerson.verified === 2,
                             'bg-red-500': selectedPerson.verified === 0,
-                            'bg-gray-500': ![0, 1, 2].includes(selectedPerson.verified)
+                            'bg-gray-500': ![0, 1].includes(selectedPerson.verified)
                         }">
                             <Icon :icon="selectedPerson.verified === 1 ? 'mdi:check' : 
-                                         selectedPerson.verified === 2 ? 'mdi:account-check' : 
                                          selectedPerson.verified === 0 ? 'mdi:close' : 
                                          'mdi:help'" class="text-white" width="16" height="16" />
                         </div>
@@ -819,12 +813,10 @@ function getMiniMapColor(status) {
                         <div class="text-sm font-semibold text-blue-700 dark:text-blue-300">สถานะ</div>
                         <div class="text-xs font-bold" :class="{
                             'text-green-600 dark:text-green-400': selectedPerson.verified === 1,
-                            'text-yellow-600 dark:text-yellow-400': selectedPerson.verified === 2,
                             'text-red-600 dark:text-red-400': selectedPerson.verified === 0,
-                            'text-gray-600 dark:text-gray-400': ![0, 1, 2].includes(selectedPerson.verified)
+                            'text-gray-600 dark:text-gray-400': ![0, 1].includes(selectedPerson.verified)
                         }">
                             {{ selectedPerson.verified === 1 ? 'รายงานตัวแล้ว' : 
-                               selectedPerson.verified === 2 ? 'เข้าหอประชุมแล้ว' : 
                                selectedPerson.verified === 0 ? 'ยังไม่รายงานตัว' : 
                                'ไม่ทราบสถานะ' }}
                         </div>

@@ -82,7 +82,6 @@ const degreeTypeFilter = ref('all'); // all, bachelor, master, doctoral
 const statusLabels = {
     0: 'ยังไม่รายงานตัว',
     1: 'รายงานตัวแล้ว',
-    2: 'เข้าหอประชุมเรียบร้อยแล้ว',
     unknown: 'ไม่ทราบสถานะ'
 };
 
@@ -114,18 +113,15 @@ const activeFilters = computed(() => {
 const statistics = computed(() => {
     const total = persons.value.length;
     const reported = persons.value.filter(p => p.verified === 1).length;
-    const inHall = persons.value.filter(p => p.verified === 2).length;
     const notReported = persons.value.filter(p => p.verified === 0).length;
-    const unknown = persons.value.filter(p => ![0, 1, 2].includes(p.verified)).length;
+    const unknown = persons.value.filter(p => ![0, 1].includes(p.verified)).length;
     
     return {
         total,
         reported,
-        inHall,
         notReported,
         unknown,
         reportedPercentage: total > 0 ? Math.round((reported / total) * 100) : 0,
-        inHallPercentage: total > 0 ? Math.round((inHall / total) * 100) : 0,
         notReportedPercentage: total > 0 ? Math.round((notReported / total) * 100) : 0
     };
 });
@@ -208,7 +204,6 @@ function getChairColor(person) {
     let colorClass = 'text-gray-400'; // สถานะไม่แน่ชัด (default)
     if (personStatus === 0) colorClass = 'text-red-500'; // ยังไม่รายงานตัว
     if (personStatus === 1) colorClass = 'text-green-500'; // รายงานตัวแล้ว
-    if (personStatus === 2) colorClass = 'text-yellow-300'; // เข้าหอประชุมแล้ว
 
     // ตรรกะการกรอง
     if (filter === 'all') {
@@ -505,7 +500,6 @@ function getMiniMapColor(status) {
     switch (status) {
         case 0: return 'bg-red-500'; // ยังไม่รายงานตัว
         case 1: return 'bg-green-500'; // รายงานตัวแล้ว
-        case 2: return 'bg-yellow-400'; // เข้าหอประชุมแล้ว
         default: return 'bg-gray-400'; // ไม่ทราบสถานะ
     }
 }
@@ -556,12 +550,6 @@ function getMiniMapColor(status) {
                                 <div class="text-lg font-bold text-green-600 dark:text-green-400 animate-pulse">{{ statistics.reported }}</div>
                                 <div class="text-xs text-green-500 dark:text-green-300">รายงานตัวแล้ว</div>
                                 <div class="text-xs text-green-500 dark:text-green-300">({{ statistics.reportedPercentage }}%)</div>
-                            </div>
-                            <!-- In Hall -->
-                            <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-yellow-200 dark:border-yellow-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
-                                <div class="text-lg font-bold text-yellow-600 dark:text-yellow-400 animate-pulse">{{ statistics.inHall }}</div>
-                                <div class="text-xs text-yellow-500 dark:text-yellow-300">เข้าหอประชุม</div>
-                                <div class="text-xs text-yellow-500 dark:text-yellow-300">({{ statistics.inHallPercentage }}%)</div>
                             </div>
                             <!-- Not Reported -->
                             <div class="text-center p-2 bg-white/80 dark:bg-gray-700/80 rounded-lg border border-red-200 dark:border-red-700 transform transition-all duration-300 hover:scale-105 hover:shadow-md">
@@ -625,7 +613,6 @@ function getMiniMapColor(status) {
                                 <option value="all">ทั้งหมด</option>
                                 <option value="1">รายงานตัวแล้ว</option>
                                 <option value="0">ยังไม่รายงานตัว</option>
-                                <option value="2">เข้าหอประชุมเรียบร้อยแล้ว</option>
                                 <option value="unknown">ไม่ทราบสถานะ</option>
                             </select>
                             <span class="absolute text-blue-400 dark:text-blue-300 -translate-y-1/2 pointer-events-none right-3 top-1/2">
@@ -778,20 +765,17 @@ function getMiniMapColor(status) {
                     <div class="relative">
                         <div class="w-24 h-24 rounded-full flex items-center justify-center shadow-lg " :class="{
                             'bg-gradient-to-br from-green-400 to-green-600 dark:from-green-500 dark:to-green-700': selectedPerson.verified === 1,
-                            'bg-gradient-to-br from-yellow-400 to-yellow-600 dark:from-yellow-500 dark:to-yellow-700': selectedPerson.verified === 2,
                             'bg-gradient-to-br from-red-400 to-red-600 dark:from-red-500 dark:to-red-700': selectedPerson.verified === 0,
-                            'bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-500 dark:to-gray-700': ![0, 1, 2].includes(selectedPerson.verified)
+                            'bg-gradient-to-br from-gray-400 to-gray-600 dark:from-gray-500 dark:to-gray-700': ![0, 1].includes(selectedPerson.verified)
                         }">
                             <Icon icon="mdi:account-circle" class="text-white" width="60" height="60" />
                         </div>
                         <div class="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-lg" :class="{
                             'bg-green-500': selectedPerson.verified === 1,
-                            'bg-yellow-500': selectedPerson.verified === 2,
                             'bg-red-500': selectedPerson.verified === 0,
-                            'bg-gray-500': ![0, 1, 2].includes(selectedPerson.verified)
+                            'bg-gray-500': ![0, 1].includes(selectedPerson.verified)
                         }">
                             <Icon :icon="selectedPerson.verified === 1 ? 'mdi:check' : 
-                                         selectedPerson.verified === 2 ? 'mdi:account-check' : 
                                          selectedPerson.verified === 0 ? 'mdi:close' : 
                                          'mdi:help'" class="text-white" width="16" height="16" />
                         </div>
@@ -800,12 +784,10 @@ function getMiniMapColor(status) {
                         <div class="text-sm font-semibold text-blue-700 dark:text-blue-300">สถานะ</div>
                         <div class="text-xs font-bold" :class="{
                             'text-green-600 dark:text-green-400': selectedPerson.verified === 1,
-                            'text-yellow-600 dark:text-yellow-400': selectedPerson.verified === 2,
                             'text-red-600 dark:text-red-400': selectedPerson.verified === 0,
-                            'text-gray-600 dark:text-gray-400': ![0, 1, 2].includes(selectedPerson.verified)
+                            'text-gray-600 dark:text-gray-400': ![0, 1].includes(selectedPerson.verified)
                         }">
                             {{ selectedPerson.verified === 1 ? 'รายงานตัวแล้ว' : 
-                               selectedPerson.verified === 2 ? 'เข้าหอประชุมแล้ว' : 
                                selectedPerson.verified === 0 ? 'ยังไม่รายงานตัว' : 
                                'ไม่ทราบสถานะ' }}
                         </div>
@@ -947,10 +929,6 @@ function getMiniMapColor(status) {
                                     <div class="flex items-center gap-1">
                                         <div class="w-2 h-2 bg-red-500 rounded-sm"></div>
                                         <span class="text-gray-600 dark:text-gray-300">ยังไม่รายงาน</span>
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <div class="w-2 h-2 bg-yellow-400 rounded-sm"></div>
-                                        <span class="text-gray-600 dark:text-gray-300">เข้าหอประชุม</span>
                                     </div>
                                 </div>
                             </div>

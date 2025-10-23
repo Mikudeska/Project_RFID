@@ -221,7 +221,7 @@ const exportData = async (format) => { // format คือ 'xlsx' หรือ '
         // สร้างชื่อไฟล์เองแทนการอ่านจาก header
         const statusText = filteredVerified.value === null ? 'ทั้งหมด' : 
                           filteredVerified.value === 0 ? 'ยังไม่รายงานตัว' :
-                          filteredVerified.value === 1 ? 'รายงานตัวแล้ว' : 'อยู่ในห้องพิธี';
+                          'รายงานตัวแล้ว';
         
         const today = new Date();
         const dateStr = today.getFullYear().toString() + 
@@ -518,12 +518,6 @@ const verifiedMenuItems = [
         icon: 'rivet-icons:check-circle-solid',
         color: 'text-green-500',
         command: () => updateSelectedVerified(1, 'verified1')
-    },
-    {
-        label: 'อยู่ในห้องพิธี',
-        icon: 'tdesign:certificate-filled',
-        color: 'text-yellow-300',
-        command: () => updateSelectedVerified(2, 'verified1')
     }
 ];
 
@@ -550,14 +544,6 @@ const items = ref([
         color: 'text-red-500',
         command: () => {
             applyVerifiedFilter(0);
-        }
-    },
-    {
-        label: 'อยู่ในห้องพิธี',
-        icon: 'tdesign:certificate-filled',
-        color: 'text-yellow-300',
-        command: () => {
-            applyVerifiedFilter(2);
         }
     }
 ]);
@@ -679,8 +665,7 @@ const tableData = computed(() => {
                                 <Icon icon="mdi:tag" />
                                 <span v-if="filteredVerified === null">ทั้งหมด</span>
                                 <Icon v-else-if="filteredVerified === 1" icon="rivet-icons:check-circle-solid" class="text-green-500"></Icon>
-                                <Icon v-else-if="filteredVerified === 0" icon="rivet-icons:close-circle-solid" class="text-red-500"></Icon>
-                                <Icon v-else-if="filteredVerified === 2" icon="tdesign:certificate-filled" class="text-yellow-300"></Icon>
+                                <Icon v-else icon="rivet-icons:close-circle-solid" class="text-red-500"></Icon>
                             </Button>
                             <Menu ref="menu2" :model="items" :popup="true">
                                 <template #item="{ item }">
@@ -725,9 +710,6 @@ const tableData = computed(() => {
                     <template #body="{ data }">
                         <template v-if="getLatestVerified(data) === 1">
                             <Icon class="text-green-500 icon" icon="rivet-icons:check-circle-solid" />
-                        </template>
-                        <template v-else-if="getLatestVerified(data) === 2">
-                            <Icon class="text-yellow-300 icon" icon="tdesign:certificate-filled" />
                         </template>
                         <template v-else>
                             <Icon class="text-red-500 icon" icon="rivet-icons:close-circle-solid" />
@@ -809,15 +791,6 @@ const tableData = computed(() => {
                                 <label for="verified1" class="flex flex-col items-center gap-1 cursor-pointer">
                                     <Icon icon="rivet-icons:check-circle-solid" class="text-2xl text-green-500" />
                                     <span class="text-xs font-medium">รายงานแล้ว</span>
-                                </label>
-                            </div>
-                            <div class="flex items-center justify-center flex-1 gap-2 p-3 transition-all border-2 rounded-lg cursor-pointer hover:shadow-md"
-                                 :class="product.verified === 2 ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20' : 'border-surface-300 dark:border-surface-700'"
-                                 @click="product.verified = 2">
-                                <RadioButton id="verified2" v-model="product.verified" name="verified" :value="2" />
-                                <label for="verified2" class="flex flex-col items-center gap-1 cursor-pointer">
-                                    <Icon icon="tdesign:certificate-filled" class="text-2xl text-yellow-500" />
-                                    <span class="text-xs font-medium">ในห้องพิธี</span>
                                 </label>
                             </div>
                         </div>
@@ -1020,15 +993,10 @@ const tableData = computed(() => {
                                 <Icon icon="rivet-icons:check-circle-solid" class="mr-1" />
                                 รายงานตัวแล้ว</Tag>
                         </span>
-                        <span v-else-if="filteredVerified === 0" class="text-red-500">
+                        <span v-else class="text-red-500">
                             <Tag severity="danger" class="px-2 py-1 rounded-xl">
                                 <Icon icon="rivet-icons:close-circle-solid" class="mr-1" />
                                 ยังไม่รายงานตัว</Tag>
-                        </span>
-                        <span v-else class="text-yellow-500">
-                            <Tag severity="warn" class="px-2 py-1 rounded-xl">
-                                <Icon icon="tdesign:certificate-filled" class="mr-1" />
-                                อยู่ในห้องพิธี</Tag>
                         </span>
                     </span> 
                     <span>ใช่หรือไม่ ?</span>

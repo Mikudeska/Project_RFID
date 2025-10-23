@@ -65,9 +65,8 @@
         <td>{{ person.degree }}</td>
         <td>{{ person.seat }}</td>
         <td>
-          {% if person.verified == 0 %}ลงทะเบียนแล้ว
-          {% elif person.verified == 1 %}อยู่ในห้องลงทะเบียน
-          {% elif person.verified == 2 %}อยู่ในห้องพิธี
+          {% if person.verified == 0 %}ยังไม่รายงานตัว
+          {% elif person.verified == 1 %}รายงานตัวแล้ว
           {% endif %}
         </td>
         <td>{{ person.date|date:"d/m/Y H:i" }}</td>

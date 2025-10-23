@@ -49,7 +49,7 @@ data = []
 for i in range(num_records):
     name = f"{random.choice(first_names)} {random.choice(last_names)}"
     degree = random.choice(degree_list)
-    verified1 = random.choice([0, 1, 2])
+    verified1 = random.choice([0, 1])
     nisit = generate_nisit()
     # สร้างเลขที่บัณฑิต (id) แบบต่างๆ
     if i < 30:

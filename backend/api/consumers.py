@@ -37,14 +37,13 @@ def broadcast_stats_update():
     verified_counter = Counter()
     for person in persons:
         latest_verified = get_latest_verified(person)
-        if latest_verified in [0, 1, 2]:
+        if latest_verified in [0, 1]:
             verified_counter[latest_verified] += 1
 
     stats = {
         'total': total,
         'not_checked_in': verified_counter[0],
         'in_checkin_room': verified_counter[1],
-        'in_graduation_room': verified_counter[2],
     }
 
     print("Stats:", stats)
@@ -76,7 +75,7 @@ def get_latest_verified(person):
 
     for key in [1, 2, 3]:
         value = values[key]
-        if value in [0, 1, 2]:
+        if value in [0, 1]:
             time = times[key]
             if not latest_time or time > latest_time:
                 latest_time = time

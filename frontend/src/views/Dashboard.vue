@@ -23,8 +23,7 @@ const displayDateString = computed(() => {
 const features = ref([
     { title: 'จำนวนบัณฑิตทั้งหมด', description: '0' },
     { title: 'จำนวนบัณฑิตที่ต้องมารายงานตัวทั้งหมด', description: '0' },
-    { title: 'จำนวนบัณฑิตที่มารายงานตัว', description: '0' },
-    { title: 'อยู่ในห้องพิธี', description: '0' }
+    { title: 'จำนวนบัณฑิตที่มารายงานตัว', description: '0' }
 ]);
 
 function handleWsMessage(event) {
@@ -36,8 +35,7 @@ function handleWsMessage(event) {
         features.value = [
             { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
             { title: 'ยังไม่รายงานตัว', description: d.not_checked_in },
-            { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
-            { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
+            { title: 'รายงานตัวแล้ว', description: d.in_checkin_room }
         ];
     } else if (msg.action === 'comment') {
         comments.value.push({
@@ -58,8 +56,7 @@ async function fetchStats() {
         features.value = [
             { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
             { title: 'ยังไม่รายงานตัว', description: d.not_checked_in },
-            { title: 'รายงานตัวแล้ว', description: d.in_checkin_room },
-            { title: 'อยู่ในห้องพิธี', description: d.in_graduation_room }
+            { title: 'รายงานตัวแล้ว', description: d.in_checkin_room }
         ];
     } catch (error) {
         console.error('Error fetching stats:', error);
@@ -146,17 +143,16 @@ onMounted(async () => {
             <div class="col-span-12 md:col-span-8">
                 <div class="grid grid-cols-12 gap-[2rem] h-full">
                     <div
-                        class="flex flex-col col-span-12 duration-150 rounded-s-md hover:-translate-y-2 hover:shadow-2xl card xl:col-span-6"
+                        class="flex flex-col col-span-12 duration-150 rounded-s-md hover:-translate-y-2 hover:shadow-2xl card"
                         v-for="(feat, index) in features"
                         :key="feat"
                         :class="[
-                            index % 4 === 0
+                            index === 2 ? 'xl:col-span-12' : 'xl:col-span-6',
+                            index % 3 === 0
                                 ? 'border-b-8 border-blue-500 rounded-b-xl'
-                                : index % 4 === 1
+                                : index % 3 === 1
                                 ? 'border-b-8 border-red-500 rounded-b-xl'
-                                : index % 4 === 2
-                                ? 'border-b-8 border-green-500 rounded-b-xl'
-                                : 'border-b-8 border-yellow-300 rounded-b-xl'
+                                : 'border-b-8 border-green-500 rounded-b-xl'
                         ]"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">
