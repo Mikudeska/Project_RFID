@@ -7,7 +7,8 @@ import { useToast } from 'primevue/usetoast';
 import { useAuthStore } from '@/stores/auth';
 import { storeToRefs } from 'pinia';
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { API_BASE_URL } from '@/config';
+const API_BASE = API_BASE_URL;
 
 const auth = useAuthStore();
 const { user } = storeToRefs(auth);
@@ -42,7 +43,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await api.post(`${API_BASE}/api/resetlog/`);
+        await api.post(`${API_BASE}resetlog/`);
         await fetchLogs();
         toast.add({
             severity: 'success',
@@ -131,7 +132,7 @@ const fetchLogs = async () => {
     loading.value = true;
     try {
         let allLogs = [];
-        let nextUrl = `${API_BASE}/api/logs/`;
+        let nextUrl = `${API_BASE}logs/`;
 
         while (nextUrl) {
             const response = await api.get(nextUrl);

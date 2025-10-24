@@ -30,8 +30,8 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function login(username, password) {
         try {
-            await api.get('/api/get-csrf-token/'); // ให้ browser ได้ csrftoken
-            const res = await api.post('/api/login/', { username, password });
+            await api.get('get-csrf-token/'); // ให้ browser ได้ csrftoken
+            const res = await api.post('login/', { username, password });
             
             // res.data คือข้อมูล user/profile ที่ส่งมาจาก login_view เลย
             setUser(res.data); // data = { id, username, status, ... }
@@ -46,7 +46,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function fetchUserProfile() {
         try {
-            const res = await api.get('/api/profile/');
+            const res = await api.get('profile/');
             setUser(res.data);
         } catch (err) {
             console.error('fetchUserProfile error:', err);
@@ -55,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function updateUserProfile(newProfileData) {
         try {
-            const response = await api.put('/api/profile/', newProfileData);
+            const response = await api.put('profile/', newProfileData);
             setUser(response.data);
 
             console.log('Pinia store updated successfully!', user.value);
@@ -68,7 +68,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     async function changeUserPassword(newPassword) {
         try {
-            await api.post('/api/change-password/', { new_password: newPassword });
+            await api.post('change-password/', { new_password: newPassword });
         } catch (error) {
             console.error('Failed to change password:', error);
             throw error; // ส่ง error ต่อไปให้ component จัดการ
@@ -79,7 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = null;
         isAuthenticated.value = false; // ตั้งค่าการล็อกเอาท์
         localStorage.removeItem('user');
-        await api.post('/api/logout/'); // backend clear session
+        await api.post('logout/'); // backend clear session
     }
 
     return {

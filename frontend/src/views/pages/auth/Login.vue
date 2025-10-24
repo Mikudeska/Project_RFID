@@ -27,20 +27,20 @@ async function handleLogin() {
 
     try {
         // 1) ขอ CSRF ก่อน
-        await api.get('api/get-csrf-token/');
+        await api.get('get-csrf-token/');
 
         // 2) Login - ส่งข้อมูลระยะเวลา expires
         const rememberMe = checked.value;
         const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60;
 
-        await api.post('api/login/', {
+        await api.post('login/', {
             username: username.value,
             password: password.value,
             expires_in: expiresIn
         });
 
         // 3) ดึง profile
-        const res = await api.get('api/profile/');
+        const res = await api.get('profile/');
         auth.setUser(res.data);
         console.log('Profile:', res.data);
 

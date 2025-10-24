@@ -3,14 +3,15 @@ import { computed, ref, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { Icon } from '@iconify/vue';
 import api from '@/plugins/axios';
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { API_BASE_URL } from '@/config';
+const API_BASE = API_BASE_URL;
 
 const displayTime = ref(new Date());
 setInterval(() => {
     displayTime.value = new Date();
 }, 1000);
 const displayTimeString = computed(() => {
-        return displayTime.value.toLocaleString('th-TH', {
+    return displayTime.value.toLocaleString('th-TH', {
         timeStyle: 'medium'
     });
 });
@@ -51,7 +52,7 @@ function handleWsMessage(event) {
 
 async function fetchStats() {
     try {
-        const res = await api.get(`${API_BASE}/api/stats/`);
+        const res = await api.get(`${API_BASE}stats/`);
         const d = res.data;
         features.value = [
             { title: 'จำนวนบัณฑิตทั้งหมด', description: d.total },
@@ -79,7 +80,7 @@ const comments = ref([]);
 const addComment = async () => {
     if (newComment.value.trim()) {
         try {
-            await api.post(`${API_BASE}/api/logs/new/`, {
+            await api.post(`${API_BASE}logs/new/`, {
                 action: 'comment',
                 model: 'Comment',
                 details: newComment.value
@@ -101,7 +102,7 @@ const scrollToBottom = () => {
     }
 };
 const loadComments = async () => {
-    const res = await api.get(`${API_BASE}/api/logs/`);
+    const res = await api.get(`${API_BASE}logs/`);
     const logs = res.data.results; // ดึง array จาก 'results'
 
     comments.value = logs
@@ -146,14 +147,7 @@ onMounted(async () => {
                         class="flex flex-col col-span-12 duration-150 rounded-s-md hover:-translate-y-2 hover:shadow-2xl card"
                         v-for="(feat, index) in features"
                         :key="feat"
-                        :class="[
-                            index === 2 ? 'xl:col-span-12' : 'xl:col-span-6',
-                            index % 3 === 0
-                                ? 'border-b-8 border-blue-500 rounded-b-xl'
-                                : index % 3 === 1
-                                ? 'border-b-8 border-red-500 rounded-b-xl'
-                                : 'border-b-8 border-green-500 rounded-b-xl'
-                        ]"
+                        :class="[index === 2 ? 'xl:col-span-12' : 'xl:col-span-6', index % 3 === 0 ? 'border-b-8 border-blue-500 rounded-b-xl' : index % 3 === 1 ? 'border-b-8 border-red-500 rounded-b-xl' : 'border-b-8 border-green-500 rounded-b-xl']"
                     >
                         <h2 class="pb-2 text-xl text-center border-b-2 border-indigo-600 xl:text-4xl">
                             {{ feat.title }}
@@ -188,7 +182,14 @@ onMounted(async () => {
                     </div>
                     <div class="">
                         <div class="grid grid-cols-12 gap-2 pt-4 md:flex-row">
-                            <InputText type="text" v-model="newComment" placeholder="พิมพ์คอมเมนต์ของคุณ.... " class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-10 text-1xl" @keydown.enter.exact.prevent="addComment" @keydown.shift.enter.stop />
+                            <InputText
+                                type="text"
+                                v-model="newComment"
+                                placeholder="พิมพ์คอมเมนต์ของคุณ.... "
+                                class="flex flex-col col-span-12 px-2 border rounded-md resize-none xl:col-span-10 text-1xl"
+                                @keydown.enter.exact.prevent="addComment"
+                                @keydown.shift.enter.stop
+                            />
                             <Button label="ส่ง" @click="addComment" class="flex flex-col col-span-12 text-xl xl:col-span-2" Rounded />
                         </div>
                     </div>
@@ -198,5 +199,4 @@ onMounted(async () => {
     </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

@@ -18,7 +18,7 @@ const persons = ref([]);
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await api.get(`/api/person/`);
+        const response = await api.get(`person/`);
         const data = Array.isArray(response.data) ? response.data : response.data.results ?? [];
         persons.value = data;
     } catch (error) {
@@ -132,7 +132,7 @@ const handleResetStep2 = async () => {
         return;
     }
     try {
-        await api.post(`/api/reset/`);
+        await api.post(`reset/`);
         await fetchPersons();
     } catch (error) {
         toast.error('รีเซ็ตล้มเหลว', error.response?.data?.error || 'เกิดข้อผิดพลาด');
@@ -156,7 +156,7 @@ const exportPDF = async () => {
         }
         // ถ้า status เป็น null, เราจะไม่ส่ง param, backend จะถือว่าเป็น 'all'
 
-        const response = await api.get(`/api/export-pdf/`, {
+        const response = await api.get(`export-pdf/`, {
             responseType: 'blob',
             timeout: 30000,
             params: queryParams // 👈 3. ส่ง params ที่สร้างไว้
@@ -213,7 +213,7 @@ const exportData = async (format) => { // format คือ 'xlsx' หรือ '
             queryParams.verified_status = status;
         }
 
-        const response = await api.get(`/api/export/${exportFormat}/`, { 
+        const response = await api.get(`export/${exportFormat}/`, { 
             responseType: 'blob',
             params: queryParams // 👈 4. ส่ง params ที่สร้างไว้
         });
@@ -303,7 +303,7 @@ const handleFileUpload = async () => {
     formData.append('file', file.value);
 
     try {
-        const response = await api.post(`/api/import/`, formData, {
+        const response = await api.post(`import/`, formData, {
             headers: { 'Content-Type': 'multipart/form-data' },
             onUploadProgress: (progressEvent) => {
                 const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -394,11 +394,11 @@ const saveProduct = async () => {
             
             if (hasValidId) {
                 // แก้ไขข้อมูลเดิม (PUT)
-                await api.put(`api/person/${payload.id}/`, payload);
+                await api.put(`person/${payload.id}/`, payload);
             } else {
                 // เพิ่มข้อมูลใหม่ (POST) - ลบ id ออกเพื่อให้ backend สร้างให้เอง
                 delete payload.id;
-                await api.post('api/person/', payload);
+                await api.post('person/', payload);
             }
             await fetchPersons();
             productDialog.value = false;
@@ -420,7 +420,7 @@ const deleteProduct = async () => {
     const deletingId = product.value.id;
 
     try {
-        await api.delete(`/api/person/${deletingId}/`);
+        await api.delete(`person/${deletingId}/`);
         persons.value = persons.value.filter((val) => val.id !== deletingId);
         deleteProductDialog.value = false;
         toast.success('สำเร็จ', 'ลบข้อมูลเรียบร้อย');
@@ -444,7 +444,7 @@ async function deleteSelectedpersons() {
     const ids = selectedpersons.value.map((person) => person.id).filter((id) => id != null);
 
     try {
-        await api.delete(`/api/person/delete/`, {
+        await api.delete(`person/delete/`, {
             data: { ids },
             headers: {
                 'Content-Type': 'application/json'
@@ -499,7 +499,7 @@ async function updateSelectedVerified(status, field = 'verified1') {
     try {
         const ids = selectedpersons.value.map((p) => p.id);
 
-        await api.put(`/api/person/`, {
+        await api.put(`person/`, {
             ids,
             verified: status,
             verified_field: field

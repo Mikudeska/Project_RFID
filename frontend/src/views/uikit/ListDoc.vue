@@ -4,7 +4,8 @@ import axios from 'axios';
 import { Icon } from '@iconify/vue';
 import { useWebSocketStore } from '@/stores/websocket';
 
-const API_BASE = import.meta.env.VITE_API_BASE;
+import { API_BASE_URL } from '@/config';
+const API_BASE = API_BASE_URL;
 
 // สร้างตัวแปรต่างๆ
 const persons = ref([]);
@@ -20,7 +21,7 @@ const visibleMachines = ref({
 async function fetchPersons() {
     loading.value = true;
     try {
-        const response = await axios.get(`${API_BASE}/api/person/`);
+        const response = await axios.get(`${API_BASE}person/`);
         persons.value = response.data.map((person) => ({
             ...person,
             formatted_id: person.id.toString().padStart(4, '0')
@@ -257,11 +258,15 @@ input:checked ~ .dot {
     background: linear-gradient(90deg, #23272f 60%, #1a1d23 100%);
 }
 .p-dialog {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 .p-dialog-enter-active,
 .p-dialog-leave-active {
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease;
 }
 .p-dialog-enter,
 .p-dialog-leave-to {

@@ -32,7 +32,7 @@ Requirements:
 - Backend: put .env inside backend folder (Test01-master/backend/.env)
 - SECRET_KEY='django-insecure-j=^xs4wja2)#p6%u#63(z2fd-ld0q80xp8jme%h0n6$a#w&7ri'
 - DEBUG=True
-- ALLOWED_HOSTS=127.0.0.1,localhost,sv.ssrurufi.com
+- ALLOWED_HOSTS=127.0.0.1,localhost,ssrurufi.com,www.ssrurufi.com
 
 - DB_NAME=ssru_student_db
 - DB_USER=root

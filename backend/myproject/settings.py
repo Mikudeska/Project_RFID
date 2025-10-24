@@ -65,6 +65,10 @@ CSRF_COOKIE_SECURE = False        # True ถ้าใช้ HTTPS
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
+    "https://ssrurufi.com",
+    "https://www.ssrurufi.com",
+    "http://ssrurufi.com",
+    "http://www.ssrurufi.com",
     "http://27.254.134.124",
     "http://localhost:5173",
 ]
